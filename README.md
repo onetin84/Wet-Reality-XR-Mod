@@ -92,6 +92,8 @@ UnityExplorer aus dem Ordner nehmen.
 
 ## Lizenz
 
-Noch keine gewählt. Ohne Lizenzdatei gilt „alle Rechte vorbehalten"; für ein
-privates Repository ist das in Ordnung, vor einer Veröffentlichung wäre es eine
-Entscheidung.
+[MIT](LICENSE) — für den Code dieses Projekts.
+
+MelonLoader, UnityExplorer und OpenXR behalten ihre eigenen Lizenzen. Sie
+liegen nicht im Repository, sondern werden bezogen; `tools/downloads` und
+`tools/source-inspection` sind deshalb ausgeschlossen.
