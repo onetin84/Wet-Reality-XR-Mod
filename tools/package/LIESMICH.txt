@@ -163,10 +163,6 @@ BEKANNTE GRENZEN
     F6, das das Spiel auf den Monitor zurücklegte, ist in diesem Build unter
     anderem deshalb aus - stattdessen das Spiel neu starten.
 
-  - Die Untertabs im Einstellungsbildschirm des Spiels sind mit den
-    Controllern noch nicht erreichbar. Dafür Maus und Tastatur am Monitor
-    benutzen.
-
   - Keine physischen VR-Interaktionen: kein Gürtel, kein Greifen von Flaschen
     mit der Hand. Die vorhandenen Menüs des Spiels werden genutzt, wie sie
     sind.

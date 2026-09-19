@@ -149,9 +149,6 @@ KNOWN LIMITATIONS
     game back on the monitor, is off in this build for that reason among
     others - restart the game instead.
 
-  - The sub-tabs inside the game's own Settings screen cannot be reached with
-    the controllers yet. Use mouse and keyboard on the monitor for those.
-
   - No physical VR interactions: no belt, no picking bottles up by hand. The
     game's existing menus are used as they are.
 
