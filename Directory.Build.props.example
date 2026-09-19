@@ -1,0 +1,18 @@
+<!-- Die Lage des Spiels auf DIESEM Arbeitsplatz.
+
+     Kopieren nach Directory.Build.props (ohne .example) und den Pfad
+     eintragen. Die Kopie ist NICHT versioniert - sie soll die
+     Laufwerksstruktur des Rechners nicht ins Repository tragen.
+
+     MSBuild sucht Directory.Build.props vom Projektverzeichnis aus nach oben
+     und importiert sie VOR dem Projektrumpf. Die Bedingung
+     "'$(GamePath)' == ''" in der .csproj ist dann falsch, und dieser Wert
+     gewinnt gegen die generische Vorgabe.
+
+     Wer nur einmal baut, braucht die Datei nicht:
+     dotnet build -c Release -p:GamePath="D:\..."  -->
+<Project>
+  <PropertyGroup>
+    <GamePath>C:\Program Files (x86)\Steam\steamapps\common\PowerWash Simulator 2</GamePath>
+  </PropertyGroup>
+</Project>

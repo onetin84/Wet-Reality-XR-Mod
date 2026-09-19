@@ -1,3 +1,5 @@
+# Der Standardort von Steam als Vorgabe. Liegt das Spiel woanders, den Pfad
+# uebergeben: .\Install-DiscoveryTools.ps1 -GamePath 'D:\...'
 param([string]$GamePath = 'C:\Program Files (x86)\Steam\steamapps\common\PowerWash Simulator 2')
 $ErrorActionPreference = 'Stop'
 $gameRoot = (Resolve-Path -LiteralPath $GamePath).Path.TrimEnd('\')

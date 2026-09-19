@@ -4,6 +4,10 @@
     <PlatformTarget>x64</PlatformTarget>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <!-- Der Standardort von Steam als Vorgabe. Liegt das Spiel woanders,
+         gehoert der Pfad in Directory.Build.props im Wurzelverzeichnis (nicht
+         versioniert, Beispiel liegt daneben) oder an die Befehlszeile:
+         dotnet build -p:GamePath="D:\..." -->
     <GamePath Condition="'$(GamePath)' == ''">C:\Program Files (x86)\Steam\steamapps\common\PowerWash Simulator 2</GamePath>
     <EnableNETAnalyzers>false</EnableNETAnalyzers>
 

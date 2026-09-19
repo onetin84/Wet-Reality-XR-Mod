@@ -60,6 +60,9 @@ Load-Image -Name 'avatar.png' -Target 'AvatarImage' -Placeholder 'AvatarPlacehol
 # Some text is filled in by the script at runtime; without it the preview would
 # show empty gaps that do not exist in use.
 foreach ($pair in @(@('StatusText', (T 'Installation found')),
+                    # Ein BEISPIELPFAD, nur fuer das Vorschaubild - er zeigt,
+                    # wie die Zeile im Fenster aussieht. Absichtlich der
+                    # Standardort von Steam und nicht der dieses Rechners.
                     @('StatusPath', 'C:\Program Files (x86)\Steam\steamapps\common\PowerWash Simulator 2'),
                     @('VersionText', 'Mod 0.96.0   Boot 0.19.0'),
                     @('TurnSpeedValue', "90 $(T 'deg/s')"),

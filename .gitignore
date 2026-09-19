@@ -37,6 +37,12 @@ tools/*.pl
 # Bei jedem Lauf von render-ui.ps1 neu erzeugt.
 tools/ui-preview-*.png
 
+# Die echte Lage des Spiels auf DIESEM Rechner. MSBuild importiert die Datei
+# vom Projektverzeichnis aus nach oben, also vor dem Projektrumpf, und der dort
+# gesetzte GamePath gewinnt gegen die generische Vorgabe in der .csproj.
+# Directory.Build.props.example wird verfolgt und zeigt die Form.
+Directory.Build.props
+
 # ----------------------------------------------------------- lokale Sitzung
 .claude/
 start_claude.ps1

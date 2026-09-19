@@ -60,8 +60,17 @@ dotnet build -c Release
 Vom Wurzelverzeichnis aus zieht `dotnet` ein neueres SDK und verlangt
 Targeting-Packs, die nicht installiert sind (`NU1100`).
 
-Die Projekte verweisen auf die Assemblies des installierten Spiels. Der Pfad
-steht als `GamePath` in der `.csproj` und ist überschreibbar:
+Die Projekte verweisen auf die Assemblies des installierten Spiels. Als
+Vorgabe steht der Standardort von Steam in der `.csproj`. Liegt das Spiel
+woanders, gibt es zwei Wege — einmalig pro Arbeitsplatz:
+
+```
+cp Directory.Build.props.example Directory.Build.props
+```
+
+Darin den Pfad eintragen. Die Datei ist **nicht versioniert**; MSBuild sucht sie
+vom Projektverzeichnis aus nach oben und importiert sie vor dem Projektrumpf,
+der dort gesetzte `GamePath` gewinnt also. Oder pro Aufruf:
 
 ```
 dotnet build -c Release -p:GamePath="D:\SteamLibrary\steamapps\common\PowerWash Simulator 2"
