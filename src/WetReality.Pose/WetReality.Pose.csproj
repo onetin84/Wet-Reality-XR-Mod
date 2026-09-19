@@ -1,0 +1,104 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework>
+    <PlatformTarget>x64</PlatformTarget>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <GamePath Condition="'$(GamePath)' == ''">C:\Program Files (x86)\Steam\steamapps\common\PowerWash Simulator 2</GamePath>
+    <EnableNETAnalyzers>false</EnableNETAnalyzers>
+
+    <!-- Debug info EMBEDDED, source paths REWRITTEN.
+         A release DLL normally carries an RSDS entry naming the .pdb by absolute
+         path, so the shipped file spelled out the whole build tree on this
+         machine. Two changes, for two different reasons:
+
+         embedded    - no separate .pdb to ship and no path to one, while stack
+                       traces in MelonLoader's log keep their line numbers. For a
+                       beta that is worth real money: a tester's report costs one
+                       run, and a run is expensive.
+         PathMap     - the embedded info still lists every source file, so the
+                       project directory is mapped to ./ and the paths come out
+                       relative. -->
+    <DebugType>embedded</DebugType>
+    <PathMap>$(MSBuildProjectDirectory)=./</PathMap>
+    <!-- Mirrors the MelonInfo version above the class so the compiled DLL carries
+         it in its file metadata. The configurator reads it from there with
+         FileVersionInfo, which needs no assembly load - loading this DLL outside
+         the game would drag in the Il2Cpp interop types and fail.
+
+         Two places hold the number, so they are bumped together. -->
+    <Version>1.38.0</Version>
+    <AssemblyVersion>1.38.0</AssemblyVersion>
+    <FileVersion>1.38.0</FileVersion>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- The splash plate, compiled INTO the assembly.
+         LogicalName is fixed here and read back by the same string in
+         Splash.cs; a mismatch between the two is the only way the plate can
+         fail silently, so Splash.cs logs every embedded name when it misses. -->
+    <EmbeddedResource Include="Resources\startup-logo.png"
+                      LogicalName="WetReality.startup-logo.png" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="MelonLoader" HintPath="$(GamePath)/MelonLoader/net6/MelonLoader.dll" Private="false" />
+    <Reference Include="Il2CppInterop.Runtime" HintPath="$(GamePath)/MelonLoader/net6/Il2CppInterop.Runtime.dll" Private="false" />
+    <Reference Include="Il2Cppmscorlib" HintPath="$(GamePath)/MelonLoader/Il2CppAssemblies/Il2Cppmscorlib.dll" Private="false" />
+    <Reference Include="UnityEngine.CoreModule" HintPath="$(GamePath)/MelonLoader/Il2CppAssemblies/UnityEngine.CoreModule.dll" Private="false" />
+    <Reference Include="UnityEngine.InputLegacyModule" HintPath="$(GamePath)/MelonLoader/Il2CppAssemblies/UnityEngine.InputLegacyModule.dll" Private="false" />
+    <!-- Collider, fuer Collider.ClosestPoint in der Messung aus Abschnitt 102.
+         Nur ein Vector3 geht hinein und einer kommt heraus - kein Bounds, kein
+         RaycastHit. Wenn der Aufruf sich als unsicher erweist, faellt diese
+         Referenz mit ihm weg. -->
+    <Reference Include="UnityEngine.PhysicsModule" HintPath="$(GamePath)/MelonLoader/Il2CppAssemblies/UnityEngine.PhysicsModule.dll" Private="false" />
+    <Reference Include="UnityEngine.AnimationModule" HintPath="$(GamePath)/MelonLoader/Il2CppAssemblies/UnityEngine.AnimationModule.dll" Private="false" />
+    <Reference Include="Unity.Addressables" HintPath="$(GamePath)/MelonLoader/Il2CppAssemblies/Unity.Addressables.dll" Private="false" />
+    <Reference Include="Unity.ResourceManager" HintPath="$(GamePath)/MelonLoader/Il2CppAssemblies/Unity.ResourceManager.dll" Private="false" />
+    <Reference Include="UnityEngine.IMGUIModule" HintPath="$(GamePath)/MelonLoader/Il2CppAssemblies/UnityEngine.IMGUIModule.dll" Private="false" />
+    <!-- Canvas, CanvasGroup and RenderMode, for the stereo UI fix in GameUi. -->
+    <Reference Include="UnityEngine.UIModule" HintPath="$(GamePath)/MelonLoader/Il2CppAssemblies/UnityEngine.UIModule.dll" Private="false" />
+    <!-- XRModule for InputTracking and XRNode, VRModule for XRSettings. -->
+    <Reference Include="UnityEngine.XRModule" HintPath="$(GamePath)/MelonLoader/Il2CppAssemblies/UnityEngine.XRModule.dll" Private="false" />
+    <Reference Include="UnityEngine.SubsystemsModule" HintPath="$(GamePath)/MelonLoader/Il2CppAssemblies/UnityEngine.SubsystemsModule.dll" Private="false" />
+    <Reference Include="Unity.InputSystem" HintPath="$(GamePath)/MelonLoader/Il2CppAssemblies/Unity.InputSystem.dll" Private="false" />
+    <Reference Include="UnityEngine.VRModule" HintPath="$(GamePath)/MelonLoader/Il2CppAssemblies/UnityEngine.VRModule.dll" Private="false" />
+    <!-- BaseInput, whose Fire property GameInput patches, and Harmony to do it. -->
+    <Reference Include="Il2CppFuturLab.PW2" HintPath="$(GamePath)/MelonLoader/Il2CppAssemblies/Il2CppFuturLab.PW2.dll" Private="false" />
+    <!-- FuturButton and FuturPopupManager, the game's own UI surface. Submit(),
+         ForceSelect(), ForceDeselect(), Caption and DismissAll() are all void,
+         bool, string or class references - no struct and no generic crosses the
+         boundary, unlike every state-feeding route of the virtual-gamepad plan.
+         Init(ref FuturButtonParams) is the one forbidden signature here. -->
+    <Reference Include="Il2CppFuturLab" HintPath="$(GamePath)/MelonLoader/Il2CppAssemblies/Il2CppFuturLab.dll" Private="false" />
+    <!-- EventSystem, ExecuteEvents and the UI handler interfaces. This is what
+         replaces section 73's virtual-gamepad plan: ExecuteEvents carries
+         NON-GENERIC overloads per interface, so Cancel and Submit reach the UI
+         without synthesising an input device and without a generic-with-struct
+         call. -->
+    <!-- ImageConversion.LoadImage, for the embedded splash PNG. -->
+    <Reference Include="UnityEngine.ImageConversionModule" HintPath="$(GamePath)/MelonLoader/Il2CppAssemblies/UnityEngine.ImageConversionModule.dll" Private="false" />
+    <Reference Include="UnityEngine.UI" HintPath="$(GamePath)/MelonLoader/Il2CppAssemblies/UnityEngine.UI.dll" Private="false" />
+    <!-- The nozzle data model, for the category scheme on the stick clicks.
+         WasherConfiguration, NozzleData and ExtensionData live in GameContent;
+         NozzleTypeData, which carries the int NozzleGroup, and ShortName from
+         BaseEquipmentTypeData live in Core. No hard-coded nozzle list is needed
+         because the game's own cyclers and its IsOwned filter do the work. -->
+    <Reference Include="Il2CppFuturLab.PW2.GameContent" HintPath="$(GamePath)/MelonLoader/Il2CppAssemblies/Il2CppFuturLab.PW2.GameContent.dll" Private="false" />
+    <Reference Include="Il2CppFuturLab.PW2.Core" HintPath="$(GamePath)/MelonLoader/Il2CppAssemblies/Il2CppFuturLab.PW2.Core.dll" Private="false" />
+    <!-- SettingUIElement and its four subtypes - SettingButton, SettingDropdown,
+         SettingSlider, SettingToggle - which are what the settings screen is
+         built from. It derives from UIStateMonoBehaviour, so the existing menu
+         scan already collects it; what was missing was a way to ACTIVATE it.
+         Submit(), IsInteractable, LocalizationKey, m_slider, m_dropdown and
+         m_toggle are all void, bool, string or class references, the same safe
+         family as FuturButton. -->
+    <Reference Include="Il2CppFuturLab.PW2.UI" HintPath="$(GamePath)/MelonLoader/Il2CppAssemblies/Il2CppFuturLab.PW2.UI.dll" Private="false" />
+    <!-- FuturDropdown derives from Il2CppTMPro.TMP_Dropdown, and the dropdown
+         stepper needs its value (int) and options.Count. Nothing else from TMP
+         is touched - captions come from LocalizationKey, not from TMP_Text. -->
+    <Reference Include="Unity.TextMeshPro" HintPath="$(GamePath)/MelonLoader/Il2CppAssemblies/Unity.TextMeshPro.dll" Private="false" />
+    <!-- EquipmentManager derives from NetworkBehaviour: WashRay is networked state. -->
+    <Reference Include="Unity.Netcode.Runtime" HintPath="$(GamePath)/MelonLoader/Il2CppAssemblies/Unity.Netcode.Runtime.dll" Private="false" />
+    <Reference Include="0Harmony" HintPath="$(GamePath)/MelonLoader/net6/0Harmony.dll" Private="false" />
+  </ItemGroup>
+</Project>

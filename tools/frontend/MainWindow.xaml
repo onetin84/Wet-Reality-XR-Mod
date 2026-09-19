@@ -1,0 +1,675 @@
+<Window
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Title="Wet Reality XR Mod"
+    Width="940" Height="1020"
+    MinWidth="860" MinHeight="660"
+    WindowStartupLocation="CenterScreen"
+    Background="#12191B"
+    FontFamily="Segoe UI">
+
+    <!--
+        Layout only. No x:Class and no event attributes anywhere: PowerShell
+        loads this through XamlReader, which cannot resolve a code-behind class
+        or a handler name. Every interaction is wired by name from the script.
+
+        HEIGHT 900, RAISED FROM 790, and the number has to be maintained.
+        790 was enough until the grip section grew from three sliders to six;
+        the three rotation rows then sat below the window edge, reachable only
+        by scrolling - which nobody expects on a settings window, and which is
+        why it read as "elements are missing". Add a row here and this number
+        goes up with it; tools/render-ui.ps1 reads it from this file, so the
+        preview cannot drift away from what ships.
+
+        SizeToContent="Height" WOULD MAINTAIN IT AUTOMATICALLY AND WAS TRIED,
+        and it is recorded here so it is not tried again by accident: the
+        background Image below has no size of its own, so as soon as the height
+        is unconstrained it measures at its natural 1368x1149 and drives the
+        layout instead of following it. The preview came out 1460 px tall. That
+        is fixable - a Rectangle with an ImageBrush has no desired size - but it
+        is a change to a working image layer for a maintenance convenience.
+
+        The ceiling is NOT a number here: WetReality-Config.ps1 clamps
+        MaxHeight to the screen's work area, because a laptop at 1080p and a
+        desktop at 1440p do not share one right answer. The ScrollViewer below
+        therefore stays - as the small-screen fallback it was meant to be,
+        rather than as the normal case.
+    -->
+
+    <Window.Resources>
+        <!-- The palette, straight from the moodboard. Named so a change here
+             reaches every control instead of being retyped per element. -->
+        <Color x:Key="InkColor">#FF12191B</Color>
+        <Color x:Key="DeepColor">#FF083B43</Color>
+        <Color x:Key="CyanColor">#FF15D9D0</Color>
+        <Color x:Key="PaperColor">#FFF5FCFA</Color>
+        <Color x:Key="AmberColor">#FFFFD447</Color>
+        <Color x:Key="CoralColor">#FFFF6B55</Color>
+
+        <SolidColorBrush x:Key="Ink" Color="{StaticResource InkColor}" />
+        <SolidColorBrush x:Key="Deep" Color="{StaticResource DeepColor}" />
+        <SolidColorBrush x:Key="Cyan" Color="{StaticResource CyanColor}" />
+        <SolidColorBrush x:Key="Paper" Color="{StaticResource PaperColor}" />
+        <SolidColorBrush x:Key="Amber" Color="{StaticResource AmberColor}" />
+        <SolidColorBrush x:Key="Coral" Color="{StaticResource CoralColor}" />
+        <SolidColorBrush x:Key="Muted" Color="#FFF5FCFA" Opacity="0.55" />
+        <!-- Translucent on purpose - see the note on PanelStyle below. -->
+        <SolidColorBrush x:Key="PanelFill" Color="#C20C2B31" />
+
+        <!-- The inset surfaces (status strip, avatar disc) sit ON a panel, so
+             they are lighter still: two stacked translucent layers would
+             otherwise come out darker than the panel they are meant to lift
+             away from. -->
+        <SolidColorBrush x:Key="InsetFill" Color="#5514323A" />
+
+        <!-- The panel is a pane of tinted glass, not a card.
+             Background translucent (PanelFill), border a little brighter than it
+             was so the edge still reads once the fill stops doing that job, and
+             the drop shadow kept: it is what separates panel from plate now that
+             the fill alone no longer does. -->
+        <Style x:Key="PanelStyle" TargetType="Border">
+            <Setter Property="Background" Value="{StaticResource PanelFill}" />
+            <Setter Property="CornerRadius" Value="10" />
+            <Setter Property="Padding" Value="18,14,18,16" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="BorderBrush" Value="#4D15D9D0" />
+            <Setter Property="Effect">
+                <Setter.Value>
+                    <DropShadowEffect BlurRadius="18" ShadowDepth="0"
+                                      Color="#FF000000" Opacity="0.45" />
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="SectionTitle" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource Cyan}" />
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Margin" Value="0,0,0,12" />
+        </Style>
+
+        <Style x:Key="FieldLabel" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource Paper}" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+
+        <Style x:Key="ValueLabel" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource Cyan}" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="HorizontalAlignment" Value="Right" />
+            <Setter Property="MinWidth" Value="58" />
+        </Style>
+
+        <Style TargetType="Slider">
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Margin" Value="10,0,10,0" />
+            <Setter Property="Foreground" Value="{StaticResource Cyan}" />
+            <Setter Property="IsSnapToTickEnabled" Value="False" />
+        </Style>
+
+        <Style TargetType="CheckBox">
+            <Setter Property="Foreground" Value="{StaticResource Paper}" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="CheckBox">
+                        <StackPanel Orientation="Horizontal" Background="Transparent">
+                            <Border x:Name="Box" Width="16" Height="16" CornerRadius="4"
+                                    Background="{StaticResource InsetFill}"
+                                    BorderBrush="#6615D9D0" BorderThickness="1"
+                                    VerticalAlignment="Center">
+                                <Path x:Name="Tick" Visibility="Collapsed"
+                                      Data="M 3,7.5 L 6,10.5 L 11.5,4.5"
+                                      Stroke="{StaticResource Cyan}" StrokeThickness="2"
+                                      StrokeEndLineCap="Round" StrokeStartLineCap="Round" />
+                            </Border>
+                            <ContentPresenter Margin="9,0,0,0" VerticalAlignment="Center"
+                                              RecognizesAccessKey="True" />
+                        </StackPanel>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="Tick" Property="Visibility" Value="Visible" />
+                                <Setter TargetName="Box" Property="BorderBrush" Value="{StaticResource Cyan}" />
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Box" Property="BorderBrush" Value="{StaticResource Cyan}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style TargetType="ComboBoxItem">
+            <Setter Property="Foreground" Value="{StaticResource Paper}" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="Padding" Value="10,6,10,6" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ComboBoxItem">
+                        <Border x:Name="Row" Background="Transparent" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsHighlighted" Value="True">
+                                <Setter TargetName="Row" Property="Background" Value="#3315D9D0" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style TargetType="ComboBox">
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="Foreground" Value="{StaticResource Paper}" />
+            <Setter Property="Height" Value="30" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ComboBox">
+                        <Grid>
+                            <!-- ClickMode Press, and the toggle is not focusable, so
+                                 the whole field opens the list rather than only the
+                                 arrow. -->
+                            <ToggleButton Focusable="False" ClickMode="Press"
+                                          IsChecked="{Binding IsDropDownOpen, Mode=TwoWay,
+                                                      RelativeSource={RelativeSource TemplatedParent}}">
+                                <ToggleButton.Template>
+                                    <ControlTemplate TargetType="ToggleButton">
+                                        <Border x:Name="Field" CornerRadius="6" BorderThickness="1"
+                                                Background="{StaticResource InsetFill}"
+                                                BorderBrush="#4D15D9D0">
+                                            <Path HorizontalAlignment="Right" VerticalAlignment="Center"
+                                                  Margin="0,0,11,0" Data="M 0,0 L 9,0 L 4.5,5 Z"
+                                                  Fill="{StaticResource Cyan}" />
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="Field" Property="BorderBrush"
+                                                        Value="{StaticResource Cyan}" />
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </ToggleButton.Template>
+                            </ToggleButton>
+
+                            <ContentPresenter Margin="11,0,30,0" VerticalAlignment="Center"
+                                              IsHitTestVisible="False"
+                                              Content="{TemplateBinding SelectionBoxItem}"
+                                              ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}" />
+
+                            <!-- The open list is nearly opaque. Translucency is right
+                                 for a panel that sits still; text floating over a
+                                 photograph is not readable. -->
+                            <Popup IsOpen="{TemplateBinding IsDropDownOpen}" Placement="Bottom"
+                                   AllowsTransparency="True" Focusable="False" PopupAnimation="Fade">
+                                <Border Margin="0,3,0,0" CornerRadius="6" BorderThickness="1"
+                                        Background="#F2102E34" BorderBrush="#5515D9D0"
+                                        MinWidth="{Binding ActualWidth,
+                                                   RelativeSource={RelativeSource TemplatedParent}}">
+                                    <Border.Effect>
+                                        <DropShadowEffect BlurRadius="14" ShadowDepth="0"
+                                                          Color="#FF000000" Opacity="0.5" />
+                                    </Border.Effect>
+                                    <ItemsPresenter />
+                                </Border>
+                            </Popup>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- The primary action carries the amber; everything else stays quiet.
+             One loud button per window is the whole hierarchy. -->
+        <Style x:Key="PrimaryButton" TargetType="Button">
+            <Setter Property="Background" Value="{StaticResource Amber}" />
+            <Setter Property="Foreground" Value="#FF12191B" />
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="Padding" Value="22,9,22,9" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="shell" CornerRadius="6"
+                                Background="{TemplateBinding Background}"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="shell" Property="Opacity" Value="0.85" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="GhostButton" TargetType="Button">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="{StaticResource Cyan}" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="Padding" Value="16,8,16,8" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="shell" CornerRadius="6" BorderThickness="1"
+                                BorderBrush="#6615D9D0" Background="Transparent"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="shell" Property="Background" Value="#2215D9D0" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <Grid>
+        <!-- Layer 1: the background plate. An Image when assets/background.png
+             exists, otherwise the gradient below shows through unchanged. -->
+        <Border>
+            <Border.Background>
+                <LinearGradientBrush StartPoint="0,0" EndPoint="0.6,1">
+                    <GradientStop Color="#FF12191B" Offset="0" />
+                    <GradientStop Color="#FF0A2429" Offset="0.55" />
+                    <GradientStop Color="#FF083B43" Offset="1" />
+                </LinearGradientBrush>
+            </Border.Background>
+        </Border>
+        <Image x:Name="BackgroundImage" Stretch="UniformToFill" Opacity="0.62" />
+
+        <!-- A dark veil over the plate, strongest at the bottom where the
+             controls and the footer sit. The plate can now be brighter overall
+             without the lower half of the window losing its contrast. -->
+        <Border IsHitTestVisible="False">
+            <Border.Background>
+                <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                    <GradientStop Color="#0012191B" Offset="0" />
+                    <GradientStop Color="#4412191B" Offset="0.45" />
+                    <GradientStop Color="#8812191B" Offset="1" />
+                </LinearGradientBrush>
+            </Border.Background>
+        </Border>
+
+        <Grid Margin="26">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+                <!-- Row 4: der Startknopf. Eigene Zeile, damit die Fusszeile
+                     mit Speichern und Kurzanleitung unangetastet bleibt - sie
+                     muss nicht umnummeriert werden. -->
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <!-- HEADER -->
+            <Grid Grid.Row="0" Margin="0,0,0,18">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+
+                <!-- 300 x 120, an aspect of 2.5:1, chosen for the STACKED lockup from the
+                     moodboard. At the original 78 px height a 1.6:1 logo would have
+                     been height-limited to 125 px wide and left two thirds of the cell
+                     empty. -->
+                <Grid Grid.Column="0" Height="120" Width="300">
+                    <!-- Placeholder and real logo occupy the same cell, so
+                         dropping in the PNG changes nothing about the layout. -->
+                    <Border x:Name="LogoPlaceholder" CornerRadius="8"
+                            Background="#1A15D9D0" BorderBrush="#5515D9D0"
+                            BorderThickness="1">
+                        <StackPanel VerticalAlignment="Center" Margin="14,0,0,0">
+                            <TextBlock Text="WET REALITY" Foreground="{StaticResource Paper}"
+                                       FontSize="24" FontWeight="Bold" />
+                            <TextBlock Text="XR MOD" Foreground="{StaticResource Amber}"
+                                       FontSize="13" FontWeight="Bold" Margin="0,2,0,0" />
+                            <TextBlock Text="assets/logo.png missing" Foreground="{StaticResource Muted}"
+                                       FontSize="10" Margin="0,4,0,0" />
+                        </StackPanel>
+                    </Border>
+                    <Image x:Name="LogoImage" Stretch="Uniform"
+                           HorizontalAlignment="Left" Visibility="Collapsed" />
+                </Grid>
+
+                <StackPanel Grid.Column="1" VerticalAlignment="Bottom"
+                            HorizontalAlignment="Right" Margin="0,0,2,4">
+                    <!-- Deliberately NOT localised: "Deutsch" and "English" are
+                         the words a speaker of the other language recognises,
+                         so the button says what you GET rather than where you
+                         are. -->
+                    <Button x:Name="LangButton" Style="{StaticResource GhostButton}"
+                            HorizontalAlignment="Right" Padding="10,3,10,3"
+                            FontSize="11" Content="Deutsch" Margin="0,0,0,6" />
+                    <TextBlock HorizontalAlignment="Right"
+                               Foreground="{StaticResource Muted}" FontSize="11"
+                               Text="Settings - and the button below starts the game" />
+                </StackPanel>
+            </Grid>
+
+            <!-- INSTALLATION STATUS -->
+            <Border Grid.Row="1" Style="{StaticResource PanelStyle}" Margin="0,0,0,16">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <Ellipse x:Name="StatusDot" Grid.Column="0" Width="10" Height="10"
+                             Fill="{StaticResource Coral}" VerticalAlignment="Center"
+                             Margin="0,0,12,0" />
+
+                    <StackPanel Grid.Column="1">
+                        <TextBlock x:Name="StatusText" Style="{StaticResource FieldLabel}"
+                                   Text="Looking for your installation..." />
+                        <TextBlock x:Name="StatusPath" Foreground="{StaticResource Muted}"
+                                   FontSize="11" Margin="0,3,0,0" TextTrimming="CharacterEllipsis" />
+                    </StackPanel>
+
+                    <Button x:Name="BrowseButton" Grid.Column="2"
+                            Style="{StaticResource GhostButton}" Content="Choose folder" />
+                </Grid>
+            </Border>
+
+            <!-- SETTINGS -->
+            <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto"
+                          HorizontalScrollBarVisibility="Disabled"
+                          Padding="0,0,10,0">
+                <!-- Bottom margin so the last control inside is not flush against
+                     the clipping edge. Without it the "Griff zuruecksetzen"
+                     button sat half cut off even with the scrollbar at its end. -->
+                <StackPanel Margin="0,0,0,10">
+                    <Grid Margin="0,0,0,16">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="16" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+
+                        <!-- STEUERUNG -->
+                        <Border Grid.Column="0" Style="{StaticResource PanelStyle}" VerticalAlignment="Stretch">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource SectionTitle}" Text="CONTROLS" />
+
+                                <Grid Margin="0,0,0,14">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="150" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Style="{StaticResource FieldLabel}"
+                                               Text="Washer hand" />
+                                    <ComboBox x:Name="HandBox" Grid.Column="1">
+                                        <ComboBoxItem Content="Right" Tag="RightHand" />
+                                        <ComboBoxItem Content="Left" Tag="LeftHand" />
+                                    </ComboBox>
+                                </Grid>
+
+                                <Grid Margin="0,0,0,10">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="150" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Style="{StaticResource FieldLabel}"
+                                               Text="Turn speed" />
+                                    <Slider x:Name="TurnSpeedSlider" Grid.Column="1"
+                                            Minimum="30" Maximum="180" />
+                                    <TextBlock x:Name="TurnSpeedValue" Grid.Column="2"
+                                               Style="{StaticResource ValueLabel}" />
+                                </Grid>
+
+                                <CheckBox x:Name="SnapTurnCheck" Margin="0,4,0,8"
+                                          Content="Snap turning instead of smooth" />
+                                <CheckBox x:Name="VrHandsCheck" Margin="0,4,0,8"
+                                          Content="Show VR hands" />
+
+                                <CheckBox x:Name="SprayHapticsCheck" Margin="0,4,0,8"
+                                          Content="Vibration while spraying" />
+
+                                <Grid Margin="0,0,0,4">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="150" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Style="{StaticResource FieldLabel}"
+                                               Text="Vibration strength" />
+                                    <Slider x:Name="HapticIntensitySlider" Grid.Column="1"
+                                            Minimum="0" Maximum="1.25" />
+                                    <TextBlock x:Name="HapticIntensityValue" Grid.Column="2"
+                                               Style="{StaticResource ValueLabel}" />
+                                </Grid>
+
+                                <TextBlock Foreground="{StaticResource Muted}" FontSize="11"
+                                           TextWrapping="Wrap"
+                                           Text="Strength follows the nozzle and the washer. The finer values are in MelonPreferences.cfg." />
+                            </StackPanel>
+                        </Border>
+
+                        <!-- DARSTELLUNG -->
+                        <Border Grid.Column="2" Style="{StaticResource PanelStyle}" VerticalAlignment="Stretch">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource SectionTitle}" Text="DISPLAY" />
+
+                                <Grid Margin="0,0,0,10">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="150" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Style="{StaticResource FieldLabel}"
+                                               Text="Menu size" />
+                                    <Slider x:Name="UiScaleSlider" Grid.Column="1"
+                                            Minimum="0.2" Maximum="1.0" />
+                                    <TextBlock x:Name="UiScaleValue" Grid.Column="2"
+                                               Style="{StaticResource ValueLabel}" />
+                                </Grid>
+
+                                <Grid Margin="0,0,0,10">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="150" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Style="{StaticResource FieldLabel}"
+                                               Text="Menu distance" />
+                                    <Slider x:Name="UiDistanceSlider" Grid.Column="1"
+                                            Minimum="0.8" Maximum="4.0" />
+                                    <TextBlock x:Name="UiDistanceValue" Grid.Column="2"
+                                               Style="{StaticResource ValueLabel}" />
+                                </Grid>
+
+                                <CheckBox x:Name="LaserCheck" Margin="0,4,0,8"
+                                          Content="Show aiming laser" />
+                                <TextBlock Foreground="{StaticResource Muted}" FontSize="11"
+                                           TextWrapping="Wrap"
+                                           Text="The laser is a development measuring tool and is not needed for normal play." />
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+
+                    <!-- GRIFF -->
+                    <Border Style="{StaticResource PanelStyle}">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource SectionTitle}"
+                                       Text="GRIP FINE-TUNING" />
+                            <TextBlock Foreground="{StaticResource Muted}" FontSize="11"
+                                       TextWrapping="Wrap" Margin="0,0,0,14"
+                                       Text="Moves and turns the washer within its own frame so that it sits where your hand holds it. In game, hold left grip with X and Y, move your washer hand to where the washer should sit, and let go." />
+
+                            <Grid Margin="0,0,0,8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="150" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Style="{StaticResource FieldLabel}"
+                                           Text="Sideways" />
+                                <Slider x:Name="GripXSlider" Grid.Column="1"
+                                        Minimum="-0.25" Maximum="0.25" />
+                                <TextBlock x:Name="GripXValue" Grid.Column="2"
+                                           Style="{StaticResource ValueLabel}" />
+                            </Grid>
+
+                            <Grid Margin="0,0,0,8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="150" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Style="{StaticResource FieldLabel}"
+                                           Text="Height" />
+                                <Slider x:Name="GripYSlider" Grid.Column="1"
+                                        Minimum="-0.25" Maximum="0.25" />
+                                <TextBlock x:Name="GripYValue" Grid.Column="2"
+                                           Style="{StaticResource ValueLabel}" />
+                            </Grid>
+
+                            <Grid Margin="0,0,0,12">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="150" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Style="{StaticResource FieldLabel}"
+                                           Text="Forward and back" />
+                                <Slider x:Name="GripZSlider" Grid.Column="1"
+                                        Minimum="-0.25" Maximum="0.25" />
+                                <TextBlock x:Name="GripZValue" Grid.Column="2"
+                                           Style="{StaticResource ValueLabel}" />
+                            </Grid>
+
+                            <Grid Margin="0,0,0,8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="150" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Style="{StaticResource FieldLabel}"
+                                           Text="Tilt up and down" />
+                                <Slider x:Name="RotPitchSlider" Grid.Column="1"
+                                        Minimum="-180" Maximum="180" />
+                                <TextBlock x:Name="RotPitchValue" Grid.Column="2"
+                                           Style="{StaticResource ValueLabel}" />
+                            </Grid>
+
+                            <Grid Margin="0,0,0,8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="150" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Style="{StaticResource FieldLabel}"
+                                           Text="Turn left and right" />
+                                <Slider x:Name="RotYawSlider" Grid.Column="1"
+                                        Minimum="-180" Maximum="180" />
+                                <TextBlock x:Name="RotYawValue" Grid.Column="2"
+                                           Style="{StaticResource ValueLabel}" />
+                            </Grid>
+
+                            <Grid Margin="0,0,0,8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="150" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Style="{StaticResource FieldLabel}"
+                                           Text="Twist sideways" />
+                                <Slider x:Name="RotRollSlider" Grid.Column="1"
+                                        Minimum="-180" Maximum="180" />
+                                <TextBlock x:Name="RotRollValue" Grid.Column="2"
+                                           Style="{StaticResource ValueLabel}" />
+                            </Grid>
+
+                            <Button x:Name="GripResetButton" Style="{StaticResource GhostButton}"
+                                    Content="Reset grip" HorizontalAlignment="Left" />
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </ScrollViewer>
+
+            <!-- FOOTER -->
+            <!-- DER STARTKNOPF.
+                 Der Name ist eine Anspielung auf die Flat-Fassung, in der der
+                 Strahl an Katzen abgeschaltet wird. Er startet das Spiel ueber
+                 Steam; die Beschreibung darunter ist der Witz dazu.
+
+                 &#8212; als Entitaet und nicht als Zeichen: diese Datei wird
+                 ohne -Encoding gelesen und muss ASCII bleiben. -->
+            <!-- OHNE Karten-Border, und das ist gemessen statt Geschmack:
+                 PanelStyle traegt eine Innenpolsterung, die den Block um rund
+                 36 px hoeher macht. Auf 1080p deckelt WorkArea das Fenster bei
+                 etwa 1000 px, und jeder Pixel darueber holt das Scrollen
+                 zurueck, das Abschnitt 108 ausdruecklich behoben hat. -->
+            <StackPanel x:Name="LaunchPanel" Grid.Row="4" Margin="0,14,0,0">
+                <Button x:Name="LaunchButton" HorizontalAlignment="Left"
+                        Style="{StaticResource PrimaryButton}"
+                        Content="Let Me Spray the Cat" />
+
+                <TextBlock x:Name="LaunchNote" Margin="2,8,0,0"
+                           Foreground="{StaticResource Muted}" FontSize="11"
+                           TextWrapping="Wrap"
+                           Text="Disables feline protection. Cats can now be sprayed&#8212;at your own moral discretion." />
+            </StackPanel>
+
+            <Grid Grid.Row="3" Margin="0,18,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <Button x:Name="GuideButton" Grid.Column="0"
+                        Style="{StaticResource GhostButton}" Content="Open quick guide" />
+
+                <TextBlock x:Name="SaveHint" Grid.Column="1" VerticalAlignment="Center"
+                           Margin="16,0,16,0" Foreground="{StaticResource Muted}"
+                           FontSize="11" TextTrimming="CharacterEllipsis" />
+
+                <Button x:Name="SaveButton" Grid.Column="2"
+                        Style="{StaticResource PrimaryButton}" Content="Save" />
+
+                <!-- Author credit. Deliberately quiet: a signature, not a banner. -->
+                <StackPanel Grid.Column="3" Orientation="Horizontal"
+                            VerticalAlignment="Center" Margin="20,0,0,0">
+                    <Grid Width="34" Height="34">
+                        <Ellipse x:Name="AvatarPlaceholder" Fill="#1A15D9D0"
+                                 Stroke="#5515D9D0" StrokeThickness="1" />
+                        <Image x:Name="AvatarImage" Stretch="UniformToFill"
+                               Visibility="Collapsed">
+                            <Image.Clip>
+                                <EllipseGeometry Center="17,17" RadiusX="17" RadiusY="17" />
+                            </Image.Clip>
+                        </Image>
+                    </Grid>
+                    <StackPanel VerticalAlignment="Center" Margin="9,0,0,0">
+                        <TextBlock Text="by Tino" Foreground="{StaticResource Muted}"
+                                   FontSize="12" />
+                        <!-- Filled from the mod DLL's own file metadata, so it
+                             cannot disagree with what is installed. -->
+                        <TextBlock x:Name="VersionText" Foreground="{StaticResource Muted}"
+                                   FontSize="10" Opacity="0.8" />
+                    </StackPanel>
+                </StackPanel>
+            </Grid>
+        </Grid>
+    </Grid>
+</Window>

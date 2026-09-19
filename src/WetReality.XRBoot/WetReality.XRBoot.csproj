@@ -1,0 +1,59 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework>
+    <PlatformTarget>x64</PlatformTarget>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <GamePath Condition="'$(GamePath)' == ''">C:\Program Files (x86)\Steam\steamapps\common\PowerWash Simulator 2</GamePath>
+    <EnableNETAnalyzers>false</EnableNETAnalyzers>
+
+    <!-- Debug info EMBEDDED, source paths REWRITTEN.
+         A release DLL normally carries an RSDS entry naming the .pdb by absolute
+         path, so the shipped file spelled out the whole build tree on this
+         machine. Two changes, for two different reasons:
+
+         embedded    - no separate .pdb to ship and no path to one, while stack
+                       traces in MelonLoader's log keep their line numbers. For a
+                       beta that is worth real money: a tester's report costs one
+                       run, and a run is expensive.
+         PathMap     - the embedded info still lists every source file, so the
+                       project directory is mapped to ./ and the paths come out
+                       relative. -->
+    <DebugType>embedded</DebugType>
+    <PathMap>$(MSBuildProjectDirectory)=./</PathMap>
+    <!-- Mirrors the MelonInfo version above the class so the compiled DLL carries
+         it in its file metadata. The configurator reads it from there with
+         FileVersionInfo, which needs no assembly load - loading this DLL outside
+         the game would drag in the Il2Cpp interop types and fail.
+
+         Two places hold the number, so they are bumped together. -->
+    <Version>0.23.1</Version>
+    <AssemblyVersion>0.23.1</AssemblyVersion>
+    <FileVersion>0.23.1</FileVersion>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="MelonLoader" HintPath="$(GamePath)\MelonLoader\net6\MelonLoader.dll" Private="false" />
+    <Reference Include="Il2CppInterop.Runtime" HintPath="$(GamePath)\MelonLoader\net6\Il2CppInterop.Runtime.dll" Private="false" />
+    <Reference Include="Il2Cppmscorlib" HintPath="$(GamePath)\MelonLoader\Il2CppAssemblies\Il2Cppmscorlib.dll" Private="false" />
+    <Reference Include="UnityEngine.CoreModule" HintPath="$(GamePath)\MelonLoader\Il2CppAssemblies\UnityEngine.CoreModule.dll" Private="false" />
+    <Reference Include="UnityEngine.InputLegacyModule" HintPath="$(GamePath)\MelonLoader\Il2CppAssemblies\UnityEngine.InputLegacyModule.dll" Private="false" />
+    <Reference Include="UnityEngine.IMGUIModule" HintPath="$(GamePath)\MelonLoader\Il2CppAssemblies\UnityEngine.IMGUIModule.dll" Private="false" />
+    <!-- VRModule holds XRSettings, XRModule the subsystem types, SubsystemsModule
+         the descriptor store. All three ship in this build even though no XR
+         provider does, which is what makes this mod possible at all. -->
+    <Reference Include="UnityEngine.VRModule" HintPath="$(GamePath)\MelonLoader\Il2CppAssemblies\UnityEngine.VRModule.dll" Private="false" />
+    <Reference Include="UnityEngine.XRModule" HintPath="$(GamePath)\MelonLoader\Il2CppAssemblies\UnityEngine.XRModule.dll" Private="false" />
+    <Reference Include="UnityEngine.SubsystemsModule" HintPath="$(GamePath)\MelonLoader\Il2CppAssemblies\UnityEngine.SubsystemsModule.dll" Private="false" />
+    <!-- For the one line that matters most: does XRBackend.IsEnabled flip once
+         an XR runtime is actually running? Il2CppFuturLab holds XRBackend and
+         XRSDKConditional, Il2CppFuturLab.PW2 the game-side XR components whose
+         presence proves the XR branch was taken. -->
+    <Reference Include="Il2CppFuturLab" HintPath="$(GamePath)\MelonLoader\Il2CppAssemblies\Il2CppFuturLab.dll" Private="false" />
+    <Reference Include="Il2CppFuturLab.PW2" HintPath="$(GamePath)\MelonLoader\Il2CppAssemblies\Il2CppFuturLab.PW2.dll" Private="false" />
+    <!-- Addressables only for the type of XRBackend.m_xrManagerToInstantiate,
+         which is an AssetReferenceGameObject and appears in a log line. -->
+    <Reference Include="Unity.Addressables" HintPath="$(GamePath)\MelonLoader\Il2CppAssemblies\Unity.Addressables.dll" Private="false" />
+    <!-- Harmony for the gate patch. MelonLoader ships it. -->
+    <Reference Include="0Harmony" HintPath="$(GamePath)\MelonLoader\net6\0Harmony.dll" Private="false" />
+  </ItemGroup>
+</Project>

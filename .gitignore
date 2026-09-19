@@ -1,0 +1,48 @@
+# Wet Reality XR Mod
+#
+# Entscheidung: nur der Code. Das Arbeitsprotokoll, die Messungen und die
+# Patchskripte bleiben draussen, ebenso alles Fremde und alles Gebaute.
+# Von 405 MB im Arbeitsverzeichnis bleiben damit die paar MB, die das Projekt
+# ausmachen.
+
+# ------------------------------------------------------------- Bauergebnisse
+bin/
+obj/
+
+# Die fertigen Pakete. Sie gehoeren zu den Releases auf GitHub, nicht in die
+# Versionsgeschichte: 221 MB, und jedes einzelne ist aus dem Code reproduzierbar.
+dist/
+
+# ------------------------------------------------- Fremdes, mit eigener Lizenz
+#
+# MelonLoader, UnityExplorer, OpenXR als Binaerpakete (112 MB) und der
+# Quellcode von UniverseLib (30 MB). Beides ist nicht dieses Projekt und
+# steht unter eigenen Lizenzen - es wird bezogen, nicht mitgeliefert.
+tools/downloads/
+tools/source-inspection/
+
+# ------------------------------------------ Arbeitsprotokoll und Messungen
+#
+# Bewusst aussen vor. Das Designdokument ist das Gedaechtnis des Projekts und
+# bleibt lokal; die Logs tragen lokale Pfade.
+Wet Reality Design Document.txt
+diagnostics/
+backups/
+
+# Die Patch- und Dokumentationsskripte. Jedes gehoert zu genau einer
+# Aenderung, die im Code schon steht.
+tools/*.py
+tools/*.pl
+
+# Bei jedem Lauf von render-ui.ps1 neu erzeugt.
+tools/ui-preview-*.png
+
+# ----------------------------------------------------------- lokale Sitzung
+.claude/
+start_claude.ps1
+
+# ------------------------------------------------------------------ Windows
+Thumbs.db
+desktop.ini
+*.bak
+*.tmp

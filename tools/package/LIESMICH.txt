@@ -1,0 +1,257 @@
+================================================================================
+  WET REALITY XR MOD  @@VERSION@@  -  BETA
+  PowerWash Simulator 2 in VR, in Raumgröße
+  von Tino
+================================================================================
+
+WAS DAS IST
+
+  Eine VR-Mod, die dich mit Headset und Bewegungscontrollern in PowerWash
+  Simulator 2 hineinsetzt. Die Pistole folgt deiner Hand in sechs
+  Freiheitsgraden: wohin du schaust und wohin du sprühst, ist vollständig
+  entkoppelt.
+
+  Zeig mit der Pistole auf einen Gegenstand und drücke X, um ihn aufzunehmen.
+  Auch Gegenstände am Boden, die das Blickziel des Spiels im Stehen nicht
+  erreicht.
+
+  Getestet auf einer Meta Quest 3 über Virtual Desktop. Andere
+  OpenXR-Headsets sollten funktionieren, sind aber nicht ausprobiert.
+
+  Das ist eine Beta. Spielbar, nicht fertig. Siehe BEKANNTE GRENZEN weiter
+  unten.
+
+
+INSTALLATION
+
+  1. PowerWash Simulator 2 muss GESCHLOSSEN sein.
+
+  2. Install.cmd doppelklicken.
+
+  3. Das Spiel über Steam starten und das Headset aufsetzen.
+
+  Das ist alles. Es muss nichts vorher installiert und nichts ausgewählt
+  werden, und Administratorrechte braucht es auch nicht.
+
+  Der Installer braucht eine Internetverbindung: er holt den Mod-Loader, die
+  Laufzeit, die dieser Loader benötigt, und drei OpenXR-Dateien, die das Spiel
+  nicht mitbringt - zusammen etwa 75 MB. Jede davon wird gegen einen bekannten
+  Fingerabdruck geprüft, bevor sie an ihren Platz kommt, und was schon richtig
+  ist, wird übersprungen. Scheitert ein Download, einfach Install.cmd noch
+  einmal starten.
+
+  Alles landet im Ordner des Spiels. Auf deinem System wird nichts installiert,
+  in der Registry nichts eingetragen, und Uninstall.cmd nimmt alles wieder
+  heraus.
+
+  Sagt Windows, das Skript könne nicht ausgeführt werden: Rechtsklick auf
+  Install.cmd, Eigenschaften, unten "Zulassen" anhaken.
+
+  Kann der Installer nicht in den Spielordner schreiben - das passiert, wenn
+  Steam das Spiel unter "Programme" installiert hat -, dann Rechtsklick auf
+  Install.cmd und "Als Administrator ausführen".
+
+
+SPIELEN
+
+  Das Spiel wie immer über Steam starten. Headset aufsetzen. VR kommt von
+  selbst, ein paar Sekunden nachdem das Spiel zur Ruhe gekommen ist, und die
+  Pistole liegt dann schon in deiner Hand.
+
+  Starte die Software deines Headsets VOR dem Spiel.
+
+  DER ERSTE START NACH DER INSTALLATION braucht etwa eine halbe Minute ohne
+  jedes Zeichen von Fortschritt, und eine Internetverbindung. Der Mod-Loader
+  legt dabei einmalig seine Hilfsdateien an. Es ist nicht abgestürzt. Lass es
+  durchlaufen.
+
+  Zum Beenden das Menü des Spiels benutzen. F6 hat das Spiel früher auf den
+  Monitor zurückgelegt, ist aber eine Entwicklungstaste, und dieser Build hat
+  sie abgeschaltet - siehe FÜR ENTWICKLER am Ende.
+
+
+STEUERUNG UND EINSTELLUNGEN
+
+  Configurator.cmd doppelklicken.
+
+  Dort steht die vollständige Steuerungsbelegung unter "Kurzanleitung
+  öffnen", dazu die Einstellungen: welche Hand die Pistole hält,
+  Drehgeschwindigkeit, Menügröße und -abstand, die Ausrichtung der Pistole in
+  deiner Hand, die Vibration beim Sprühen samt Stärke, ob die beiden VR-Hände
+  angezeigt werden, und ob der Ziellaser gezeichnet wird.
+
+  Der Knopf unten startet das Spiel über Steam, das Fenster kann also daneben
+  offen bleiben. Er ist grau, solange keine Installation gefunden wurde.
+
+  Alles Feinere - Vibrationsstärke je Düse, der Turbo-Rhythmus, die
+  Greifzonen - steht als Klartext in
+  <Spiel>\UserData\MelonPreferences.cfg. Das Spiel vorher schließen: der
+  Loader schreibt diese Datei beim Beenden neu und würde deine Änderung
+  überschreiben.
+
+  Das Fenster stellt sich auf Deutsch, wenn Windows auf Deutsch läuft; oben
+  rechts lässt sich die Sprache umschalten.
+
+  Die Anleitung ist auch einfach eine Datei, die du direkt öffnen kannst:
+  configurator\QuickGuide-de.html
+
+
+ENTFERNEN
+
+  Uninstall.cmd doppelklicken.
+
+  Es entfernt genau das, was es installiert hat, und nur solange diese Dateien
+  noch die sind, die es geschrieben hat - was du selbst ersetzt hast, bleibt
+  liegen und wird gemeldet. Deine Einstellungen bleiben erhalten, sofern du
+  nicht ausdrücklich auch die löschen lässt.
+
+  War der Mod-Loader schon vor diesem Paket installiert, bleibt er stehen: er
+  trägt möglicherweise andere Mods.
+
+
+WAS INSTALLIERT WIRD, UND WOHER
+
+  Alles davon ausschließlich im Spielordner, nirgendwo sonst.
+
+  MelonLoader v0.7.3     der Mod-Loader, der das alles überhaupt möglich
+                         macht. Open Source, Apache-2.0, aus seinen eigenen
+                         GitHub-Releases.
+
+  .NET 6.0.36            das, worauf MelonLoader läuft, entpackt nach
+                         <Spiel>\dotnet. Deshalb musst du selbst nichts
+                         installieren: es liegt im Spielordner statt auf deinem
+                         System. Von Microsoft.
+
+  Unity OpenXR 1.18.0    drei Dateien, die dem Spiel VR überhaupt erst
+                         ermöglichen. Nicht in diesem Paket enthalten, weil es
+                         Unitys Dateien unter Unitys eigenen Bedingungen sind;
+                         sie werden aus Unitys öffentlicher Paketquelle
+                         geholt, derselben, aus der auch der Unity-Editor sie
+                         bezieht.
+
+  WetReality.Pose.dll    die Mod selbst.
+  WetReality.XRBoot.dll
+
+  Beim ersten Start des Spiels danach holt MelonLoader zusätzlich seine
+  eigenen Hilfsdateien. Das ist die halbe Minute von oben.
+
+
+BEKANNTE GRENZEN
+
+  - Die Arme und Hände des Spiels bleiben ausgeblendet, und zwar unbedingt.
+    Das First-Person-Mesh ist EIN Objekt mit BEIDEN Händen - aus ihm nur die
+    Hand zu zeigen, die die Pistole hält, war nie möglich.
+
+    Das ist aber keine Grenze mehr. Die Mod hängt stattdessen die beiden
+    VR-Handmodelle des Spiels an die Controller - eine am Pistolengriff, eine
+    frei zum Greifen -, und die sind es, was du siehst. Das Häkchen
+    "VR-Hände anzeigen" schaltet sie ab, für Leute, denen sie nicht gefallen;
+    das Armrig des Spiels kommt so oder so nicht zurück, denn es ist ein Mesh
+    über beide Arme und in VR unbrauchbar.
+
+    Das Ausblenden gilt auch für DLC-Outfits und DLC-Pistolen. Die Geometrie wird daran
+    erkannt, WO sie in der Szene hängt, nicht an ihrem Namen - ein DLC, das
+    seine Modelle unter neuen Namen mitbringt, ist also ohne Update erfasst.
+    Taucht irgendwo doch Arm- oder Handgeometrie auf, schick Latest.log: dort
+    steht jeder Renderer unter der Pistole mit vollem Pfad und mit dem Grund,
+    warum er sichtbar blieb oder ausgeblendet wurde.
+
+  - Der linke Stick reagiert sporadisch nicht, wenn der rechte Controller kurz
+    einschläft. F2 zweimal behebt es. Bekannt und noch nicht behoben.
+
+  - VR kann innerhalb einer Sitzung nicht angehalten und neu gestartet werden.
+    F6, das das Spiel auf den Monitor zurücklegte, ist in diesem Build unter
+    anderem deshalb aus - stattdessen das Spiel neu starten.
+
+  - Die Untertabs im Einstellungsbildschirm des Spiels sind mit den
+    Controllern noch nicht erreichbar. Dafür Maus und Tastatur am Monitor
+    benutzen.
+
+  - Keine physischen VR-Interaktionen: kein Gürtel, kein Greifen von Flaschen
+    mit der Hand. Die vorhandenen Menüs des Spiels werden genutzt, wie sie
+    sind.
+
+  - Linkshänder-Betrieb steht im Konfigurationswerkzeug und ist NICHT
+    gründlich getestet. Zwei Dinge sind bekannt und gewollt: die Menütaste
+    bleibt am linken Controller, weil es diese Taste nur dort gibt, und die
+    Schulter- und Hüftzone wandern mit der Pistole nach links. Alles andere,
+    was sich seitenverkehrt anfühlt, ist ein Fehler und keine Entscheidung -
+    bitte melden. Ein linkshändiger Tester hilft hier mehr als jede
+    Code-Durchsicht.
+
+  - Das Monitorbild kann das Titelbild verschachtelt in sich zeigen. Die
+    Ursache ist gemessen und NICHT der Spiegelbild-Schalter: Unity skaliert
+    einen Screen-Space-Canvas auf die Augenpuffergröße und komponiert ihn
+    zusätzlich ins Fenster, also landet eine kleinere Kopie in der größeren.
+    Das Bild im Headset ist davon unberührt.
+
+  - Der Zeigestrahl hat in einem Fall die Menü-Tabs verloren: sie ließen
+    sich nur noch mit den Griff-Tasten wechseln, der Rest der Menübedienung
+    lief weiter. Nach einem Neustart des Spiels war es weg. Ursache unbekannt -
+    das Log der Sitzung war bereits von der Rotation gelöscht. Dieser Build
+    schreibt dafür die Namen der übersprungenen Menüzeilen mit; tritt es
+    wieder auf, ist Latest.log die ganze Diagnose. Bitte melden.
+
+  - Eine Menükachel unter dem Zeiger leuchtet einmal auf und wird wieder
+    dunkel, statt zu leuchten. Sie bleibt anklickbar, und die Auswahl des
+    Spiels selbst funktioniert. Drei Wege, dieses Leuchten zu halten, sind
+    gemessen und keiner hält es; der verbleibende bräuchte die Cursor-Eingabe
+    des Spiels nachgebaut.
+
+
+WENN ETWAS SCHIEFGEHT
+
+  Das Log ist die erste Stelle zum Nachsehen:
+    <Spielordner>\MelonLoader\Latest.log
+
+  VR ist nicht von selbst gestartet:  Headset-Software starten, dann F8.
+  Die Controller reagieren nicht:     F2 zweimal.
+  Menüs zu groß zum Lesen:            "Menügröße" im Konfigurationswerkzeug
+                                      verringern.
+
+  Das Spiel startet gar nicht - kein Fenster, nichts im Log:
+    Install.cmd noch einmal ausführen. Es sagt, ob es die Laufzeit findet, und
+    legt sie zurück, falls nicht.
+
+  Bei einer Fehlermeldung reichen meist Latest.log und die Angabe, was du
+  gerade getan hast.
+
+
+FÜR ENTWICKLER
+
+  Dieser Build hat die Entwicklungshilfen abgeschaltet: die Logs pro Bild, die
+  F-Tasten und Ziffernblock-Tasten, und die Messberichte. Das ist eine
+  Einstellung, in <Spielordner>\UserData\MelonPreferences.cfg:
+
+    DevMode = false
+
+  Auf true gesetzt gelten die einzelnen Schalter wieder wie immer - DevHotkeys,
+  VerboseDiagnostics, MenuMissReport, AimMissReport und AimChainReport. DevMode
+  deckelt sie nur; ihre gespeicherten Werte bleiben unangetastet, ein
+  Wiedereinschalten stellt also her, was vorher eingestellt war.
+
+  Beide Mods haben ihren eigenen Eintrag, einen unter [WetReality.Pose] und
+  einen unter [WetReality.XRBoot]. Beide setzen.
+
+  Was in jedem Fall live bleibt: F8 startet VR von Hand, F2 übergibt die Pistole
+  an den Controller, Ziffernblock 3 zentriert neu, Ziffernblock + und . wechseln
+  die Düse. Das sind Spielsteuerungen, keine Justierwerkzeuge.
+
+  Das Konsolenfenster von MelonLoader ist davon getrennt. Der Installer blendet
+  es aus, indem er
+
+    [console]
+    hide_console = true
+
+  in UserData\Loader.cfg setzt. Auf false zurück, wer die Konsole beim
+  Entwickeln braucht; der Uninstaller nimmt es ohnehin zurück.
+
+
+================================================================================
+  Unabhängiges Projekt. Nicht mit FuturLab oder Square Enix verbunden.
+
+  MelonLoader ist ein eigenständiges Open-Source-Projekt (Apache-2.0). Die
+  .NET-Laufzeit ist von Microsoft (MIT). Unitys OpenXR-Plugin wird bei der
+  Installation aus Unitys eigener Paketquelle geholt und ist nicht Teil dieses
+  Pakets. Keines davon steht mit dieser Mod in Verbindung.
+================================================================================

@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Wet Reality XR Mod — Quick Guide</title>
+<style>
+/*
+  Self-contained on purpose: no web fonts, no CDN, no scripts. The guide is
+  opened from the configurator as a local file and has to work with no internet
+  connection at all.
+
+  Palette from the moodboard, same values as the configurator's XAML.
+*/
+:root {
+  --ink:    #12191B;
+  --deep:   #083B43;
+  --panel:  #0C2B31;
+  --cyan:   #15D9D0;
+  --paper:  #F5FCFA;
+  --amber:  #FFD447;
+  --coral:  #FF6B55;
+  --muted:  rgba(245, 252, 250, 0.58);
+  --line:   rgba(21, 217, 208, 0.22);
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  padding: 0 24px 72px;
+  background: linear-gradient(170deg, var(--ink) 0%, #0A2429 55%, var(--deep) 100%);
+  background-attachment: fixed;
+  color: var(--paper);
+  font: 16px/1.6 "Segoe UI", system-ui, -apple-system, sans-serif;
+}
+
+.wrap { max-width: 1040px; margin: 0 auto; }
+
+header {
+  display: flex;
+  align-items: flex-end;
+  gap: 28px;
+  padding: 40px 0 28px;
+  border-bottom: 1px solid var(--line);
+  flex-wrap: wrap;
+}
+
+header img { width: 210px; height: auto; }
+
+header .claim {
+  flex: 1;
+  min-width: 260px;
+  color: var(--muted);
+  font-size: 14px;
+  padding-bottom: 6px;
+}
+
+h1 { display: none; }
+
+h2 {
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--cyan);
+  margin: 44px 0 14px;
+}
+
+h2:first-of-type { margin-top: 34px; }
+
+.lede {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 18px 22px;
+  margin: 28px 0 0;
+}
+
+.lede strong { color: var(--amber); }
+
+figure { margin: 26px 0 8px; text-align: center; }
+figure img { max-width: 100%; height: auto; }
+
+figcaption {
+  color: var(--muted);
+  font-size: 13px;
+  margin-top: 6px;
+}
+
+.hands { display: flex; gap: 20px; flex-wrap: wrap; }
+.hands > section { flex: 1; min-width: 320px; }
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+th, td {
+  text-align: left;
+  padding: 9px 14px;
+  border-bottom: 1px solid rgba(245, 252, 250, 0.07);
+  vertical-align: top;
+}
+
+tr:last-child th, tr:last-child td { border-bottom: none; }
+
+th {
+  width: 41%;
+  font-weight: 600;
+  color: var(--paper);
+  white-space: nowrap;
+}
+
+td { color: var(--muted); }
+
+/* A button name, so "A" and "R3" read as hardware rather than prose. */
+kbd {
+  display: inline-block;
+  min-width: 20px;
+  padding: 1px 7px;
+  border-radius: 5px;
+  background: rgba(21, 217, 208, 0.14);
+  border: 1px solid var(--line);
+  color: var(--cyan);
+  font: 600 13px/1.5 "Segoe UI", system-ui, sans-serif;
+  text-align: center;
+}
+
+kbd.warm { background: rgba(255, 212, 71, 0.14); border-color: rgba(255, 212, 71, 0.3); color: var(--amber); }
+
+.hint {
+  border-left: 2px solid var(--cyan);
+  padding: 2px 0 2px 16px;
+  margin: 16px 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.hint.warn { border-left-color: var(--coral); }
+
+footer {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 56px;
+  padding-top: 22px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 13px;
+}
+
+footer img {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+}
+
+footer .spacer { flex: 1; }
+
+/* ---- Annotated controller figure -------------------------------------
+   The photograph carried no information on its own: two controllers, with
+   nothing said about which button does what, while the tables below held
+   the whole mapping. Either the picture goes or the references come.
+
+   Each <b> is a ZERO-SIZE ANCHOR at the button itself, in percentages so
+   it follows the image at any width, and the dot is drawn centred on it.
+   The label box is the <i> inside, offset left or right of the anchor.
+   That way the coordinates mean exactly one thing and can be checked by
+   drawing them back onto the image.
+
+   Below 760 px the overlay is hidden. Labels that small would be
+   unreadable and would cover the buttons they point at, and nothing is
+   lost - the tables underneath say the same in words. */
+.pad { position: relative; margin: 26px 0 10px; }
+.pad img { display: block; width: 100%; height: auto; }
+
+.pad b { position: absolute; width: 0; height: 0; }
+
+.pad b::after {
+  content: "";
+  position: absolute;
+  left: -5px; top: -5px;
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  background: var(--cyan);
+  box-shadow: 0 0 0 2px rgba(8, 30, 34, 0.85);
+}
+
+.pad b i {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  font: 600 11px/1.35 "Segoe UI", system-ui, sans-serif;
+  font-style: normal;
+  color: var(--paper);
+  background: rgba(8, 30, 34, 0.88);
+  border: 1px solid var(--line);
+  border-left: 2px solid var(--cyan);
+  border-radius: 5px;
+  padding: 4px 8px;
+  white-space: nowrap;
+}
+
+.pad b.l i { right: 14px; }
+.pad b.r i { left: 14px; }
+
+.pad b i em { font-style: normal; color: var(--cyan); display: block; font-size: 10px; }
+
+@media (max-width: 760px) { .pad b { display: none; } }
+
+@media print {
+  .pad b i { background: #fff; color: #111; border-color: #999; }
+  .pad b i em { color: #036; }
+}
+
+@media print {
+  .pad b { background: #fff; color: #111; border-color: #999; }
+  .pad b em { color: #036; }
+}
+
+@media print {
+  body { background: #fff; color: #111; }
+  table, .lede { background: #f4f4f4; border-color: #ccc; }
+  td, th, .hint, footer, header .claim, figcaption { color: #333; }
+  h2 { color: #036; }
+  kbd { background: #e8e8e8; border-color: #bbb; color: #036; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <img src="assets/logo.png" alt="Wet Reality XR Mod">
+  <div class="claim">
+    Room-scale VR for PowerWash Simulator 2.<br>
+    The washer follows your hand in six degrees of freedom — where you look and
+    where you spray are fully independent.
+  </div>
+</header>
+
+<div class="lede">
+  <strong>Start the game through Steam as usual &mdash; that is the whole
+  procedure.</strong> Put the headset on, and VR comes up on its own a few
+  seconds after the game has settled. The washer is already in your hand.
+  <kbd>F6</kbd> releases the headset and puts the game back on the monitor, which
+  is the comfortable way to quit.
+</div>
+
+<p class="hint">
+  Have your headset software running <em>before</em> you start the game. The mod
+  checks for it once at launch, and if it is not there yet it waits rather than
+  forcing VR on.
+</p>
+
+<div class="pad">
+  <img src="assets/controller.png" alt="Meta Quest 3 controllers with the mod's mapping">
+
+  <b class="l" style="left:20.8%; top:16.1%;"><i>Walk<em>push fully to sprint</em></i></b>
+  <b class="r" style="left:31.9%; top:20.0%;"><i>Task list<em>Y &middot; hold for inventory</em></i></b>
+  <b class="r" style="left:29.9%; top:25.9%;"><i>Pick up / put down<em>X</em></i></b>
+  <b class="l" style="left:25.7%; top:30.3%;"><i>Pause menu<em>Menu</em></i></b>
+  <b class="r" style="left:31.3%; top:44.4%;"><i>Rotate nozzle<em>trigger &middot; refills detergent</em></i></b>
+  <b class="r" style="left:34.2%; top:59.6%;"><i>Highlight dirt<em>grip &middot; hold to rotate a carried object</em></i></b>
+  <b class="r" style="left:78.5%; top:15.1%;"><i>Turn<em>up / down: change nozzle &middot; click: category</em></i></b>
+  <b class="l" style="left:68.0%; top:20.0%;"><i>Crouch<em>B</em></i></b>
+  <b class="l" style="left:69.7%; top:25.9%;"><i>Jump<em>A &middot; confirms in menus</em></i></b>
+  <b class="l" style="left:68.7%; top:44.4%;"><i>Spray<em>trigger &middot; confirms in menus</em></i></b>
+  <b class="l" style="left:65.8%; top:59.6%;"><i>Spray on / off<em>grip &middot; no need to hold</em></i></b>
+</div>
+
+<p class="hint">
+  Left controller moves you and works the menus. Right controller is the washer. The labels are the short version; the tables below are complete.
+</p>
+
+<h2>Right controller — the washer hand</h2>
+
+<table>
+  <tr><th>Move the controller</th><td>The washer follows your hand in position and direction</td></tr>
+  <tr><th>Trigger</th><td>Spray, while held</td></tr>
+  <tr><th>Grip</th><td>Continuous spray on or off — no need to hold the trigger. While it is running, the grip switches it off instead of changing a tool.</td></tr>
+  <tr><th><kbd>A</kbd></th><td>Jump</td></tr>
+  <tr><th><kbd>B</kbd> tap</th><td>Crouch</td></tr>
+  <tr><th><kbd>B</kbd> hold</th><td>Crouch, long press</td></tr>
+  <tr><th>Stick left / right</th><td>Turn</td></tr>
+  <tr><th>Stick up / down</th><td>Next or previous nozzle in the current category</td></tr>
+  <tr><th><kbd>R3</kbd> click</th><td>Switch nozzle category — standard or soap</td></tr>
+  <tr><th><kbd>R3</kbd> hold</th><td>Switch washer, which is how you reach the turbo</td></tr>
+</table>
+
+<h2>Left controller</h2>
+
+<table>
+  <tr><th>Stick</th><td>Walk</td></tr>
+  <tr><th>Stick pushed all the way</th><td>Sprint</td></tr>
+  <tr><th>Trigger</th><td>Open or close an animated interactable when your hand is on it — otherwise rotate the nozzle and refill detergent</td></tr>
+  <tr><th>Grip</th><td>Highlight remaining dirt</td></tr>
+  <tr><th><kbd>X</kbd></th><td>Pick up and put down objects</td></tr>
+  <tr><th><kbd>Y</kbd> tap</th><td>Task list</td></tr>
+  <tr><th><kbd>Y</kbd> hold</th><td>Furniture inventory</td></tr>
+  <tr><th><kbd>Menu</kbd></th><td>Pause menu</td></tr>
+  <tr><th><kbd>L3</kbd> click</th><td>Switch extension</td></tr>
+</table>
+
+<h2>Grab gestures</h2>
+
+<p class="hint">
+  Reach for a thing instead of looking for a button. The stick clicks keep
+  working either way, so nothing is lost when a gesture does not land.
+</p>
+
+<table>
+  <tr><th>Washer hand behind your right shoulder + right grip</th><td>Switch the washer</td></tr>
+  <tr><th>Washer hand at your right hip + right grip</th><td>Switch the nozzle category</td></tr>
+  <tr><th>Off hand at the washer + left grip</th><td>Switch the extension</td></tr>
+  <tr><th>Off hand on an animated interactable + left trigger</th><td>Open or close it — toilet lid, changing table, hatches</td></tr>
+</table>
+
+<h2>Vibration</h2>
+
+<p class="hint">
+  The controller tells you what is happening, without you having to look.
+</p>
+
+<table>
+  <tr><th>While spraying</th><td>Strength follows the nozzle: the 0° jet is strong, the 40° jet gentle</td></tr>
+  <tr><th>Turbo</th><td>A fast rattle instead of a steady hum</td></tr>
+  <tr><th>Soap</th><td>Softer and calmer</td></tr>
+  <tr><th>Hitting a surface</th><td>Full strength; spraying into the air is clearly quieter</td></tr>
+  <tr><th>Short pulses</th><td>Spray start and stop, nozzle change, washer and soap change</td></tr>
+  <tr><th>Gestures and grabbing</th><td>One pulse on the hand that acted</td></tr>
+</table>
+
+<p class="hint">
+  On/off and the overall strength are in the configurator. The finer values —
+  per-nozzle strength, turbo rhythm, contact damping — are separate entries in
+  <code>UserData\MelonPreferences.cfg</code>.
+</p>
+
+<p class="hint">
+  That last one needs no aiming: reach for the thing, and on a low object the
+  hand really has to go down to it. With the hand on nothing, the same trigger
+  rotates the nozzle as it always did. Reach is <code>InteractZoneRadius</code>,
+  and <code>InteractGrab = false</code> switches it off.
+</p>
+
+<p class="hint">
+  The off-hand gesture stands down while you are carrying something, because the
+  left grip is the rotation modifier then. To switch the whole set off, set
+  <code>GestureZones = false</code> in <code>UserData\MelonPreferences.cfg</code>.
+</p>
+
+<h2>While you are carrying something</h2>
+
+<table>
+  <tr><th>Left grip held + left stick</th><td>Rotate the object. Walking is suspended while you hold the grip, so you turn the object instead of yourself</td></tr>
+  <tr><th><kbd>X</kbd></th><td>Put it down</td></tr>
+</table>
+
+<h2>In menus</h2>
+
+<p class="hint">
+  Menu mode switches itself on and off. The mod follows the game's own signal, so
+  as soon as a menu takes over, walking and turning stop and the sticks belong to
+  the menu.
+</p>
+
+<table>
+  <tr><th>Left stick</th><td>Move the selection, in all four directions</td></tr>
+  <tr><th><kbd>A</kbd> or right trigger</th><td>Confirm</td></tr>
+  <tr><th><kbd>Menu</kbd></th><td>Back, or close what is open</td></tr>
+  <tr><th><kbd>Y</kbd></th><td>Close the task list</td></tr>
+  <tr><th><kbd>A</kbd> in a dialog</th><td>Confirms the button the game itself pre-selected — the way out when the pointer finds nothing in a window</td></tr>
+  <tr><th>Left grip</th><td>Previous tab</td></tr>
+  <tr><th>Right grip</th><td>Next tab</td></tr>
+</table>
+
+<h2>Keyboard</h2>
+
+<p class="hint">
+  You should not need any of these in normal play. They are here for the times
+  something does not come up on its own.
+</p>
+
+<table>
+  <tr><th><kbd>F8</kbd></th><td>Start VR by hand, if it did not start itself</td></tr>
+  <tr><th><kbd>F2</kbd></th><td>Hand the washer to the controller, or give it back to mouse and keyboard</td></tr>
+  <tr><th>Keypad <kbd>3</kbd></th><td>Recentre the washer and your seated position</td></tr>
+  <tr><th>Keypad <kbd>+</kbd> and <kbd>.</kbd></th><td>Next or previous nozzle</td></tr>
+</table>
+
+<p class="hint">
+  The grip alignment lives in the configurator &mdash; three sliders for position
+  and three for rotation. You can also set it without taking the headset off:
+  hold the left grip together with <kbd>X</kbd> and <kbd>Y</kbd>, move your
+  washer hand to where the washer should sit, and let go.
+</p>
+
+<p class="hint">
+  There are more keys, but they are development tools and this build has them
+  switched off &mdash; <kbd>F1</kbd>, <kbd>F6</kbd>, <kbd>F9</kbd> and the
+  <kbd>Ctrl</kbd>+keypad trim among them. To use them, set
+  <code>DevMode = true</code> and <code>DevHotkeys = true</code> in
+  <code>UserData\MelonPreferences.cfg</code>.
+</p>
+
+<h2>If something looks wrong</h2>
+
+<table>
+  <tr>
+    <th>The washer is not where my hand is</th>
+    <td>Adjust the grip in the configurator, or in game with <kbd>Ctrl</kbd> and the keypad</td>
+  </tr>
+  <tr>
+    <th>The left stick does not respond</th>
+    <td><kbd>F2</kbd> twice. It happens now and then when the right controller
+        briefly goes to sleep</td>
+  </tr>
+  <tr>
+    <th>The menus are too big to read</th>
+    <td>Lower the menu size in the configurator. <kbd>Alt</kbd> with keypad
+        <kbd>8</kbd> and <kbd>2</kbd> does the same while you play</td>
+  </tr>
+  <tr>
+    <th>An arm or a hand is visible</th>
+    <td>The game&rsquo;s own arms and hands are hidden unconditionally, DLC
+        models included &mdash; recognised by where they hang rather than by
+        name. What you should see are the two VR hands, and those have their own
+        checkbox, &ldquo;Show VR hands&rdquo;. If any other geometry shows up,
+        send <code>Latest.log</code></td>
+  </tr>
+  <tr>
+    <th>There is a green line coming out of the nozzle</th>
+    <td>That is the aiming laser, a development tool. Turn it off in the configurator</td>
+  </tr>
+  <tr>
+    <th>VR will not come back after <kbd>F6</kbd></th>
+    <td>Restart the game. Shutting VR down releases the headset for good, and it
+        cannot be brought back within the same session</td>
+  </tr>
+  <tr>
+    <th>VR did not start on its own</th>
+    <td>Start your headset software, then press <kbd>F8</kbd>. If that does
+        nothing either, the OpenXR files are missing from the installation &mdash;
+        the mod writes what it found to
+        <code>MelonLoader\Latest.log</code></td>
+  </tr>
+  <tr>
+    <th>The controllers stopped working</th>
+    <td><kbd>F2</kbd> twice. The mod normally reconnects them by itself within a
+        second</td>
+  </tr>
+</table>
+
+<p class="hint warn">
+  The first launch after installing takes about half a minute with no sign of
+  progress, and it needs an internet connection: MelonLoader generates its
+  support files once. It has not crashed — let it finish.
+</p>
+
+<footer>
+  <img src="assets/avatar.png" alt="">
+  <span>by Tino</span>
+  <!-- stamped by Make-Package.ps1 -->
+  <span id="version" style="opacity:0.7">v0.95.0</span>
+  <span class="spacer"></span>
+  <span>Wet Reality XR Mod — unofficial, not affiliated with FuturLab or Square Enix</span>
+</footer>
+
+</div>
+</body>
+</html>

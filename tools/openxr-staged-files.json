@@ -1,0 +1,12 @@
+{
+  "purpose": "OpenXR provider staged into the PWS2 install to test whether Unity registers the XR subsystem descriptors at startup. Design document section 40.",
+  "source": "com.unity.xr.openxr@1.18.0, tools/downloads/openxr/openxr-1.18.0.tgz",
+  "staged": "2026-09-13T13:09",
+  "additiveOnly": true,
+  "files": [
+    "PowerWash Simulator 2_Data/Plugins/x86_64/UnityOpenXR.dll",
+    "PowerWash Simulator 2_Data/Plugins/x86_64/openxr_loader.dll",
+    "PowerWash Simulator 2_Data/UnitySubsystems/UnityOpenXR/UnitySubsystemsManifest.json"
+  ],
+  "removal": "Delete the three files and the UnitySubsystems/UnityOpenXR folder. No existing game file was modified or overwritten."
+}

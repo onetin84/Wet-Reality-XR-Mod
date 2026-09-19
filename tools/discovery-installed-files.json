@@ -1,0 +1,666 @@
+[
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net6\\System.Security.Cryptography.ProtectedData.dll",
+    "SHA256": "36F78627DAED665491C9955A23E551A32CACFE396578953CCF84DDFD584A8E0B"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net6\\MonoMod.Utils.dll",
+    "SHA256": "72A5B4249985873D7ECB160CBBED7A1E6540A38EE7618C72C64B9CB068C1438A"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net6\\MelonLoader.deps.json",
+    "SHA256": "856679E5955EC6F59008E2E920925301112793BF33587466D3A55CAB82FB9EEE"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net6\\MelonLoader.NativeHost.deps.json",
+    "SHA256": "E9F257473D71B433A64E4E8084522B3388F368B9F27829CFAC88DBE82FE1B7DB"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net6\\Microsoft.Diagnostics.NETCore.Client.dll",
+    "SHA256": "D07B58185B94DB7764EC6A0954E1E1071488097AB1AEEC47F5822A3761C58919"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net6\\Mono.Cecil.Mdb.dll",
+    "SHA256": "28CB367972BDC1CD43E4006306AF2FD96D37F4ED4B239EE90E1DC7237A93AF7F"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net6\\MonoMod.Backports.dll",
+    "SHA256": "CDD6E9F7BCDB98D2C002F63BFBE85AE80EA36261190A741E64283D769A6C6502"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net6\\MelonLoader.NativeHost.dll",
+    "SHA256": "66AB84903018C4A10A8A5DE45ECEA63445AC0D1D0147D6FCB713A91162764B3E"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net6\\Microsoft.Extensions.Logging.Abstractions.dll",
+    "SHA256": "1FC03424101E21D974B007E1F62D9E27D2C925A7729782D6ACE287C0D8CC0CCA"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net6\\Microsoft.Extensions.Options.dll",
+    "SHA256": "D54E0869A366A88CDF670493AAD096A66009587D821B9157BB1447394718E058"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net6\\Microsoft.Extensions.Primitives.dll",
+    "SHA256": "3CC6AE4739180484C58A7A7FB5F6B1B15528301E758DA9ECB04DB141824E779A"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net6\\UnityEngine.Il2CppImageConversionManager.dll",
+    "SHA256": "311F0F73D1ED4DB5F16E04024AAA2B2740ED43EFD14C10A8EE0C27D9E0F8A91F"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net6\\MelonLoader.runtimeconfig.json",
+    "SHA256": "D8C6BF06DF9CFB54B0828B0986B53E50507FC23A6A52071051FF238EEA28ECC4"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net6\\Tomlet.dll",
+    "SHA256": "1D4BA58B6EC7B63A725F20DA860462C5CECFED9A0AA561F1859C7968E42F3873"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net6\\UnityEngine.Il2CppAssetBundleManager.deps.json",
+    "SHA256": "68D2DB43EF84E10A2DF05AA0A34FEA0E308BD70875D9E8974FE19E1D502C1913"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net6\\Microsoft.Extensions.Configuration.Abstractions.dll",
+    "SHA256": "636907558A2633950886B9F97C3732F1E88CF3FC1E31F89C66AB516542F7F289"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net6\\UnityEngine.Il2CppImageConversionManager.deps.json",
+    "SHA256": "7AD41ADE4DAF1965F31A67EF5126DD056A48969BAB22A6BEF5EB8963F93DB2FC"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net6\\AssetsTools.NET.dll",
+    "SHA256": "60AA43D8FC284C1599B478E8E197E915979FE5B31DF7F3F3DD446E78D2435959"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net6\\UnityEngine.Il2CppAssetBundleManager.pdb",
+    "SHA256": "24F2F2AD4F2E13298013087B4D89DF0F8CC881B3A2BBA42A83A696E83F5C4884"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net6\\System.Configuration.ConfigurationManager.dll",
+    "SHA256": "77064E278D811B035243774E9AB07CD73317FAFEB4D31543A49F485FFE103CC4"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net6\\WebSocketDotNet.dll",
+    "SHA256": "A98BF044314C909621F9A8007BB70A66A4C4D29F1CED7DE599264C797876FA7A"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net6\\Mono.Cecil.Rocks.dll",
+    "SHA256": "BF992F3DCE364EBCC3200FA7832EF07E20B4E2DBC3A8A6213CE44E3D239DB984"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net6\\MelonLoader.dll",
+    "SHA256": "BDD43DC0F3893C208C95389B863AB61C967AE14204DA0DD8051647E754C8709B"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net6\\0Harmony.dll",
+    "SHA256": "6C898933B52149E8BCF6722305C7E4D94ADD47C9E53B364096F91721624C0877"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net6\\System.Security.Permissions.dll",
+    "SHA256": "CE21BF221EC947744FE0DAD11B68A12FD963E73F5DD41407513E55419A7D4BB8"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net6\\bHapticsLib.dll",
+    "SHA256": "C80BA400773D65498B0139945F7A8096630CC37672E4B64C2F54CBC244811F3F"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net6\\AssetRipper.Primitives.dll",
+    "SHA256": "681BA26FD356D9263FDF6AFEB1B8F8506802A9503FFA80C9D21E0C4A46743A28"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net6\\MonoMod.dll",
+    "SHA256": "CFA83184F0CC98CCDA1475CD5A62EE83226D0BA63E03B058DBD9EC9A7E40DEF0"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net6\\AsmResolver.PE.File.dll",
+    "SHA256": "8246433A1A6FB4C012C1814ACEE8A4FF24F3A4FAC593569F6A1E343E68C9D8EE"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net6\\Il2CppInterop.Generator.dll",
+    "SHA256": "84DE44214ABF234A419A991F0B9DC91E2E39FCEB2CC0A4136A79FA369777FF23"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net6\\System.Runtime.CompilerServices.Unsafe.dll",
+    "SHA256": "60E5957AD8CEDDC68650747A71598C0D84C291943C8693135333335D3DBAAF3B"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net6\\MelonLoader.xml",
+    "SHA256": "D0313DD7F017CDA53629B02DA3AB631D7CE1B5BEEC2EB1E0476EA2544C84A030"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net6\\Microsoft.Diagnostics.Runtime.dll",
+    "SHA256": "06F9910C8A37F8D4D758538E6DD307DE58BCFB3BB13E83658142C08087A25382"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net6\\Mono.Cecil.Pdb.dll",
+    "SHA256": "A332332633FBCB20E8D50E49B4DB7BD1557721417122CF0C5F4C42F2332391D0"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net6\\Microsoft.Extensions.Configuration.dll",
+    "SHA256": "5AC6A0FFF2CBA99ED8D9F22FF0215F0A87F35D290BF12E5441EC3ABF19D93EFB"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net6\\AsmResolver.PE.dll",
+    "SHA256": "6BA6D56BF5FD3DD18233B56606A7ED1D42B8C93977B5375716771BF13EA36A1E"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net6\\Newtonsoft.Json.dll",
+    "SHA256": "A28C251DFE36D881E9E2462E171441B8B0EC156FE3F452602C9149B1B9EFE05B"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net6\\AsmResolver.dll",
+    "SHA256": "64B50030B34654F12805EC4D2848551E431C5F0BCD65CD70D6FE2845F715FB12"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net6\\IndexRange.dll",
+    "SHA256": "4117E1E2273763A95CA2BD69A4AB4B092317BAFBE53B3DAD7531AF4CD751E0A6"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net6\\Microsoft.Extensions.Logging.dll",
+    "SHA256": "011F0BF961FD7E6567BDA75CC38484F16C18711C55885A36BBDFE46B46DBA028"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net6\\Il2CppInterop.HarmonySupport.dll",
+    "SHA256": "F64C53D389FC76A910FFAB86F7AC6D27E437B0C7C0C60918565A5D9F34F8AD06"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net6\\UnityEngine.Il2CppAssetBundleManager.dll",
+    "SHA256": "EED31C8C3795F2219E1E3E6982AC190EEA9F8F2FD7D2319DE8F152E6D6E8C7DE"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net6\\Microsoft.Extensions.DependencyInjection.dll",
+    "SHA256": "AEF548883308179109F297AEB30CA8485A88A685AFB4084DFA8B72873F57EC03"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net6\\Microsoft.Extensions.DependencyInjection.Abstractions.dll",
+    "SHA256": "8DBBC4D07B1FD3F9D6EC9BE13C1A619CDC88B5AD0A26392BBFF6EDEB62E1C942"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net6\\MonoMod.ILHelpers.dll",
+    "SHA256": "0081403BDCEF3340F78C7CCDED0BE6AE0507B397EE8B9980B44F01BF9F93AED1"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net6\\System.Diagnostics.DiagnosticSource.dll",
+    "SHA256": "9137A2621F11F561D2D70DABC6EFDADF1470AE0EAB701A74B68CD415B4FBD85C"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net6\\MonoMod.RuntimeDetour.dll",
+    "SHA256": "1B3D55F53CB9F9F2550DAED4DFD300B247D71698A0ACE82BC7B9FF38D563594F"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net6\\Il2CppInterop.Common.dll",
+    "SHA256": "AFA35EB0822336A17D00071EC49E4E2ECAFF6F3861E1AE73E4F0963C88610B3E"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net6\\Microsoft.Bcl.AsyncInterfaces.dll",
+    "SHA256": "F311565F29E9DB0038BF712363D0FC2093F434CCCD5C570D15D74044CE255B12"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net6\\Iced.dll",
+    "SHA256": "F058C01321B4CDFC9B9151879E88E59571C8D0BA176FBCF95BC936A8F3D073ED"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net6\\MelonLoader.pdb",
+    "SHA256": "3BFFD543D36AED364CBA377D6A1DAA2E44E50637C0070B60411AC6BDCFD88E8C"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net6\\UnityEngine.Il2CppImageConversionManager.pdb",
+    "SHA256": "D363ED0E54BFA502E9FB956E949CBD9500693C9054B6EBB1825229AE87BAF178"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net6\\Microsoft.Bcl.Memory.dll",
+    "SHA256": "B4E28DC3F5564F55296EC462EF29668E4B3E5A66C979B49808AF80D9E4821531"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net6\\Il2CppInterop.Runtime.dll",
+    "SHA256": "3878CE0BA0C60385F76F2BA37E07AD0EE3649D019703AEC8695DB3402ABEEDD7"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net6\\AsmResolver.DotNet.dll",
+    "SHA256": "045BCDF32427F9BD39BEE2620C470372583935C8E89B360931E467DD191D46D1"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net6\\Mono.Cecil.dll",
+    "SHA256": "831DCA77470D85CB6FFBEA3072DAA7A3DF5B7C9FCFD9C3F43674A9BE99D4BFCF"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net35\\MonoMod.Utils.dll",
+    "SHA256": "C764FA0141E3B9308AE25808BAEA11FEABC0B4843ECFC28EC5C5CC470D6AB420"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net35\\Mono.Cecil.Mdb.dll",
+    "SHA256": "5896D1898F616701FFF18F3B2C71E6B844D2390EF9F41E1C5FCCCE8CB27C698E"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net35\\MonoMod.Backports.dll",
+    "SHA256": "689C38424FFA30089957F3F3F8942EBF179C15F7330F3F90E479054D0B0D6003"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net35\\Tomlet.dll",
+    "SHA256": "0110544D80CD1EF83707A42B07362BF496C514BAA31A694E9C20CE572E7870DE"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net35\\AssetsTools.NET.dll",
+    "SHA256": "6D2DC18921A3FE723E9DE7835C4F1ECEE055EA3EF73C278411ECB6B16C213A7C"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net35\\WebSocketDotNet.dll",
+    "SHA256": "BA8679A52549784963C2544EF401ABA87A57D7589E5F8593EF31FDF377F0A314"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net35\\Mono.Cecil.Rocks.dll",
+    "SHA256": "54AC539FB5DDC8B44C0E9ACD0FCB7324F89D1A072EDF8EBC1B06DD691E3D3927"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net35\\MelonLoader.dll",
+    "SHA256": "7C0E8C59A4EC02CBCAEC91D0393E7CAF9886F21D00AD35984B7013BCA695225B"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net35\\0Harmony.dll",
+    "SHA256": "9710C782B13742FA23B9FC2C3608263BA6F1D08EF1342898FC26A8F539D3F247"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net35\\bHapticsLib.dll",
+    "SHA256": "B3FDFDE20E01CFDBAB8F151F1D1D1CF43F3F6789DA106E813D20EAB174671E86"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net35\\AssetRipper.Primitives.dll",
+    "SHA256": "80D06DCA66453B0FC8AA0EE001D817D076E8E1CB71347E78D22FCEAE25F3F48F"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net35\\AsmResolver.PE.File.dll",
+    "SHA256": "918529A38B421751960C7B11AD2F174CF692B111FBCFCC275B39F683E63040B6"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net35\\MelonLoader.xml",
+    "SHA256": "D0313DD7F017CDA53629B02DA3AB631D7CE1B5BEEC2EB1E0476EA2544C84A030"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net35\\Mono.Cecil.Pdb.dll",
+    "SHA256": "174DB44A067F58561510AF746F3CAEB032037762C57A31C8D9EE32DB25174984"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net35\\MelonLoader.dll.mdb",
+    "SHA256": "D1BEF08FEB430C09BB7C410D71A7032F653D86C9F7DD4DE9F1D407F9E81B286C"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net35\\AsmResolver.PE.dll",
+    "SHA256": "3C38692FD181AF0F90D54C4B3525A663D1EDE4008B6C796A8B7008C4C464A5C2"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net35\\Newtonsoft.Json.dll",
+    "SHA256": "4A3D7BBAA2C347C2F98FA06A7324EBF311F696D9965E9BA0A81A56219420CE01"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net35\\AsmResolver.dll",
+    "SHA256": "B225FCC32E88951FE491913CC25CBC08B3B003B553F79F566569A64139E08ACB"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net35\\MonoMod.exe",
+    "SHA256": "FBC729BE008C9C22DE637F871877DCE5366583A3206D5E484807184F11E38285"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net35\\IndexRange.dll",
+    "SHA256": "58022EC83CF23517BAFE8BFA1D5F1DE37A3672A31BDD73F22A7673F08BBC9DAC"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net35\\MonoMod.ILHelpers.dll",
+    "SHA256": "8353ADE0183F57CA1DF618D2AED117262366FD2FE98E1776373F392B8D33C9F9"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net35\\ValueTupleBridge.dll",
+    "SHA256": "7D90CBB7C50467E22D2BE3E008E5A2E29581C0A9DABF63D89A07C91F5B32D4F8"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net35\\MonoMod.RuntimeDetour.dll",
+    "SHA256": "6120A4A1FA3287B149F408EEAC04C017C6453E8FD69DBC5D12F1489C087385AB"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net35\\MelonLoader.pdb",
+    "SHA256": "FB303BE5D6D9D78843C78B2E489E2BECD98DF1597330457DE505EF4976F01C88"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net35\\AsmResolver.DotNet.dll",
+    "SHA256": "EAB87D5BAE62E8B69CF0DD6D163FF2B2E5BA0954E105089CE4C061D9418D634D"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net35\\Mono.Cecil.dll",
+    "SHA256": "7AE470288FFF4A402899C254D0A76CEFEF55877F5C54F96E83C797CC5BB6E2F6"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net472\\MonoMod.Utils.dll",
+    "SHA256": "814A6311E9831EE87E93E0FD34451F274CB1D8103629B6B517FC861374F9EC3F"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net472\\Mono.Cecil.Mdb.dll",
+    "SHA256": "570A437DEA0271D1D5C8B7D6A408B0B2635BDB0E8B8D5051878F3E7FCA087F89"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net472\\MonoMod.Backports.dll",
+    "SHA256": "6DB3486EB3BFC458C770D61A1391569000CD871DCC7160FB3DA2CBFE8D98601A"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net472\\Tomlet.dll",
+    "SHA256": "0110544D80CD1EF83707A42B07362BF496C514BAA31A694E9C20CE572E7870DE"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net472\\AssetsTools.NET.dll",
+    "SHA256": "9E04A8FB2040866827981F00D0C212DBFD4BDEB72EA4D659A7B206D4B7608D58"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net472\\System.ValueTuple.dll",
+    "SHA256": "E905D102585B22C6DF04F219AF5CBDBFA7BC165979E9788B62DF6DCC165E10F4"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net472\\WebSocketDotNet.dll",
+    "SHA256": "E8D266E754193F5970C108F7E8B9664D5C09A5718B5F932392EA4AB311260E9F"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net472\\Mono.Cecil.Rocks.dll",
+    "SHA256": "842E09959084EDA733AAB1A5354D7AF79E29594F4D8B91C8792103E5C755ED9B"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net472\\MelonLoader.dll",
+    "SHA256": "2C4E6079A6C46ED8A6F7411980255B69095835D3B1AE9D702D9582CC26EC31AC"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net472\\0Harmony.dll",
+    "SHA256": "9846EB9EDF64A5E2473342C75B8C5AB37293FB4C27418BC7A5B9A156AA0D7214"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net472\\bHapticsLib.dll",
+    "SHA256": "4F2B0B41A86230BA6918B7A0D35B31A1B220273D6776C17C34CDCFBB82132D15"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net472\\Microsoft.Bcl.HashCode.dll",
+    "SHA256": "76B1260CE747A317E9B514433B89A81B038411FCABDDC6F9C7DBABB0742D8B81"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net472\\AssetRipper.Primitives.dll",
+    "SHA256": "F3ACF4F3AE593A4DCF5C31C4835A4FBEDEB5F8A73B8ACD5D8F592354910BB557"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net472\\AsmResolver.PE.File.dll",
+    "SHA256": "041B450E31BD473D5EF64EE07C1F0F4E273468B562A321BE62A91B3119A061DC"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net472\\System.Runtime.CompilerServices.Unsafe.dll",
+    "SHA256": "66409F670315AFE8610F17A4D3A1EE52D72B6A46C544CEC97544E8385F90AD74"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net472\\MelonLoader.xml",
+    "SHA256": "D0313DD7F017CDA53629B02DA3AB631D7CE1B5BEEC2EB1E0476EA2544C84A030"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net472\\Mono.Cecil.Pdb.dll",
+    "SHA256": "50A1A1A79DC86FCFB8B51249B5325A10DD93D193C52999CF6775D25030A4E606"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net472\\AsmResolver.PE.dll",
+    "SHA256": "538F353F338F8D0E483CDA6FC1144BC1B2EF85C50ADF6210E8CFE64124DFF278"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net472\\Newtonsoft.Json.dll",
+    "SHA256": "F0C07AF0E84D4DD4DA4BD7823BA4535BC0481B3BF623ED40B659B68147A6BB75"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net472\\AsmResolver.dll",
+    "SHA256": "22529C0E1BAB7779AF0E20CE1180475A48FD78CDBFDAD01A38E645A09B1FDCA0"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net472\\MonoMod.exe",
+    "SHA256": "FDDEAE2409911135A1B690A9E5AB996A3D3B08B9BB62056CC3466B82EA30B658"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net472\\IndexRange.dll",
+    "SHA256": "D70E5E09C477FA402DB5B1DE973B9B457DEC4CE2048985B24A85D06E9AF14595"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net472\\MonoMod.ILHelpers.dll",
+    "SHA256": "20DF341949B81662E09787E42B66AC3FEA601D4CF4B717294F2D72A80860E4EC"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net472\\System.Buffers.dll",
+    "SHA256": "ACCCCFBE45D9F08FFEED9916E37B33E98C65BE012CFFF6E7FA7B67210CE1FEFB"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net472\\MonoMod.RuntimeDetour.dll",
+    "SHA256": "BD7230C2F2B084AB26A3EC5501023020BC17F47EEB6CFADDD1E34FADB656EEFB"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net472\\System.Memory.dll",
+    "SHA256": "BF3FB84664F4097F1A8A9BC71A51DCF8CF1A905D4080A4D290DA1730866E856F"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net472\\MelonLoader.pdb",
+    "SHA256": "E7CDF1D1A765E052586DA7B74A5CEC499CFC926B7B78DADF3C69FC509CE3C42F"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net472\\System.Numerics.Vectors.dll",
+    "SHA256": "1D3EF8698281E7CF7371D1554AFEF5872B39F96C26DA772210A33DA041BA1183"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net472\\AsmResolver.DotNet.dll",
+    "SHA256": "7F53DC524BD427389B0BE3CAEFEF37393B44FDF7FAD73CB3D95CE36178B7855B"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net472\\Mono.Cecil.dll",
+    "SHA256": "C41BDB9FFD3C5F6E17D2382C1012D73703E035E3F1100245FDD4E08C8DC6EB5B"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\Dependencies\\CompatibilityLayers\\Demeo.dll",
+    "SHA256": "EE26A3A57AB37154A7E6903619E1806F6C546603645EB3441D340EDDD050B74A"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\Dependencies\\CompatibilityLayers\\Stress_Level_Zero_Il2Cpp.dll",
+    "SHA256": "D1C0B9DDC245A1D373D44503F4093350D950CDCEAC114C4907E0E1BD1228C95C"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\Dependencies\\CompatibilityLayers\\Demeo.pdb",
+    "SHA256": "F58E557F45A74266612100802A1BFC186BC72AAD2D00F6D7754C883492088AB7"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\Dependencies\\CompatibilityLayers\\Muse_Dash_Mono.dll",
+    "SHA256": "7DE3884C08B5C0C374212004FCBD1AEB6BB1EEDDA67F60C5EC35623047768362"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\Dependencies\\CompatibilityLayers\\Stress_Level_Zero_Il2Cpp.deps.json",
+    "SHA256": "E616E8AF9744C236B80E1E0AB899BDAB625D7BF3AF4747F2499480DB4919302B"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\Dependencies\\CompatibilityLayers\\Muse_Dash_Mono.dll.mdb",
+    "SHA256": "BC371F0B808D8EE143A4102F5A97E381DF1BE7C748F320EA40E023E070AD2304"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\Dependencies\\CompatibilityLayers\\IPA.pdb",
+    "SHA256": "98A598D3BFBDDA2228A2FC3ACA25E9479AD5758EB297C8EA329FFAC83CD7D87E"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\Dependencies\\CompatibilityLayers\\IPA.dll.mdb",
+    "SHA256": "BDE09AACACDE6A503EE0A65354B6D57F8001C47F383B72BEB52B7136ADEF23C7"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\Dependencies\\CompatibilityLayers\\Muse_Dash_Mono.pdb",
+    "SHA256": "F840EEFB3E9F1F585D436448DA630F17A3236BB0B994CA105246DCB0AD247233"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\Dependencies\\CompatibilityLayers\\IPA.dll",
+    "SHA256": "F6CFF76CB0A889EABC1BE5721F51A05D2E77E37E0D477BC52E5179E37145D200"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\Dependencies\\NetStandardPatches\\System.dll",
+    "SHA256": "862E789E52B83B86F32F612A11E0D8D3C32AC90B4DF82F01B755F7240E581AB4"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\Dependencies\\NetStandardPatches\\System.Xml.dll",
+    "SHA256": "3A7D4C5915516E44CE5D281FBB108B22D43C1342CBC3CEE5E40762F24BF56A5F"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\Dependencies\\NetStandardPatches\\System.Configuration.dll",
+    "SHA256": "F72C6C78A7C4C76B59184EA38C3EFCC65ECCA45B157DEB8AE508EED83A6D88B2"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\Dependencies\\NetStandardPatches\\System.Core.dll",
+    "SHA256": "5AA2B8FFE185461E16256B966802D6ACA117D19728CC0C7455CB5F91FD7E0123"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\Dependencies\\MonoBleedingEdgePatches\\System.ServiceModel.Internals.dll",
+    "SHA256": "09A4F3E9BCEDBC7E657650FF3BD60982F433AA0E7A70A62CD65B4480CD2FFE8C"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\Dependencies\\MonoBleedingEdgePatches\\System.Data.DataSetExtensions.dll",
+    "SHA256": "E52832D9ECF8E65D0D64E8207C457003C3B5F692DD6DD5628557155513EC000E"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\Dependencies\\MonoBleedingEdgePatches\\System.Collections.Immutable.dll",
+    "SHA256": "152B3A724AB5C95A7C5893BAF38DEFB003AC467776E1D5C58972748F3BC5FF03"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\Dependencies\\MonoBleedingEdgePatches\\System.ComponentModel.Composition.dll",
+    "SHA256": "68C7F8F8182CDF00685CEBB656AF26FCDE72AA380888A1EE98AB986B58564544"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\Dependencies\\MonoBleedingEdgePatches\\System.Runtime.dll",
+    "SHA256": "E0A7334B7BA419AAAB6BD3BB6992D693E689341A9178172C9BF99C2AA6A085BD"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\Dependencies\\MonoBleedingEdgePatches\\mscorlib.dll",
+    "SHA256": "066A409F9228C9478D506D769978F0065FA42F9CCC97BFA266EE4451F4CBAFAD"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\Dependencies\\MonoBleedingEdgePatches\\System.Security.Cryptography.Cng.dll",
+    "SHA256": "5BEB0246FC8CBC617FD7D18DD1F520DA8DBBB7EC820E5834D53352836A99BDA1"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\Dependencies\\MonoBleedingEdgePatches\\System.Runtime.CompilerServices.Unsafe.6.0.dll",
+    "SHA256": "FD67ABC4C4AF10AFFBCD42FD68A2A7BC361B26714AFE6965D4D0D139459D8297"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\Dependencies\\MonoBleedingEdgePatches\\System.IO.Compression.FileSystem.dll",
+    "SHA256": "44908B620784AC1C9CAA4272CEF69E6872B3786240F89A20B3CAEF81873A7FB2"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\Dependencies\\MonoBleedingEdgePatches\\System.EnterpriseServices.dll",
+    "SHA256": "0FEB13072956CF69A80DA4CAD4C170F3EA80C9764454AC7B995FA0156FB21F79"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\Dependencies\\MonoBleedingEdgePatches\\System.Numerics.dll",
+    "SHA256": "18AE2FAAB369EF13F93A95716664EAC1B984488A03D8BDAD34B5D4C7A2B0F28B"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\Dependencies\\MonoBleedingEdgePatches\\System.Net.Http.dll",
+    "SHA256": "1E979A8532060193273B2024B80556E83EC3155CBB041326B8707DE706791DB3"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\Dependencies\\MonoBleedingEdgePatches\\System.Xml.Linq.dll",
+    "SHA256": "E8236D3E1B6E115547AB4CE92E522FEB552D76C388FB741F398AF070677FD863"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\Dependencies\\MonoBleedingEdgePatches\\System.Runtime.Serialization.dll",
+    "SHA256": "C9EB8F87514696B7E8AEE703B5DBC959D4D317DCDAA0EBE2F7F717D316A3FA58"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\Dependencies\\MonoBleedingEdgePatches\\System.IO.Compression.dll",
+    "SHA256": "7BAA41BE268231AC9C582A854D8F5D5D0B1D9815DFD32F42ABDD6530CC354ABD"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\Dependencies\\MonoBleedingEdgePatches\\System.Runtime.CompilerServices.Unsafe.dll",
+    "SHA256": "BFC8F02A96934786CA5A0514A3B657021C12542E215E94B78FDCC74BFEFFE3D3"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\Dependencies\\MonoBleedingEdgePatches\\System.dll",
+    "SHA256": "B271AE651C463425D5F4E55579BD1FBA4AF246CCE549E322E47F5B463783B326"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\Dependencies\\MonoBleedingEdgePatches\\System.Data.dll",
+    "SHA256": "800D5211D0449BEB99F0C5AA5107880917863C369052E4AC40CC005171C12ED8"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\Dependencies\\MonoBleedingEdgePatches\\System.Xml.dll",
+    "SHA256": "A741AB74C7763758C716EC0DDFB902708E5446053D02400C9CD7D1F9CD0F69A3"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\Dependencies\\MonoBleedingEdgePatches\\System.Configuration.dll",
+    "SHA256": "B4505AAD4201FEA717940591D5C7C59CD3D920F9C96D989CA98AB07E3208B034"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\Dependencies\\MonoBleedingEdgePatches\\System.Core.dll",
+    "SHA256": "771DBF3F43FE24A8849AE78DC9640E3DB9127D543F121E9A00740D71EF9CCAB6"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\Dependencies\\MonoBleedingEdgePatches\\System.Security.dll",
+    "SHA256": "F54BA987619737424586CE30F5F1E12C1A9580312F905C83A22A62A45D69C41D"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\Dependencies\\MonoBleedingEdgePatches\\System.Buffers.dll",
+    "SHA256": "762F8FDBE975E05B76BE5FE996C53CE7C75E4A2830F2F50B02A5948EF6BA0AEB"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\Dependencies\\MonoBleedingEdgePatches\\System.Drawing.dll",
+    "SHA256": "362930561B35E759E7CA642FB590621DF0AB1041950D27BC7B5F54012F9620E9"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\Dependencies\\MonoBleedingEdgePatches\\System.Memory.dll",
+    "SHA256": "C4F030A2CBA7DA7CDCF493257C24560E203D355904AEE490D645A935842F834A"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\Dependencies\\MonoBleedingEdgePatches\\System.Transactions.dll",
+    "SHA256": "C1F1B908005857162D29273C6AB144B802FD5DF4DC4E44F599DA4AA0AAD02B49"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\Dependencies\\Il2CppAssemblyGenerator\\Il2CppAssemblyGenerator.dll",
+    "SHA256": "4B9C8A48640BEFE1840F7ED0A1059DB173B22B319C4F684CE7E1D8794802B4DC"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\Dependencies\\Il2CppAssemblyGenerator\\Il2CppAssemblyGenerator.deps.json",
+    "SHA256": "B18A08BD55F02FCD99B134D35077C5B2ABFF078B9D61B89FDA117BA3A3BC8ABB"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\Dependencies\\SupportModules\\Mono.dll.mdb",
+    "SHA256": "90A5CC3071AC5696F39C06EC4833A4049F1218CBC2CBE0819E4CD7E265089BCB"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\Dependencies\\SupportModules\\Il2Cpp.dll",
+    "SHA256": "2AB2FD9858C4D97457E3EC2F74F4D8FF3A9296E95CEAAB079CDBDA2302453743"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\Dependencies\\SupportModules\\Il2Cpp.deps.json",
+    "SHA256": "D4543683915BC7160EF8F5910EE961132DF2C26C2F2824FBF96905AC48890C10"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\Dependencies\\SupportModules\\Mono.pdb",
+    "SHA256": "8D759BD63267E079275EAB5152ED690A6945B4CC0B097101D7B1AD369DCF0A5D"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\Dependencies\\SupportModules\\Mono.dll",
+    "SHA256": "DDF46054BE5CB2855131E2B402197DDA03BF74E3B0E6DBDD011DD572AFC848F8"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\Documentation\\README.md",
+    "SHA256": "35738DC7ED6804A013829D77ECC6D203BF42577A7650B40B4CC456EDC4811F57"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\Documentation\\NOTICE.txt",
+    "SHA256": "081981B2760E887CD845AC478BEF503B3B61269B0F3C42007800FA6E00078258"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\Documentation\\LICENSE.md",
+    "SHA256": "689A30A20770A4239EC0A994262FDE506052B256F3887582F2D51B6974C20B09"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\Documentation\\CHANGELOG.md",
+    "SHA256": "6896EF65BF98706BFFB81C7C8A970182717018E57E347A65E6235AA8B9E6EC6A"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\version.dll",
+    "SHA256": "0CE7A4E530C7F83F172A2C44AED45EEDB3BDCF06B83760F143A0FBA6885FA929"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\Mods\\UnityExplorer.ML.IL2CPP.CoreCLR.dll",
+    "SHA256": "6C15666DC5636379EDCE7FA3E0B2356C2E86F3CA94839A0D934E841730642DEE"
+  },
+  {
+    "Path": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\UserLibs\\UniverseLib.ML.IL2CPP.Interop.dll",
+    "SHA256": "CEE1A34008C87DEAB03BA8198A344F3DD6C9A1C5622C0E2EA31221CEDE920D39"
+  }
+]

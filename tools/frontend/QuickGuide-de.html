@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>Wet Reality XR Mod — Kurzanleitung</title>
+<style>
+/*
+  Self-contained on purpose: no web fonts, no CDN, no scripts. The guide is
+  opened from the configurator as a local file and has to work with no internet
+  connection at all.
+
+  Palette from the moodboard, same values as the configurator's XAML.
+*/
+:root {
+  --ink:    #12191B;
+  --deep:   #083B43;
+  --panel:  #0C2B31;
+  --cyan:   #15D9D0;
+  --paper:  #F5FCFA;
+  --amber:  #FFD447;
+  --coral:  #FF6B55;
+  --muted:  rgba(245, 252, 250, 0.58);
+  --line:   rgba(21, 217, 208, 0.22);
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  padding: 0 24px 72px;
+  background: linear-gradient(170deg, var(--ink) 0%, #0A2429 55%, var(--deep) 100%);
+  background-attachment: fixed;
+  color: var(--paper);
+  font: 16px/1.6 "Segoe UI", system-ui, -apple-system, sans-serif;
+}
+
+.wrap { max-width: 1040px; margin: 0 auto; }
+
+header {
+  display: flex;
+  align-items: flex-end;
+  gap: 28px;
+  padding: 40px 0 28px;
+  border-bottom: 1px solid var(--line);
+  flex-wrap: wrap;
+}
+
+header img { width: 210px; height: auto; }
+
+header .claim {
+  flex: 1;
+  min-width: 260px;
+  color: var(--muted);
+  font-size: 14px;
+  padding-bottom: 6px;
+}
+
+h1 { display: none; }
+
+h2 {
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--cyan);
+  margin: 44px 0 14px;
+}
+
+h2:first-of-type { margin-top: 34px; }
+
+.lede {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 18px 22px;
+  margin: 28px 0 0;
+}
+
+.lede strong { color: var(--amber); }
+
+figure { margin: 26px 0 8px; text-align: center; }
+figure img { max-width: 100%; height: auto; }
+
+figcaption {
+  color: var(--muted);
+  font-size: 13px;
+  margin-top: 6px;
+}
+
+.hands { display: flex; gap: 20px; flex-wrap: wrap; }
+.hands > section { flex: 1; min-width: 320px; }
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+th, td {
+  text-align: left;
+  padding: 9px 14px;
+  border-bottom: 1px solid rgba(245, 252, 250, 0.07);
+  vertical-align: top;
+}
+
+tr:last-child th, tr:last-child td { border-bottom: none; }
+
+th {
+  width: 41%;
+  font-weight: 600;
+  color: var(--paper);
+  white-space: nowrap;
+}
+
+td { color: var(--muted); }
+
+/* A button name, so "A" and "R3" read as hardware rather than prose. */
+kbd {
+  display: inline-block;
+  min-width: 20px;
+  padding: 1px 7px;
+  border-radius: 5px;
+  background: rgba(21, 217, 208, 0.14);
+  border: 1px solid var(--line);
+  color: var(--cyan);
+  font: 600 13px/1.5 "Segoe UI", system-ui, sans-serif;
+  text-align: center;
+}
+
+kbd.warm { background: rgba(255, 212, 71, 0.14); border-color: rgba(255, 212, 71, 0.3); color: var(--amber); }
+
+.hint {
+  border-left: 2px solid var(--cyan);
+  padding: 2px 0 2px 16px;
+  margin: 16px 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.hint.warn { border-left-color: var(--coral); }
+
+footer {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 56px;
+  padding-top: 22px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 13px;
+}
+
+footer img {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+}
+
+footer .spacer { flex: 1; }
+
+/* ---- Annotated controller figure -------------------------------------
+   The photograph carried no information on its own: two controllers, with
+   nothing said about which button does what, while the tables below held
+   the whole mapping. Either the picture goes or the references come.
+
+   Each <b> is a ZERO-SIZE ANCHOR at the button itself, in percentages so
+   it follows the image at any width, and the dot is drawn centred on it.
+   The label box is the <i> inside, offset left or right of the anchor.
+   That way the coordinates mean exactly one thing and can be checked by
+   drawing them back onto the image.
+
+   Below 760 px the overlay is hidden. Labels that small would be
+   unreadable and would cover the buttons they point at, and nothing is
+   lost - the tables underneath say the same in words. */
+.pad { position: relative; margin: 26px 0 10px; }
+.pad img { display: block; width: 100%; height: auto; }
+
+.pad b { position: absolute; width: 0; height: 0; }
+
+.pad b::after {
+  content: "";
+  position: absolute;
+  left: -5px; top: -5px;
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  background: var(--cyan);
+  box-shadow: 0 0 0 2px rgba(8, 30, 34, 0.85);
+}
+
+.pad b i {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  font: 600 11px/1.35 "Segoe UI", system-ui, sans-serif;
+  font-style: normal;
+  color: var(--paper);
+  background: rgba(8, 30, 34, 0.88);
+  border: 1px solid var(--line);
+  border-left: 2px solid var(--cyan);
+  border-radius: 5px;
+  padding: 4px 8px;
+  white-space: nowrap;
+}
+
+.pad b.l i { right: 14px; }
+.pad b.r i { left: 14px; }
+
+.pad b i em { font-style: normal; color: var(--cyan); display: block; font-size: 10px; }
+
+@media (max-width: 760px) { .pad b { display: none; } }
+
+@media print {
+  .pad b i { background: #fff; color: #111; border-color: #999; }
+  .pad b i em { color: #036; }
+}
+
+@media print {
+  .pad b { background: #fff; color: #111; border-color: #999; }
+  .pad b em { color: #036; }
+}
+
+@media print {
+  body { background: #fff; color: #111; }
+  table, .lede { background: #f4f4f4; border-color: #ccc; }
+  td, th, .hint, footer, header .claim, figcaption { color: #333; }
+  h2 { color: #036; }
+  kbd { background: #e8e8e8; border-color: #bbb; color: #036; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <img src="assets/logo.png" alt="Wet Reality XR Mod">
+  <div class="claim">
+    PowerWash Simulator 2 in VR, in Raumgröße.<br>
+    Die Pistole folgt deiner Hand in sechs Freiheitsgraden — wohin du schaust
+    und wohin du sprühst, ist vollständig entkoppelt.
+  </div>
+</header>
+
+<div class="lede">
+  <strong>Das Spiel wie immer über Steam starten — das ist der ganze
+  Vorgang.</strong> Headset aufsetzen, und VR kommt von selbst, ein paar
+  Sekunden nachdem das Spiel zur Ruhe gekommen ist. Die Pistole liegt dann schon
+  in deiner Hand. <kbd>F6</kbd> gibt das Headset frei und legt das Spiel zurück
+  auf den Monitor — der bequeme Weg zum Beenden.
+</div>
+
+<p class="hint">
+  Starte die Software deines Headsets <em>vor</em> dem Spiel. Die Mod prüft
+  einmal beim Start, ob sie läuft, und wartet lieber, als VR zu erzwingen.
+</p>
+
+<div class="pad">
+  <img src="assets/controller.png" alt="Meta-Quest-3-Controller mit der Belegung der Mod">
+
+  <b class="l" style="left:20.8%; top:16.1%;"><i>Laufen<em>ganz drücken: Sprinten</em></i></b>
+  <b class="r" style="left:31.9%; top:20.0%;"><i>Aufgabenliste<em>Y &middot; halten: Inventar</em></i></b>
+  <b class="r" style="left:29.9%; top:25.9%;"><i>Aufnehmen / ablegen<em>X</em></i></b>
+  <b class="l" style="left:25.7%; top:30.3%;"><i>Pausenmenü<em>Menü</em></i></b>
+  <b class="r" style="left:31.3%; top:44.4%;"><i>Düse drehen<em>Trigger &middot; füllt Reiniger nach</em></i></b>
+  <b class="r" style="left:34.2%; top:59.6%;"><i>Schmutz anzeigen<em>Grip &middot; halten: getragenes Objekt drehen</em></i></b>
+  <b class="r" style="left:78.5%; top:15.1%;"><i>Drehen<em>oben / unten: Düse &middot; Klick: Kategorie</em></i></b>
+  <b class="l" style="left:68.0%; top:20.0%;"><i>Ducken<em>B</em></i></b>
+  <b class="l" style="left:69.7%; top:25.9%;"><i>Springen<em>A &middot; wählt im Menü</em></i></b>
+  <b class="l" style="left:68.7%; top:44.4%;"><i>Sprühen<em>Trigger &middot; wählt im Menü</em></i></b>
+  <b class="l" style="left:65.8%; top:59.6%;"><i>Dauersprühen<em>Grip &middot; kein Halten nötig</em></i></b>
+</div>
+
+<p class="hint">
+  Der linke Controller bewegt dich und bedient die Menüs, der rechte ist die Pistole. Die Beschriftungen sind die Kurzfassung; die Tabellen darunter sind vollständig.
+</p>
+
+<h2>Rechter Controller — die Hand mit der Pistole</h2>
+
+<table>
+  <tr><th>Controller bewegen</th><td>Die Pistole folgt deiner Hand in Position und Richtung</td></tr>
+  <tr><th>Trigger</th><td>Sprühen, solange gedrückt</td></tr>
+  <tr><th>Grip</th><td>Dauersprühen ein und aus — kein Halten des Triggers nötig. Läuft er, schaltet der Griff ihn ab, statt ein Werkzeug zu wechseln.</td></tr>
+  <tr><th><kbd>A</kbd></th><td>Springen. Im Menü: auswählen</td></tr>
+  <tr><th><kbd>B</kbd> tippen</th><td>Ducken</td></tr>
+  <tr><th><kbd>B</kbd> halten</th><td>Ducken, langer Druck</td></tr>
+  <tr><th>Stick links / rechts</th><td>Drehen</td></tr>
+  <tr><th>Stick oben / unten</th><td>Nächste oder vorige Düse in der Kategorie</td></tr>
+  <tr><th><kbd>R3</kbd> klicken</th><td>Düsenkategorie wechseln — Standard oder Seife</td></tr>
+  <tr><th><kbd>R3</kbd> halten</th><td>Gerät wechseln, so kommst du an die Turbodüse</td></tr>
+</table>
+
+<h2>Linker Controller</h2>
+
+<table>
+  <tr><th>Stick</th><td>Laufen</td></tr>
+  <tr><th>Stick ganz durchdrücken</th><td>Sprinten</td></tr>
+  <tr><th>Trigger</th><td>Animiertes Objekt öffnen oder schließen, wenn die Hand daran liegt — sonst Düse drehen und Reiniger nachfüllen</td></tr>
+  <tr><th>Grip</th><td>Restlichen Schmutz hervorheben</td></tr>
+  <tr><th><kbd>X</kbd></th><td>Objekte aufnehmen und ablegen</td></tr>
+  <tr><th><kbd>Y</kbd> tippen</th><td>Aufgabenliste</td></tr>
+  <tr><th><kbd>Y</kbd> halten</th><td>Möbel-Inventar</td></tr>
+  <tr><th><kbd>Menü</kbd></th><td>Pausenmenü</td></tr>
+  <tr><th><kbd>L3</kbd> klicken</th><td>Verlängerung wechseln</td></tr>
+</table>
+
+<h2>Greifgesten</h2>
+
+<p class="hint">
+  Greifen statt eine Taste suchen. Die Stick-Klicks funktionieren weiter, es geht
+  also nichts verloren, wenn eine Geste nicht sitzt.
+</p>
+
+<table>
+  <tr><th>Pistolenhand hinter die rechte Schulter + rechter Griff</th><td>Pistole wechseln</td></tr>
+  <tr><th>Pistolenhand an die rechte Hüfte + rechter Griff</th><td>Düsenkategorie wechseln</td></tr>
+  <tr><th>Freie Hand an die Pistole + linker Griff</th><td>Verlängerung wechseln</td></tr>
+  <tr><th>Freie Hand an ein animiertes Objekt + linker Trigger</th><td>Öffnen oder schließen — Klodeckel, Wickeltisch, Klappen</td></tr>
+</table>
+
+<p class="hint">
+  Die letzte Geste braucht kein Zielen: hingreifen genügt, und bei niedrigen
+  Objekten muss die Hand wirklich hinunter. Liegt die Hand an keinem Objekt,
+  dreht derselbe Trigger wie immer die Düse. Reichweite über
+  <code>InteractZoneRadius</code>, abschalten mit <code>InteractGrab = false</code>.
+</p>
+
+<p class="hint">
+  Die Geste der freien Hand ruht, während du etwas trägst — dann ist der linke
+  Griff der Drehmodifikator. Den ganzen Satz abschalten mit
+  <code>GestureZones = false</code> in <code>UserData\MelonPreferences.cfg</code>.
+</p>
+
+<h2>Vibration</h2>
+
+<p class="hint">
+  Der Controller sagt dir, was gerade passiert — ohne dass du hinsehen musst.
+</p>
+
+<table>
+  <tr><th>Beim Sprühen</th><td>Stärke folgt der Düse: der 0°-Strahl ist kräftig, der 40°-Strahl sanft</td></tr>
+  <tr><th>Turbo</th><td>Schnelles Rattern statt gleichmäßigem Brummen</td></tr>
+  <tr><th>Seife</th><td>Weicher und ruhiger</td></tr>
+  <tr><th>Oberfläche getroffen</th><td>Volle Stärke; ins Leere gesprüht wird es deutlich leiser</td></tr>
+  <tr><th>Kurze Impulse</th><td>Sprühbeginn und -ende, Düsenwechsel, Reiniger- und Seifenwechsel</td></tr>
+  <tr><th>Gesten und Greifen</th><td>Ein Impuls auf der Hand, die gehandelt hat</td></tr>
+</table>
+
+<p class="hint">
+  Ein/aus und die Hauptstärke stehen im Konfigurationswerkzeug. Die Feinwerte —
+  Stärke je Düse, Turbo-Rhythmus, Kontaktdämpfung — stehen als eigene Einträge
+  in <code>UserData\MelonPreferences.cfg</code>.
+</p>
+
+<h2>Während du etwas trägst</h2>
+
+<table>
+  <tr><th>Linken Grip halten + linker Stick</th><td>Objekt drehen. Solange der Grip gehalten wird, ist das Laufen ausgesetzt — du drehst also das Objekt und nicht dich</td></tr>
+  <tr><th><kbd>X</kbd></th><td>Ablegen</td></tr>
+</table>
+
+<h2>In Menüs</h2>
+
+<p class="hint">
+  Der Menümodus schaltet sich selbst ein und aus. Die Mod folgt dem Signal des
+  Spiels: sobald ein Menü die Eingabe übernimmt, stehen Laufen und Drehen still
+  und die Sticks gehören dem Menü.
+</p>
+
+<table>
+  <tr><th>Linker Stick</th><td>Auswahl bewegen, in alle vier Richtungen</td></tr>
+  <tr><th><kbd>A</kbd> oder rechter Trigger</th><td>Auswählen</td></tr>
+  <tr><th><kbd>Menü</kbd></th><td>Zurück, oder das Offene schließen</td></tr>
+  <tr><th><kbd>Y</kbd></th><td>Aufgabenliste schließen</td></tr>
+  <tr><th><kbd>A</kbd> in einem Dialog</th><td>Bestätigt den Knopf, den das Spiel selbst vorgewählt hat — der Ausweg, wenn der Zeiger in einem Fenster nichts findet</td></tr>
+  <tr><th>Linker Grip</th><td>Vorheriger Tab</td></tr>
+  <tr><th>Rechter Grip</th><td>Nächster Tab</td></tr>
+</table>
+
+<h2>Tastatur</h2>
+
+<p class="hint">
+  Im normalen Spiel brauchst du davon nichts. Es steht hier für den Fall, dass
+  etwas nicht von selbst kommt.
+</p>
+
+<table>
+  <tr><th><kbd>F8</kbd></th><td>VR von Hand starten, falls es nicht selbst startete</td></tr>
+  <tr><th><kbd>F2</kbd></th><td>Pistole dem Controller übergeben, oder zurück an Maus und Tastatur</td></tr>
+  <tr><th>Ziffernblock <kbd>3</kbd></th><td>Pistole und Sitzposition neu zentrieren</td></tr>
+  <tr><th>Ziffernblock <kbd>+</kbd> und <kbd>.</kbd></th><td>Nächste oder vorige Düse</td></tr>
+</table>
+
+<p class="hint">
+  Die Ausrichtung des Griffs steckt im Konfigurationswerkzeug &mdash; drei Regler
+  für die Position und drei für die Drehung. Du kannst sie auch einstellen, ohne
+  die Brille abzunehmen: linken Griff zusammen mit <kbd>X</kbd> und <kbd>Y</kbd>
+  halten, die Pistolenhand dorthin bewegen, wo die Pistole liegen soll, und
+  loslassen.
+</p>
+
+<p class="hint">
+  Es gibt weitere Tasten, aber das sind Entwicklungswerkzeuge, und dieser Build
+  hat sie abgeschaltet &mdash; darunter <kbd>F1</kbd>, <kbd>F6</kbd>,
+  <kbd>F9</kbd> und der <kbd>Strg</kbd>+Ziffernblock-Trimm. Wer sie braucht,
+  setzt <code>DevMode = true</code> und <code>DevHotkeys = true</code> in
+  <code>UserData\MelonPreferences.cfg</code>.
+</p>
+
+<h2>Linkshänder</h2>
+
+<p class="hint">
+  Im Konfigurationswerkzeug stellst du unter „Hand mit der Pistole" auf Links.
+  Alles Weitere tauscht mit: Bewegen, Greifen, Düse drehen, und die Schulter-
+  und Hüftzone liegen dann links. <b>Die Menütaste bleibt am linken
+  Controller</b> — sie existiert nur dort, der rechte Controller hat keine
+  Entsprechung dafür.
+</p>
+
+<p class="hint">
+  Ehrlich gesagt: dieser Modus ist von einem Rechtshänder gebaut und nicht
+  durchgespielt. Wenn dir etwas seitenverkehrt vorkommt, ist das eher ein
+  Fehler als Absicht — Rückmeldung willkommen.
+</p>
+
+<h2>Wenn etwas nicht stimmt</h2>
+
+<table>
+  <tr>
+    <th>Die Pistole liegt nicht da, wo meine Hand ist</th>
+    <td>Griff im Konfigurationswerkzeug anpassen, oder im Spiel mit <kbd>Strg</kbd> und dem Ziffernblock</td>
+  </tr>
+  <tr>
+    <th>Der linke Stick reagiert nicht</th>
+    <td><kbd>F2</kbd> zweimal. Tritt sporadisch auf, wenn der rechte Controller kurz einschläft</td>
+  </tr>
+  <tr>
+    <th>Ein Arm oder eine Hand ist sichtbar</th>
+    <td>Die Arme und Hände des Spiels sind immer ausgeblendet, DLC-Modelle
+        eingeschlossen &mdash; erkannt über ihre Position in der Szene statt
+        über den Namen. Sichtbar sein sollen die beiden VR-Hände, und die haben
+        ihr eigenes Häkchen, &bdquo;VR-Hände anzeigen&ldquo;. Taucht andere
+        Geometrie auf, schick <code>Latest.log</code></td>
+  </tr>
+  <tr>
+    <th>Die Menüs sind zu groß zum Lesen</th>
+    <td>Menügröße im Konfigurationswerkzeug verringern. <kbd>Alt</kbd> mit
+        Ziffernblock <kbd>8</kbd> und <kbd>2</kbd> tut dasselbe im Spiel</td>
+  </tr>
+  <tr>
+    <th>Aus der Düse kommt eine grüne Linie</th>
+    <td>Das ist der Ziellaser, ein Entwicklungswerkzeug. Im Konfigurationswerkzeug abschaltbar</td>
+  </tr>
+  <tr>
+    <th>Nach <kbd>F6</kbd> kommt VR nicht zurück</th>
+    <td>Spiel neu starten. Das Herunterfahren gibt das Headset endgültig frei
+        und lässt sich in derselben Sitzung nicht zurückholen</td>
+  </tr>
+  <tr>
+    <th>VR ist nicht von selbst gestartet</th>
+    <td>Headset-Software starten, dann <kbd>F8</kbd>. Hilft das auch nicht,
+        fehlen die OpenXR-Dateien in der Installation — die Mod schreibt in
+        <code>MelonLoader\Latest.log</code>, was sie gefunden hat</td>
+  </tr>
+</table>
+
+<p class="hint warn">
+  Der erste Start nach der Installation braucht etwa eine halbe Minute ohne
+  jedes Zeichen von Fortschritt, und eine Internetverbindung: MelonLoader legt
+  dabei einmalig seine Hilfsdateien an. Es ist nicht abgestürzt — lass es
+  durchlaufen.
+</p>
+
+<footer>
+  <img src="assets/avatar.png" alt="">
+  <span>by Tino</span>
+  <!-- stamped by Make-Package.ps1 -->
+  <span id="version" style="opacity:0.7">v0.96.0</span>
+  <span class="spacer"></span>
+  <span>Wet Reality XR Mod — unabhängiges Projekt, nicht mit FuturLab oder Square Enix verbunden</span>
+</footer>
+
+</div>
+</body>
+</html>

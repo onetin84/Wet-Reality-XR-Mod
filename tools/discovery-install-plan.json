@@ -1,0 +1,832 @@
+[
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/net6/System.Security.Cryptography.ProtectedData.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net6\\System.Security.Cryptography.ProtectedData.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/net6/MonoMod.Utils.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net6\\MonoMod.Utils.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/net6/MelonLoader.deps.json",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net6\\MelonLoader.deps.json"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/net6/MelonLoader.NativeHost.deps.json",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net6\\MelonLoader.NativeHost.deps.json"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/net6/Microsoft.Diagnostics.NETCore.Client.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net6\\Microsoft.Diagnostics.NETCore.Client.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/net6/Mono.Cecil.Mdb.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net6\\Mono.Cecil.Mdb.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/net6/MonoMod.Backports.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net6\\MonoMod.Backports.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/net6/MelonLoader.NativeHost.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net6\\MelonLoader.NativeHost.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/net6/Microsoft.Extensions.Logging.Abstractions.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net6\\Microsoft.Extensions.Logging.Abstractions.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/net6/Microsoft.Extensions.Options.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net6\\Microsoft.Extensions.Options.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/net6/Microsoft.Extensions.Primitives.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net6\\Microsoft.Extensions.Primitives.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/net6/UnityEngine.Il2CppImageConversionManager.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net6\\UnityEngine.Il2CppImageConversionManager.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/net6/MelonLoader.runtimeconfig.json",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net6\\MelonLoader.runtimeconfig.json"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/net6/Tomlet.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net6\\Tomlet.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/net6/UnityEngine.Il2CppAssetBundleManager.deps.json",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net6\\UnityEngine.Il2CppAssetBundleManager.deps.json"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/net6/Microsoft.Extensions.Configuration.Abstractions.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net6\\Microsoft.Extensions.Configuration.Abstractions.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/net6/UnityEngine.Il2CppImageConversionManager.deps.json",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net6\\UnityEngine.Il2CppImageConversionManager.deps.json"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/net6/AssetsTools.NET.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net6\\AssetsTools.NET.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/net6/UnityEngine.Il2CppAssetBundleManager.pdb",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net6\\UnityEngine.Il2CppAssetBundleManager.pdb"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/net6/System.Configuration.ConfigurationManager.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net6\\System.Configuration.ConfigurationManager.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/net6/WebSocketDotNet.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net6\\WebSocketDotNet.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/net6/Mono.Cecil.Rocks.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net6\\Mono.Cecil.Rocks.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/net6/MelonLoader.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net6\\MelonLoader.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/net6/0Harmony.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net6\\0Harmony.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/net6/System.Security.Permissions.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net6\\System.Security.Permissions.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/net6/bHapticsLib.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net6\\bHapticsLib.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/net6/AssetRipper.Primitives.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net6\\AssetRipper.Primitives.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/net6/MonoMod.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net6\\MonoMod.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/net6/AsmResolver.PE.File.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net6\\AsmResolver.PE.File.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/net6/Il2CppInterop.Generator.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net6\\Il2CppInterop.Generator.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/net6/System.Runtime.CompilerServices.Unsafe.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net6\\System.Runtime.CompilerServices.Unsafe.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/net6/MelonLoader.xml",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net6\\MelonLoader.xml"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/net6/Microsoft.Diagnostics.Runtime.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net6\\Microsoft.Diagnostics.Runtime.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/net6/Mono.Cecil.Pdb.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net6\\Mono.Cecil.Pdb.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/net6/Microsoft.Extensions.Configuration.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net6\\Microsoft.Extensions.Configuration.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/net6/AsmResolver.PE.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net6\\AsmResolver.PE.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/net6/Newtonsoft.Json.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net6\\Newtonsoft.Json.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/net6/AsmResolver.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net6\\AsmResolver.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/net6/IndexRange.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net6\\IndexRange.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/net6/Microsoft.Extensions.Logging.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net6\\Microsoft.Extensions.Logging.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/net6/Il2CppInterop.HarmonySupport.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net6\\Il2CppInterop.HarmonySupport.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/net6/UnityEngine.Il2CppAssetBundleManager.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net6\\UnityEngine.Il2CppAssetBundleManager.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/net6/Microsoft.Extensions.DependencyInjection.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net6\\Microsoft.Extensions.DependencyInjection.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/net6/Microsoft.Extensions.DependencyInjection.Abstractions.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net6\\Microsoft.Extensions.DependencyInjection.Abstractions.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/net6/MonoMod.ILHelpers.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net6\\MonoMod.ILHelpers.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/net6/System.Diagnostics.DiagnosticSource.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net6\\System.Diagnostics.DiagnosticSource.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/net6/MonoMod.RuntimeDetour.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net6\\MonoMod.RuntimeDetour.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/net6/Il2CppInterop.Common.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net6\\Il2CppInterop.Common.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/net6/Microsoft.Bcl.AsyncInterfaces.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net6\\Microsoft.Bcl.AsyncInterfaces.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/net6/Iced.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net6\\Iced.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/net6/MelonLoader.pdb",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net6\\MelonLoader.pdb"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/net6/UnityEngine.Il2CppImageConversionManager.pdb",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net6\\UnityEngine.Il2CppImageConversionManager.pdb"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/net6/Microsoft.Bcl.Memory.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net6\\Microsoft.Bcl.Memory.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/net6/Il2CppInterop.Runtime.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net6\\Il2CppInterop.Runtime.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/net6/AsmResolver.DotNet.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net6\\AsmResolver.DotNet.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/net6/Mono.Cecil.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net6\\Mono.Cecil.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/net35/MonoMod.Utils.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net35\\MonoMod.Utils.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/net35/Mono.Cecil.Mdb.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net35\\Mono.Cecil.Mdb.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/net35/MonoMod.Backports.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net35\\MonoMod.Backports.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/net35/Tomlet.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net35\\Tomlet.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/net35/AssetsTools.NET.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net35\\AssetsTools.NET.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/net35/WebSocketDotNet.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net35\\WebSocketDotNet.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/net35/Mono.Cecil.Rocks.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net35\\Mono.Cecil.Rocks.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/net35/MelonLoader.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net35\\MelonLoader.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/net35/0Harmony.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net35\\0Harmony.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/net35/bHapticsLib.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net35\\bHapticsLib.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/net35/AssetRipper.Primitives.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net35\\AssetRipper.Primitives.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/net35/AsmResolver.PE.File.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net35\\AsmResolver.PE.File.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/net35/MelonLoader.xml",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net35\\MelonLoader.xml"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/net35/Mono.Cecil.Pdb.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net35\\Mono.Cecil.Pdb.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/net35/MelonLoader.dll.mdb",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net35\\MelonLoader.dll.mdb"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/net35/AsmResolver.PE.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net35\\AsmResolver.PE.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/net35/Newtonsoft.Json.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net35\\Newtonsoft.Json.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/net35/AsmResolver.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net35\\AsmResolver.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/net35/MonoMod.exe",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net35\\MonoMod.exe"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/net35/IndexRange.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net35\\IndexRange.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/net35/MonoMod.ILHelpers.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net35\\MonoMod.ILHelpers.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/net35/ValueTupleBridge.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net35\\ValueTupleBridge.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/net35/MonoMod.RuntimeDetour.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net35\\MonoMod.RuntimeDetour.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/net35/MelonLoader.pdb",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net35\\MelonLoader.pdb"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/net35/AsmResolver.DotNet.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net35\\AsmResolver.DotNet.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/net35/Mono.Cecil.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net35\\Mono.Cecil.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/net472/MonoMod.Utils.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net472\\MonoMod.Utils.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/net472/Mono.Cecil.Mdb.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net472\\Mono.Cecil.Mdb.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/net472/MonoMod.Backports.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net472\\MonoMod.Backports.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/net472/Tomlet.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net472\\Tomlet.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/net472/AssetsTools.NET.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net472\\AssetsTools.NET.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/net472/System.ValueTuple.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net472\\System.ValueTuple.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/net472/WebSocketDotNet.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net472\\WebSocketDotNet.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/net472/Mono.Cecil.Rocks.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net472\\Mono.Cecil.Rocks.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/net472/MelonLoader.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net472\\MelonLoader.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/net472/0Harmony.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net472\\0Harmony.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/net472/bHapticsLib.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net472\\bHapticsLib.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/net472/Microsoft.Bcl.HashCode.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net472\\Microsoft.Bcl.HashCode.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/net472/AssetRipper.Primitives.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net472\\AssetRipper.Primitives.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/net472/AsmResolver.PE.File.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net472\\AsmResolver.PE.File.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/net472/System.Runtime.CompilerServices.Unsafe.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net472\\System.Runtime.CompilerServices.Unsafe.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/net472/MelonLoader.xml",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net472\\MelonLoader.xml"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/net472/Mono.Cecil.Pdb.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net472\\Mono.Cecil.Pdb.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/net472/AsmResolver.PE.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net472\\AsmResolver.PE.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/net472/Newtonsoft.Json.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net472\\Newtonsoft.Json.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/net472/AsmResolver.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net472\\AsmResolver.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/net472/MonoMod.exe",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net472\\MonoMod.exe"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/net472/IndexRange.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net472\\IndexRange.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/net472/MonoMod.ILHelpers.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net472\\MonoMod.ILHelpers.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/net472/System.Buffers.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net472\\System.Buffers.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/net472/MonoMod.RuntimeDetour.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net472\\MonoMod.RuntimeDetour.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/net472/System.Memory.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net472\\System.Memory.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/net472/MelonLoader.pdb",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net472\\MelonLoader.pdb"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/net472/System.Numerics.Vectors.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net472\\System.Numerics.Vectors.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/net472/AsmResolver.DotNet.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net472\\AsmResolver.DotNet.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/net472/Mono.Cecil.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\net472\\Mono.Cecil.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/Dependencies/CompatibilityLayers/Demeo.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\Dependencies\\CompatibilityLayers\\Demeo.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/Dependencies/CompatibilityLayers/Stress_Level_Zero_Il2Cpp.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\Dependencies\\CompatibilityLayers\\Stress_Level_Zero_Il2Cpp.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/Dependencies/CompatibilityLayers/Demeo.pdb",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\Dependencies\\CompatibilityLayers\\Demeo.pdb"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/Dependencies/CompatibilityLayers/Muse_Dash_Mono.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\Dependencies\\CompatibilityLayers\\Muse_Dash_Mono.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/Dependencies/CompatibilityLayers/Stress_Level_Zero_Il2Cpp.deps.json",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\Dependencies\\CompatibilityLayers\\Stress_Level_Zero_Il2Cpp.deps.json"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/Dependencies/CompatibilityLayers/Muse_Dash_Mono.dll.mdb",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\Dependencies\\CompatibilityLayers\\Muse_Dash_Mono.dll.mdb"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/Dependencies/CompatibilityLayers/IPA.pdb",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\Dependencies\\CompatibilityLayers\\IPA.pdb"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/Dependencies/CompatibilityLayers/IPA.dll.mdb",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\Dependencies\\CompatibilityLayers\\IPA.dll.mdb"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/Dependencies/CompatibilityLayers/Muse_Dash_Mono.pdb",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\Dependencies\\CompatibilityLayers\\Muse_Dash_Mono.pdb"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/Dependencies/CompatibilityLayers/IPA.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\Dependencies\\CompatibilityLayers\\IPA.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/Dependencies/NetStandardPatches/System.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\Dependencies\\NetStandardPatches\\System.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/Dependencies/NetStandardPatches/System.Xml.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\Dependencies\\NetStandardPatches\\System.Xml.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/Dependencies/NetStandardPatches/System.Configuration.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\Dependencies\\NetStandardPatches\\System.Configuration.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/Dependencies/NetStandardPatches/System.Core.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\Dependencies\\NetStandardPatches\\System.Core.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/Dependencies/MonoBleedingEdgePatches/System.ServiceModel.Internals.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\Dependencies\\MonoBleedingEdgePatches\\System.ServiceModel.Internals.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/Dependencies/MonoBleedingEdgePatches/System.Data.DataSetExtensions.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\Dependencies\\MonoBleedingEdgePatches\\System.Data.DataSetExtensions.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/Dependencies/MonoBleedingEdgePatches/System.Collections.Immutable.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\Dependencies\\MonoBleedingEdgePatches\\System.Collections.Immutable.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/Dependencies/MonoBleedingEdgePatches/System.ComponentModel.Composition.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\Dependencies\\MonoBleedingEdgePatches\\System.ComponentModel.Composition.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/Dependencies/MonoBleedingEdgePatches/System.Runtime.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\Dependencies\\MonoBleedingEdgePatches\\System.Runtime.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/Dependencies/MonoBleedingEdgePatches/mscorlib.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\Dependencies\\MonoBleedingEdgePatches\\mscorlib.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/Dependencies/MonoBleedingEdgePatches/System.Security.Cryptography.Cng.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\Dependencies\\MonoBleedingEdgePatches\\System.Security.Cryptography.Cng.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/Dependencies/MonoBleedingEdgePatches/System.Runtime.CompilerServices.Unsafe.6.0.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\Dependencies\\MonoBleedingEdgePatches\\System.Runtime.CompilerServices.Unsafe.6.0.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/Dependencies/MonoBleedingEdgePatches/System.IO.Compression.FileSystem.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\Dependencies\\MonoBleedingEdgePatches\\System.IO.Compression.FileSystem.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/Dependencies/MonoBleedingEdgePatches/System.EnterpriseServices.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\Dependencies\\MonoBleedingEdgePatches\\System.EnterpriseServices.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/Dependencies/MonoBleedingEdgePatches/System.Numerics.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\Dependencies\\MonoBleedingEdgePatches\\System.Numerics.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/Dependencies/MonoBleedingEdgePatches/System.Net.Http.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\Dependencies\\MonoBleedingEdgePatches\\System.Net.Http.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/Dependencies/MonoBleedingEdgePatches/System.Xml.Linq.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\Dependencies\\MonoBleedingEdgePatches\\System.Xml.Linq.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/Dependencies/MonoBleedingEdgePatches/System.Runtime.Serialization.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\Dependencies\\MonoBleedingEdgePatches\\System.Runtime.Serialization.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/Dependencies/MonoBleedingEdgePatches/System.IO.Compression.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\Dependencies\\MonoBleedingEdgePatches\\System.IO.Compression.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/Dependencies/MonoBleedingEdgePatches/System.Runtime.CompilerServices.Unsafe.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\Dependencies\\MonoBleedingEdgePatches\\System.Runtime.CompilerServices.Unsafe.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/Dependencies/MonoBleedingEdgePatches/System.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\Dependencies\\MonoBleedingEdgePatches\\System.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/Dependencies/MonoBleedingEdgePatches/System.Data.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\Dependencies\\MonoBleedingEdgePatches\\System.Data.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/Dependencies/MonoBleedingEdgePatches/System.Xml.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\Dependencies\\MonoBleedingEdgePatches\\System.Xml.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/Dependencies/MonoBleedingEdgePatches/System.Configuration.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\Dependencies\\MonoBleedingEdgePatches\\System.Configuration.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/Dependencies/MonoBleedingEdgePatches/System.Core.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\Dependencies\\MonoBleedingEdgePatches\\System.Core.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/Dependencies/MonoBleedingEdgePatches/System.Security.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\Dependencies\\MonoBleedingEdgePatches\\System.Security.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/Dependencies/MonoBleedingEdgePatches/System.Buffers.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\Dependencies\\MonoBleedingEdgePatches\\System.Buffers.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/Dependencies/MonoBleedingEdgePatches/System.Drawing.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\Dependencies\\MonoBleedingEdgePatches\\System.Drawing.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/Dependencies/MonoBleedingEdgePatches/System.Memory.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\Dependencies\\MonoBleedingEdgePatches\\System.Memory.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/Dependencies/MonoBleedingEdgePatches/System.Transactions.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\Dependencies\\MonoBleedingEdgePatches\\System.Transactions.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/Dependencies/Il2CppAssemblyGenerator/Il2CppAssemblyGenerator.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\Dependencies\\Il2CppAssemblyGenerator\\Il2CppAssemblyGenerator.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/Dependencies/Il2CppAssemblyGenerator/Il2CppAssemblyGenerator.deps.json",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\Dependencies\\Il2CppAssemblyGenerator\\Il2CppAssemblyGenerator.deps.json"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/Dependencies/SupportModules/Mono.dll.mdb",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\Dependencies\\SupportModules\\Mono.dll.mdb"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/Dependencies/SupportModules/Il2Cpp.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\Dependencies\\SupportModules\\Il2Cpp.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/Dependencies/SupportModules/Il2Cpp.deps.json",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\Dependencies\\SupportModules\\Il2Cpp.deps.json"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/Dependencies/SupportModules/Mono.pdb",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\Dependencies\\SupportModules\\Mono.pdb"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/Dependencies/SupportModules/Mono.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\Dependencies\\SupportModules\\Mono.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/Documentation/README.md",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\Documentation\\README.md"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/Documentation/NOTICE.txt",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\Documentation\\NOTICE.txt"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/Documentation/LICENSE.md",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\Documentation\\LICENSE.md"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "MelonLoader/Documentation/CHANGELOG.md",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\MelonLoader\\Documentation\\CHANGELOG.md"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\MelonLoader.x64.zip",
+    "Entry": "version.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\version.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\UnityExplorer.MelonLoader.IL2CPP.CoreCLR.zip",
+    "Entry": "Mods/UnityExplorer.ML.IL2CPP.CoreCLR.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\Mods\\UnityExplorer.ML.IL2CPP.CoreCLR.dll"
+  },
+  {
+    "Archive": "E:\\Privat\\VR\\PowerWashSimulatorVRMod\\tools\\downloads\\UnityExplorer.MelonLoader.IL2CPP.CoreCLR.zip",
+    "Entry": "UserLibs/UniverseLib.ML.IL2CPP.Interop.dll",
+    "Target": "F:\\SteamLibrary\\steamapps\\common\\PowerWash Simulator 2\\UserLibs\\UniverseLib.ML.IL2CPP.Interop.dll"
+  }
+]

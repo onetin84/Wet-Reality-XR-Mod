@@ -1,0 +1,21 @@
+# ZEILENENDEN SIND IN DIESEM PROJEKT MESSWERTE, NICHT GESCHMACK.
+#
+# Pose.cs ist CRLF mit BOM, GameInput.cs ist LF ohne BOM, VrHands.cs ist LF,
+# MainWindow.xaml ist CRLF ohne BOM, Strings.ps1 ist CRLF MIT BOM,
+# WetReality-Config.ps1 ist LF ohne BOM. Jedes Patchskript im Projekt liest
+# diese Kodierung und BRICHT AB, wenn sie nicht stimmt - das ist Absicht und
+# hat mehrfach Fehler gefunden, bevor sie ausgeliefert wurden.
+#
+# Auf diesem Rechner steht core.autocrlf auf true. Ohne diese Datei wuerde Git
+# beim Auschecken LF-Dateien auf CRLF umschreiben; ein frischer Klon traege
+# dann andere Bytes als das Original, und jede Ankerpruefung waere hinueber -
+# lautlos, denn der Code selbst kompiliert weiter.
+#
+# "-text" heisst: niemals umwandeln, in keine Richtung. Die Datei wird
+# gespeichert und ausgecheckt, wie sie ist.
+* -text
+
+# Die Binaerdateien ausdruecklich, damit kein Diff-Versuch darauf laeuft.
+*.png binary
+*.zip binary
+*.dll binary
