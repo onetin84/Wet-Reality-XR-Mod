@@ -5,7 +5,7 @@ using UnityEngine.InputSystem;
 using UnityEngine.SubsystemsImplementation;
 using UnityEngine.XR;
 
-[assembly: MelonInfo(typeof(WetReality.Pose), "Wet Reality Pose", "1.38.0", "Wet Reality")]
+[assembly: MelonInfo(typeof(WetReality.Pose), "Wet Reality Pose", "1.38.1", "Wet Reality")]
 [assembly: MelonGame("FuturLab", "PowerWash Simulator 2")]
 
 namespace WetReality;
