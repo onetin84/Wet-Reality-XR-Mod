@@ -1,0 +1,36 @@
+<!-- Eine klare Meldung statt 628 Compilerfehlern.
+
+     Die Projekte kompilieren gegen die Assemblies des INSTALLIERTEN Spiels.
+     Stimmt GamePath nicht, loesen alle HintPath ins Leere, und was der
+     Entwickler sieht, sind hunderte Fehler ueber fehlende Typen - kein Wort
+     davon nennt die Ursache. Gemessen: 628 Fehler bei einem frischen Klon auf
+     einem Rechner, auf dem das Spiel nicht am Steam-Standardort liegt.
+
+     Diese Datei wird von MSBuild automatisch gefunden - vom Projektverzeichnis
+     aus nach oben - und NACH dem Projektrumpf importiert. GamePath ist hier
+     also schon aufgeloest, samt Override aus Directory.Build.props.
+
+     WARUM DIE BEDINGUNG IMMER MIT '$(GamePath)' != '' BEGINNT:
+     WetReality.AssemblyProbe kennt keinen GamePath und braucht keinen. Ohne
+     diesen Vorbehalt waere !Exists('') wahr, und der Waechter wuerde genau das
+     Projekt brechen, das er nicht betrifft. -->
+<Project>
+
+  <Target Name="WetRealityCheckGamePath"
+          BeforeTargets="ResolveAssemblyReferences;CoreCompile">
+
+    <Error Condition="'$(GamePath)' != '' And !Exists('$(GamePath)')"
+           Code="WR0001"
+           Text="PowerWash Simulator 2 wurde unter &quot;$(GamePath)&quot; nicht gefunden. Pfad in Directory.Build.props eintragen (Vorlage: Directory.Build.props.example) oder mit -p:GamePath uebergeben - siehe README.md, Abschnitt &quot;Bauen&quot;." />
+
+    <Error Condition="'$(GamePath)' != '' And Exists('$(GamePath)') And !Exists('$(GamePath)\MelonLoader\net6\MelonLoader.dll')"
+           Code="WR0002"
+           Text="Der Spielordner &quot;$(GamePath)&quot; stimmt, aber MelonLoader fehlt darin (MelonLoader\net6\MelonLoader.dll). MelonLoader einmal in diesem Ordner installieren." />
+
+    <Error Condition="'$(GamePath)' != '' And Exists('$(GamePath)\MelonLoader\net6\MelonLoader.dll') And !Exists('$(GamePath)\MelonLoader\Il2CppAssemblies\Il2Cppmscorlib.dll')"
+           Code="WR0003"
+           Text="MelonLoader ist installiert, aber die Il2Cpp-Assemblies fehlen (MelonLoader\Il2CppAssemblies\Il2Cppmscorlib.dll). Sie entstehen beim ERSTEN Start des Spiels mit MelonLoader - Spiel einmal starten und beenden." />
+
+  </Target>
+
+</Project>

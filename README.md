@@ -76,6 +76,12 @@ der dort gesetzte `GamePath` gewinnt also. Oder pro Aufruf:
 dotnet build -c Release -p:GamePath="D:\SteamLibrary\steamapps\common\PowerWash Simulator 2"
 ```
 
+Stimmt der Pfad nicht, bricht der Build mit **einer** Zeile ab statt mit
+hunderten Compilerfehlern über fehlende Typen — `Directory.Build.targets` prüft
+vorher und nennt die Ursache: `WR0001` kein Spielordner, `WR0002` MelonLoader
+fehlt darin, `WR0003` die Il2Cpp-Assemblies fehlen (die entstehen erst beim
+ersten Start des Spiels mit MelonLoader).
+
 Ein Paket baut `tools/package/Make-Package.ps1`. Die Version wird aus der
 gebauten `WetReality.Pose.dll` gelesen, damit Ordnername, Readme und Anleitung
 nicht mit der DLL auseinanderlaufen können.
