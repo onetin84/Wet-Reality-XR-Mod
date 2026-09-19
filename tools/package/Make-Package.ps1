@@ -97,8 +97,8 @@ Step "version $version"
 
 # --------------------------------------------------------------- 2. lay it out
 
-$name = "WetReality-XRMod-$version-beta"
-$staging = Join-Path $OutputRoot $name
+$packageName = "WetReality-XRMod-$version-beta"
+$staging = Join-Path $OutputRoot $packageName
 
 if (Test-Path -LiteralPath $staging) {
     Remove-Item -LiteralPath $staging -Recurse -Force
@@ -376,7 +376,7 @@ $files = @(Get-ChildItem -LiteralPath $staging -Recurse -File)
 $bytes = ($files | Measure-Object -Property Length -Sum).Sum
 
 Write-Host ''
-Write-Host "  $name" -ForegroundColor Green
+Write-Host "  $packageName" -ForegroundColor Green
 Write-Host "  $($files.Count) files, $([math]::Round($bytes / 1KB)) KB" -ForegroundColor Green
 Write-Host "  $staging" -ForegroundColor DarkGray
 
