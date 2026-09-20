@@ -31,9 +31,9 @@
          the game would drag in the Il2Cpp interop types and fail.
 
          Two places hold the number, so they are bumped together. -->
-    <Version>1.38.1</Version>
-    <AssemblyVersion>1.38.1</AssemblyVersion>
-    <FileVersion>1.38.1</FileVersion>
+    <Version>1.51.0</Version>
+    <AssemblyVersion>1.51.0</AssemblyVersion>
+    <FileVersion>1.51.0</FileVersion>
   </PropertyGroup>
   <ItemGroup>
     <!-- The splash plate, compiled INTO the assembly.

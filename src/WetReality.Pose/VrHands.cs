@@ -63,8 +63,668 @@ internal sealed class VrHands
         ? null
         : washerHand.transform;
 
+    // Fuer HandSpray: unter diesem Knoten haengt die Geometrie, die der
+    // Strahl treffen soll. Dieselbe Form wie oben - eine Referenz, kein Name.
+    internal Transform? OffHandRoot => offHand is null || offHand == null
+        ? null
+        : offHand.transform;
+
+    // DIE EBENE DER HAENDE, damit sie im selben Durchgang wie die Pistole
+    // gezeichnet werden. Rekursiv, denn ein SkinnedMeshRenderer haengt tiefer
+    // als die Wurzel.
+    //
+    // AUSGENOMMEN IST DER TREFFER-KNOTEN: er traegt die freie Ebene, die in der
+    // Waschmaske des Spiels steht, und die darf ihm die Umlagerung nicht
+    // nehmen. Er wird ueber seinen eigenen Namen erkannt - der Knoten gehoert
+    // dem Mod, und das ist der eine Fall, in dem ein Name das richtige Mittel
+    // ist.
+    internal void ApplyLayer(MelonLogger.Instance log, int layer, string except)
+    {
+        if (layer < 0 || layer > 31)
+            return;
+
+        var changed = Move(washerHand, layer, except) + Move(offHand, layer, except);
+
+        if (changed == 0 || layer == loggedLayer)
+            return;
+
+        loggedLayer = layer;
+        log.Msg($"  vr hands: {changed} node(s) moved to layer {layer} "
+            + $"(\"{LayerMask.LayerToName(layer)}\") so the washer's pass draws them");
+    }
+
+    private static int Move(GameObject? hand, int layer, string except)
+    {
+        if (hand is null || hand == null)
+            return 0;
+
+        var nodes = hand.GetComponentsInChildren<Transform>(true);
+
+        if (nodes is null)
+            return 0;
+
+        var changed = 0;
+
+        for (var index = 0; index < nodes.Length; index++)
+        {
+            var node = nodes[index];
+
+            if (node is null || node == null)
+                continue;
+
+            if (string.Equals(node.name, except, StringComparison.Ordinal))
+                continue;
+
+            // Ein Kind des Treffer-Knotens gibt es nicht, aber ein Elternteil
+            // mit diesem Namen darf seine Kinder mitnehmen - darum wird der
+            // Knoten selbst geprueft und nicht seine Kette.
+            var target = node.gameObject;
+
+            if (target is null || target == null || target.layer == layer)
+                continue;
+
+            target.layer = layer;
+            changed++;
+        }
+
+        return changed;
+    }
+
+    private bool lastWasherIsRight = true;
+    private int loggedLayer = -1;
+    private int shadowState = -1;
+    private int shadowWasherId;
+    private int shadowOffId;
+    private bool reportedSkin;
+    private int flippedWasherId;
+    private int flippedOffId;
+    private int normalsWasherId;
+    private int normalsOffId;
+    private int culledWasherId;
+    private int culledOffId;
+    private readonly List<Material> ownMaterials = new();
+    private readonly List<Mesh> ownMeshes = new();
+
+    // DIE MESHKORREKTUR, auf einer EIGENEN KOPIE - und sie fasst NUR die
+    // Normalen an.
+    //
+    // GEMESSEN: das R-Rig ist eine Punktspiegelung, rootBone R_Wrist liest
+    // lossyScale (-1, -1, -1). Daraus folgen zwei Dinge, die Unity
+    // VERSCHIEDEN behandelt:
+    //
+    //   DIE WICKLUNG kompensiert Unity selbst - bei ungerader Zahl negativer
+    //   Skalierungskomponenten dreht die Pipeline die Cull-Richtung mit.
+    //
+    //   DIE NORMALEN kompensiert Unity NICHT: die inverse Transponierte ist
+    //   hier -1, sie zeigen also nach innen, und die Flaeche liest dunkel.
+    //
+    // 1.48.0 hat darum das Falsche angefasst. Der Dreiecksflip hat ueber
+    // RecalculateNormals die Farbe richtiggestellt UND die Wicklung gedreht,
+    // die vorher stimmte - gemeldet als "Farbe jetzt natuerlich, Innenseiten
+    // weiter sichtbar". Genau die Trennung, die dieser Abschnitt nachholt:
+    // Dreiecke bleiben, Normalen werden negiert.
+    //
+    // Das geteilte Mesh gehoert dem SPIEL - die spieleigene debug_hand haengt
+    // am L-Mesh, und eine Aenderung daran wuerde sie mitnehmen. Gearbeitet wird
+    // darum an einer Instanz, und die haelt diese Klasse, bis sie sie selbst
+    // freigibt.
+    //
+    // side ist die ASSET-Seite ("r"/"l"), nicht die Rolle: bei einem
+    // Linkshaender haelt die linke Hand die Pistole, aber R bleibt R.
+    // DIE CULL-RICHTUNG AM MATERIAL, und das ist der Eingriff, der von der
+    // Lesbarkeit der Geometrie unabhaengig ist.
+    //
+    // GEMESSEN: cull 2 (einseitig, Rueckseiten weg), zwrite 1, und der
+    // Wurzelknochen der rechten Hand liest (-1, -1, -1). Eine Punktspiegelung
+    // dreht die Flaechenorientierung, und Unitys eigene Kompensation haengt an
+    // der RENDERER-Transformation - die liest scale 1. Die Spiegelung steckt in
+    // den KNOCHEN, wo diese Kompensation nicht hinsieht. Mit cull 2 wird also
+    // die zugewandte Seite weggeschnitten: "man sieht die Innenseiten".
+    //
+    // Geschrieben wird auf renderer.material - eine EIGENE Instanz. Das
+    // geteilte Material gehoert dem Spiel, und die spieleigene Hand haengt am
+    // selben Asset.
+    internal void ApplyCull(MelonLogger.Instance log, string mode)
+    {
+        var washerId = washerHand is null || washerHand == null
+            ? 0
+            : washerHand.GetInstanceID();
+        var offId = offHand is null || offHand == null ? 0 : offHand.GetInstanceID();
+
+        if (washerId != 0 && washerId != culledWasherId)
+        {
+            culledWasherId = washerId;
+            Cull(log, washerHand, lastWasherIsRight ? "R" : "L", mode);
+        }
+
+        if (offId != 0 && offId != culledOffId)
+        {
+            culledOffId = offId;
+            Cull(log, offHand, lastWasherIsRight ? "L" : "R", mode);
+        }
+    }
+
+    private void Cull(MelonLogger.Instance log, GameObject? hand, string label,
+        string mode)
+    {
+        if (hand is null || hand == null || string.Equals(mode, "none",
+            StringComparison.OrdinalIgnoreCase))
+            return;
+
+        try
+        {
+            var renderers = hand.GetComponentsInChildren<Renderer>(true);
+
+            if (renderers is null)
+                return;
+
+            for (var index = 0; index < renderers.Length; index++)
+            {
+                var renderer = renderers[index];
+
+                if (renderer is null || renderer == null)
+                    continue;
+
+                var skinned = renderer.TryCast<SkinnedMeshRenderer>();
+                var root = skinned is null || skinned == null ? null : skinned.rootBone;
+                var scale = root is null || root == null
+                    ? Vector3.one
+                    : root.lossyScale;
+                var mirrored = scale.x < 0f || scale.y < 0f || scale.z < 0f;
+
+                // "auto" ist eine REGEL und keine Vorliebe: eine negative
+                // Determinante in der Knochenkette dreht die
+                // Flaechenorientierung, also wird die Cull-Richtung gedreht.
+                // Eine Hand ohne Spiegelung bleibt unberuehrt.
+                var wanted = mode switch
+                {
+                    "front" or "Front" => 1f,
+                    "back" or "Back" => 2f,
+                    "off" or "Off" => 0f,
+                    _ => mirrored ? 1f : -1f,
+                };
+
+                if (wanted < 0f)
+                    continue;
+
+                var material = renderer.material;
+
+                if (material is null || material == null)
+                    continue;
+
+                var before = material.GetFloat("_Cull");
+
+                material.SetFloat("_Cull", wanted);
+                ownMaterials.Add(material);
+
+                log.Msg($"  vr hands: {label} cull {before:0.#} -> {wanted:0.#}"
+                    + $"   ({(mirrored ? "mirrored rig" : "not mirrored")}, mode \"{mode}\")");
+            }
+        }
+        catch (Exception exception)
+        {
+            log.Warning($"  vr hands: setting the {label} cull mode threw "
+                + $"{exception.GetType().Name}: {exception.Message}");
+        }
+    }
+
+    // WAS AN DIESEM ASSET UEBERHAUPT OPERIERBAR IST. Die Normalenkorrektur aus
+    // 1.49.0 hat "carries no normals" gemeldet - eine nicht CPU-lesbare
+    // Geometrie liefert leere Kanaele. Hier stehen die Zahlen, statt dass es
+    // beim naechsten Versuch wieder eine Vermutung ist.
+    private static void Channels(MelonLogger.Instance log, string label,
+        SkinnedMeshRenderer skinned)
+    {
+        try
+        {
+            var mesh = skinned.sharedMesh;
+
+            if (mesh is null || mesh == null)
+                return;
+
+            var normals = mesh.normals;
+            var triangles = mesh.triangles;
+            var tangents = mesh.tangents;
+
+            log.Msg($"    mesh {label}: readable {mesh.isReadable}"
+                + $"   vertices {mesh.vertexCount}"
+                + $"   normals {(normals is null ? 0 : normals.Length)}"
+                + $"   triangles {(triangles is null ? 0 : triangles.Length)}"
+                + $"   tangents {(tangents is null ? 0 : tangents.Length)}"
+                + $"   bindposes {(mesh.bindposes is null ? 0 : mesh.bindposes.Length)}");
+        }
+        catch (Exception exception)
+        {
+            log.Warning($"    mesh {label} read threw {exception.GetType().Name}: "
+                + exception.Message);
+        }
+    }
+
+    // NUR DIE NORMALEN, die Dreiecke bleiben. Nach der -1-Transformation
+    // zeigen negierte Normalen nach aussen, und die Cull-Richtung bleibt
+    // Unitys Sache - die kompensiert sie bereits.
+    internal bool ApplyNormals(MelonLogger.Instance log, string mode)
+    {
+        var washerId = washerHand is null || washerHand == null
+            ? 0
+            : washerHand.GetInstanceID();
+        var offId = offHand is null || offHand == null ? 0 : offHand.GetInstanceID();
+        var fixedAny = false;
+
+        if (washerId != 0 && washerId != normalsWasherId)
+        {
+            normalsWasherId = washerId;
+
+            if (Wanted(mode, lastWasherIsRight))
+                fixedAny |= Negate(log, washerHand, lastWasherIsRight ? "R" : "L");
+        }
+
+        if (offId != 0 && offId != normalsOffId)
+        {
+            normalsOffId = offId;
+
+            if (Wanted(mode, !lastWasherIsRight))
+                fixedAny |= Negate(log, offHand, lastWasherIsRight ? "L" : "R");
+        }
+
+        return fixedAny;
+    }
+
+    private bool Negate(MelonLogger.Instance log, GameObject? hand, string label)
+    {
+        if (hand is null || hand == null)
+            return false;
+
+        try
+        {
+            var renderers = hand.GetComponentsInChildren<Renderer>(true);
+
+            if (renderers is null)
+                return false;
+
+            var done = 0;
+
+            for (var index = 0; index < renderers.Length; index++)
+            {
+                var renderer = renderers[index];
+
+                if (renderer is null || renderer == null)
+                    continue;
+
+                var skinned = renderer.TryCast<SkinnedMeshRenderer>();
+
+                if (skinned is null || skinned == null)
+                    continue;
+
+                var source = skinned.sharedMesh;
+
+                if (source is null || source == null)
+                    continue;
+
+                var clone = UnityEngine.Object.Instantiate(source);
+
+                if (clone is null || clone == null)
+                    continue;
+
+                var normals = clone.normals;
+                var count = normals is null ? 0 : normals.Length;
+
+                // KEINE GESPEICHERTEN NORMALEN IST EIN BEFUND, KEIN ABBRUCH.
+                //
+                // Gemessen in 1.49.0: clone.normals liest leer. Ein Mesh, das
+                // beim Import "Calculate" bekommen hat, speichert keine
+                // Normalen - der Shader arbeitet dann mit dem, was die GPU
+                // liefert, und das war die dunkle Hand. RecalculateNormals
+                // rechnet sie aus der Geometrie und SPEICHERT sie; genau das
+                // hat in 1.48.0 die Farbe gerettet, dort aber im Paket mit
+                // einem Dreiecksflip, der nicht hingehoerte.
+                if (count == 0)
+                {
+                    clone.RecalculateNormals();
+                    skinned.sharedMesh = clone;
+                    ownMeshes.Add(clone);
+                    done++;
+
+                    log.Msg($"  vr hands: {label} mesh stores no normals - "
+                        + "recalculated them on an own copy (triangles untouched)");
+                    continue;
+                }
+
+                for (var n = 0; n < count; n++)
+                    normals![n] = -normals[n];
+
+                clone.normals = normals;
+
+                // Die Tangenten bleiben: ihr w traegt die Haendigkeit fuer
+                // Normalmaps, und dieses Material hat keine - eine Aenderung
+                // waere hier ein Eingriff ohne Anlass.
+                skinned.sharedMesh = clone;
+                ownMeshes.Add(clone);
+                done++;
+            }
+
+            if (done > 0)
+                log.Msg($"  vr hands: {label} normals negated on {done} mesh(es) "
+                    + "(own copy, triangles untouched)");
+
+            return done > 0;
+        }
+        catch (Exception exception)
+        {
+            log.Warning($"  vr hands: negating the {label} normals threw "
+                + $"{exception.GetType().Name}: {exception.Message}");
+            return false;
+        }
+    }
+
+    internal bool ApplyWinding(MelonLogger.Instance log, string mode)
+    {
+        var washerId = washerHand is null || washerHand == null
+            ? 0
+            : washerHand.GetInstanceID();
+        var offId = offHand is null || offHand == null ? 0 : offHand.GetInstanceID();
+
+        var flipped = false;
+
+        // washerIsRight steht in der Instanz, nicht im Aufruf: welche
+        // Asset-Seite die Pistolenhand traegt, weiss diese Klasse selbst.
+        if (washerId != 0 && washerId != flippedWasherId)
+        {
+            flippedWasherId = washerId;
+
+            if (Wanted(mode, lastWasherIsRight))
+                flipped |= Flip(log, washerHand, lastWasherIsRight ? "R" : "L");
+        }
+
+        if (offId != 0 && offId != flippedOffId)
+        {
+            flippedOffId = offId;
+
+            if (Wanted(mode, !lastWasherIsRight))
+                flipped |= Flip(log, offHand, lastWasherIsRight ? "L" : "R");
+        }
+
+        return flipped;
+    }
+
+    private static bool Wanted(string mode, bool right) =>
+        mode switch
+        {
+            "both" => true,
+            "r" or "R" => right,
+            "l" or "L" => !right,
+            _ => false,
+        };
+
+    private bool Flip(MelonLogger.Instance log, GameObject? hand, string label)
+    {
+        if (hand is null || hand == null)
+            return false;
+
+        try
+        {
+            var renderers = hand.GetComponentsInChildren<Renderer>(true);
+
+            if (renderers is null)
+                return false;
+
+            var done = 0;
+
+            for (var index = 0; index < renderers.Length; index++)
+            {
+                var renderer = renderers[index];
+
+                if (renderer is null || renderer == null)
+                    continue;
+
+                var skinned = renderer.TryCast<SkinnedMeshRenderer>();
+
+                if (skinned is null || skinned == null)
+                    continue;
+
+                var source = skinned.sharedMesh;
+
+                if (source is null || source == null)
+                    continue;
+
+                // MEHRERE SUBMESHES WAEREN EIN ANDERER FALL: mesh.triangles
+                // flacht sie ein, und das Zurueckschreiben legt alles in
+                // Submesh 0. Gemessen ist ein Material je Hand, also ein
+                // Submesh - trifft das einmal nicht zu, bleibt die Hand
+                // unberuehrt und sagt es.
+                if (source.subMeshCount != 1)
+                {
+                    log.Warning($"  vr hands: {label} mesh has "
+                        + $"{source.subMeshCount} submeshes - winding left alone");
+                    continue;
+                }
+
+                var clone = UnityEngine.Object.Instantiate(source);
+
+                if (clone is null || clone == null)
+                    continue;
+
+                var triangles = clone.triangles;
+                var count = triangles is null ? 0 : triangles.Length;
+
+                for (var t = 0; t + 2 < count; t += 3)
+                {
+                    var swap = triangles![t];
+                    triangles[t] = triangles[t + 2];
+                    triangles[t + 2] = swap;
+                }
+
+                clone.triangles = triangles;
+
+                // OHNE DIES BLEIBT ES DUNKEL: die Wicklung entscheidet, welche
+                // Seite gezeichnet wird, die Normalen, wie sie beleuchtet wird.
+                clone.RecalculateNormals();
+                clone.RecalculateTangents();
+
+                skinned.sharedMesh = clone;
+                ownMeshes.Add(clone);
+                done++;
+            }
+
+            if (done > 0)
+                log.Msg($"  vr hands: {label} winding reversed on {done} mesh(es) "
+                    + "(own copy, normals and tangents recalculated)");
+
+            return done > 0;
+        }
+        catch (Exception exception)
+        {
+            log.Warning($"  vr hands: flipping the {label} winding threw "
+                + $"{exception.GetType().Name}: {exception.Message}");
+            return false;
+        }
+    }
+
+    // DIE SCHATTEN DER EGO-GEOMETRIE, als Schalter und ohne Vorgabewechsel:
+    // eine Hand am Griff liegt unter dem Pistolenkoerper und damit in dessen
+    // Schatten. Ob das stoert, entscheidet das Bild nach dem Wicklungsflip.
+    internal void ApplyShadows(MelonLogger.Instance log, bool wantShadows)
+    {
+        var washerId = washerHand is null || washerHand == null
+            ? 0
+            : washerHand.GetInstanceID();
+        var offId = offHand is null || offHand == null ? 0 : offHand.GetInstanceID();
+        var wanted = wantShadows ? 1 : 0;
+
+        if (shadowState == wanted && shadowWasherId == washerId
+            && shadowOffId == offId)
+            return;
+
+        shadowState = wanted;
+        shadowWasherId = washerId;
+        shadowOffId = offId;
+
+        var touched = Shadows(washerHand, wantShadows) + Shadows(offHand, wantShadows);
+
+        if (touched == 0)
+            return;
+
+        log.Msg($"  vr hands: shadows {(wantShadows ? "ON" : "off")} on "
+            + $"{touched} renderer(s)");
+    }
+
+    private static int Shadows(GameObject? hand, bool wantShadows)
+    {
+        if (hand is null || hand == null)
+            return 0;
+
+        var renderers = hand.GetComponentsInChildren<Renderer>(true);
+
+        if (renderers is null)
+            return 0;
+
+        var touched = 0;
+
+        for (var index = 0; index < renderers.Length; index++)
+        {
+            var renderer = renderers[index];
+
+            if (renderer is null || renderer == null)
+                continue;
+
+            renderer.shadowCastingMode = wantShadows
+                ? UnityEngine.Rendering.ShadowCastingMode.On
+                : UnityEngine.Rendering.ShadowCastingMode.Off;
+            renderer.receiveShadows = wantShadows;
+            touched++;
+        }
+
+        return touched;
+    }
+
+    // WAS DIE HAENDE UNTERSCHEIDET, einmal je Sitzung und fuer beide dieselben
+    // Groessen - dieselbe Frage, dieselben Filter.
+    //
+    // Der Wurzelknochen ist der Punkt: eine negative Komponente dort dreht die
+    // Wicklung eines Skinned Mesh, und auf Objektebene ist die Spiegelung schon
+    // ausgeschieden (beide scale 1).
+    internal void ReportSkin(MelonLogger.Instance log)
+    {
+        if (reportedSkin || washerHand is null || washerHand == null
+            || offHand is null || offHand == null)
+            return;
+
+        reportedSkin = true;
+
+        Skin(log, "washer     ", washerHand);
+        Skin(log, "interaction", offHand);
+    }
+
+    private static void Skin(MelonLogger.Instance log, string label, GameObject hand)
+    {
+        try
+        {
+            var renderers = hand.GetComponentsInChildren<Renderer>(true);
+            var count = renderers is null ? 0 : renderers.Length;
+
+            for (var index = 0; index < count; index++)
+            {
+                var renderer = renderers![index];
+
+                if (renderer is null || renderer == null)
+                    continue;
+
+                var material = renderer.sharedMaterial;
+                var shader = material is null || material == null
+                        || material.shader is null || material.shader == null
+                    ? "none"
+                    : material.shader.name;
+
+                var skinned = renderer.TryCast<SkinnedMeshRenderer>();
+                var root = skinned is null || skinned == null ? null : skinned.rootBone;
+                var scale = root is null || root == null
+                    ? Vector3.one
+                    : root.lossyScale;
+                var mirrored = scale.x < 0f || scale.y < 0f || scale.z < 0f;
+                var mesh = skinned is null || skinned == null
+                    ? null
+                    : skinned.sharedMesh;
+
+                // _Cull und _ZWrite DIREKT gelesen, nicht ueber HasProperty:
+                // das verschweigt undeklarierte Uniformen (Abschnitt 103) und
+                // waere hier ein Tor, das einen Lauf kostet. Liest _Cull 0,
+                // waeren beide Seiten gezeichnet - dann ist die Frage eine
+                // andere.
+                var cull = "?";
+                var zwrite = "?";
+
+                try
+                {
+                    if (material is not null && material != null)
+                    {
+                        cull = material.GetFloat("_Cull").ToString("0.#");
+                        zwrite = material.GetFloat("_ZWrite").ToString("0.#");
+                    }
+                }
+                catch
+                {
+                    // Ein nicht lesbares Materialfeld ist ein Befund, keine
+                    // Ausnahme - das Fragezeichen steht dann im Log.
+                }
+
+                if (skinned is not null && skinned != null)
+                    Channels(log, label, skinned);
+
+                log.Msg($"    skin {label}: {renderer.name,-10} shader \"{shader}\""
+                    + $"   submeshes {(mesh is null || mesh == null ? 0 : mesh.subMeshCount)}"
+                    + $"   cull {cull}   zwrite {zwrite}"
+                    + $"   cast {renderer.shadowCastingMode}"
+                    + $"   receive {renderer.receiveShadows}"
+                    + $"   rootBone {(root is null || root == null ? "-" : root.name)}"
+                    + $"   bone scale ({scale.x:0.###}, {scale.y:0.###}, {scale.z:0.###})"
+                    + $"{(mirrored ? "   MIRRORED" : "")}");
+            }
+        }
+        catch (Exception exception)
+        {
+            log.Warning($"    skin {label} threw {exception.GetType().Name}: "
+                + exception.Message);
+        }
+    }
+
+
     internal void Reset()
     {
+        // DIE EIGENEN MESHKOPIEN FREIGEBEN. Sie haengen an keinem GameObject,
+        // das der Levelwechsel raeumt - ohne diese Schleife bliebe je Hand und
+        // Level eine Kopie liegen.
+        for (var index = 0; index < ownMeshes.Count; index++)
+        {
+            var mesh = ownMeshes[index];
+
+            if (mesh is not null && mesh != null)
+                UnityEngine.Object.Destroy(mesh);
+        }
+
+        ownMeshes.Clear();
+        flippedWasherId = 0;
+        flippedOffId = 0;
+        normalsWasherId = 0;
+        normalsOffId = 0;
+        culledWasherId = 0;
+        culledOffId = 0;
+
+        // renderer.material legt eine Instanz an, und die raeumt niemand sonst
+        // weg - dieselbe Pflicht wie bei den Meshkopien darueber.
+        for (var index = 0; index < ownMaterials.Count; index++)
+        {
+            var material = ownMaterials[index];
+
+            if (material is not null && material != null)
+                UnityEngine.Object.Destroy(material);
+        }
+
+        ownMaterials.Clear();
+        loggedLayer = -1;
+        shadowState = -1;
+        shadowWasherId = 0;
+        shadowOffId = 0;
+        reportedSkin = false;
         Discard(ref washerHand);
         Discard(ref offHand);
         Discard(ref holder);
@@ -91,6 +751,11 @@ internal sealed class VrHands
     {
         try
         {
+            // WELCHE ASSET-SEITE DIE PISTOLENHAND TRAEGT. ApplyWinding braucht
+            // das, und es steht nur hier: der Aufruf kennt die Rolle, nicht das
+            // Asset.
+            lastWasherIsRight = washerIsRight;
+
             if (!enable)
             {
                 if (washerHand is not null || offHand is not null)

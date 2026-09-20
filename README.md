@@ -37,10 +37,16 @@ are fully decoupled, and the menus are driven by a pointer ray.
     src/WetReality.Pose            the mod: pose, input, gestures, haptics,
                                    VR hands, menu pointer
     src/WetReality.XRBoot          OpenXR session, input actions, haptic output
-    src/WetReality.Discovery       runtime exploration probes
+    src/WetReality.Discovery       runtime exploration probes (developer only)
     src/WetReality.ExplorerCompat  bridge for UnityExplorer under Unity 6
+                                   (developer only)
     tools/frontend                 configurator and quick guides
     tools/package                  package builder for releases
+
+**What a release actually contains:** two DLLs, `WetReality.Pose.dll` and
+`WetReality.XRBoot.dll`, plus the configurator, the quick guides and the
+install scripts. The packager's self-check aborts on anything else under
+`mod\`, so a developer-only build cannot slip into a package unnoticed.
 
 **Deliberately not in this repository:** the built packages (they belong in
 Releases), third-party binaries and third-party source under their own
@@ -99,14 +105,20 @@ mistakes before they shipped. If Git normalised on checkout, a clone would
 carry different bytes than the original — silently, because the code still
 compiles.
 
-## Known pitfall: UnityExplorer
+## If you install UnityExplorer yourself
 
-With **UnityExplorer** in the `Mods` folder, the game's menu selection is
-broken: highlights drift, preview images stay empty or frozen, the ring is
-missing. The cause is not this mod but UniverseLib — it patches
+**UnityExplorer is not part of the release package**, and no version of it ever
+was — checked against the packages in `dist`, not remembered. So this is a note
+for developers and **not a known issue for players**: nobody who installed a
+package has an UnityExplorer folder to take out.
+
+If you do put it into `Mods` for a debugging session, expect the game's menu
+selection to break: highlights drift, preview images stay empty or frozen, the
+ring is missing. The cause is not this mod but UniverseLib — it patches
 `EventSystem.SetSelectedGameObject` and the setter of `EventSystem.current`,
-and rejects every selection change, the game's own included. Take UnityExplorer
-out of the folder to play.
+and rejects every selection change, the game's own included. That cost four
+runs before the workbench itself became a suspect, so: move the folder out
+before measuring anything about menus.
 
 ## License
 
@@ -144,11 +156,19 @@ versioniert) oder mit `-p:GamePath` übergeben. Stimmt er nicht, bricht der
 Build mit einer Zeile ab — `WR0001` bis `WR0003` — statt mit hunderten
 Compilerfehlern.
 
-**Wichtig:** liegt **UnityExplorer** im `Mods`-Ordner, ist die Menü-Auswahl des
-Spiels kaputt — Highlights wandern, Vorschaubilder bleiben leer. Das ist nicht
-die Mod, sondern UniverseLib: es patcht `EventSystem.SetSelectedGameObject` und
-weist jede Auswahländerung ab, auch die des Spiels. Zum Spielen UnityExplorer
-aus dem Ordner nehmen.
+**UnityExplorer liegt NICHT im Paket** — in keiner Fassung, nachgesehen in
+`dist` und nicht erinnert. Ausgeliefert werden `WetReality.Pose.dll` und
+`WetReality.XRBoot.dll`; der Selbsttest des Packagers bricht bei allem anderen
+ab. Das Folgende ist deshalb ein **Entwicklerhinweis und kein Bekannter Fehler
+für Spieler**: wer ein Paket installiert hat, hat keinen
+UnityExplorer-Ordner, den er wegnehmen könnte.
+
+Wer ihn zum Messen selbst in `Mods` legt, bekommt die kaputte Menü-Auswahl des
+Spiels dazu — Highlights wandern, Vorschaubilder bleiben leer. Ursache ist
+UniverseLib, nicht die Mod: es patcht `EventSystem.SetSelectedGameObject` und
+weist jede Auswahländerung ab, auch die des Spiels. Das hat vier Läufe
+gekostet, bevor die Werkbank selbst in Verdacht geriet — vor jeder
+Menü-Messung den Ordner also herausnehmen.
 
 **Zeilenenden sind hier Messwerte.** `.gitattributes` setzt `* -text`, weil die
 Dateien absichtlich unterschiedliche Kodierungen tragen und jedes Patchskript

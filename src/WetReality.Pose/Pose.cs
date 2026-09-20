@@ -5,7 +5,7 @@ using UnityEngine.InputSystem;
 using UnityEngine.SubsystemsImplementation;
 using UnityEngine.XR;
 
-[assembly: MelonInfo(typeof(WetReality.Pose), "Wet Reality Pose", "1.38.1", "Wet Reality")]
+[assembly: MelonInfo(typeof(WetReality.Pose), "Wet Reality Pose", "1.51.0", "Wet Reality")]
 [assembly: MelonGame("FuturLab", "PowerWash Simulator 2")]
 
 namespace WetReality;
@@ -138,6 +138,15 @@ public sealed class Pose : MelonMod
     private Quaternion publishedWasherHandRotation = Quaternion.identity;
     private bool washerHandWorldPublished;
 
+    // DIE POSE FUER DEN ZEIGESTRAHL, aus demselben Block wie die Handpose.
+    // Ursprung ist der getrackte Punkt, Richtung die geschriebene
+    // Pistolendrehung - beides ohne ein einziges Glied der Duesenkette, und
+    // damit ohne Werkzeuglaenge, ohne verdrehten Kopf und ohne dessen
+    // Animation.
+    private Vector3 publishedPointerOrigin;
+    private Vector3 publishedPointerForward;
+    private bool pointerPoseReady;
+
     // Die VR-Haende des Spiels, eingehaengt. Siehe VrHands.cs.
     private readonly VrHands vrHands = new();
     private MelonPreferences_Entry<string> laserKey = null!;
@@ -265,6 +274,36 @@ public sealed class Pose : MelonMod
     private MelonPreferences_Entry<float> aimInteractionRange = null!;
     private MelonPreferences_Entry<bool> uiNavigation = null!;
     private MelonPreferences_Entry<bool> menuPointer = null!;
+    private MelonPreferences_Entry<bool> hideToolInUi = null!;
+    private MelonPreferences_Entry<bool> menuPointerFromHand = null!;
+    private MelonPreferences_Entry<bool> handHit = null!;
+    private MelonPreferences_Entry<bool> handHitWashMask = null!;
+    private MelonPreferences_Entry<float> handHitAmplitude = null!;
+    private MelonPreferences_Entry<float> handHitSeconds = null!;
+    private MelonPreferences_Entry<float> handHitRange = null!;
+    private MelonPreferences_Entry<float> handHitPadding = null!;
+    private MelonPreferences_Entry<bool> handHitMesh = null!;
+    private MelonPreferences_Entry<float> handHitSkip = null!;
+    private MelonPreferences_Entry<float> handHitInside = null!;
+    private MelonPreferences_Entry<bool> handPoses = null!;
+    private MelonPreferences_Entry<string> handPoseRoute = null!;
+    private MelonPreferences_Entry<float> handPoseCurl = null!;
+    private MelonPreferences_Entry<string> handPoseCurlAxis = null!;
+    private MelonPreferences_Entry<float> handPoseGrabCurl = null!;
+    private MelonPreferences_Entry<float> handHitResettle = null!;
+    private MelonPreferences_Entry<bool> washerDepthNeutral = null!;
+    private MelonPreferences_Entry<float> washerDepthMinDist = null!;
+    private MelonPreferences_Entry<float> washerDepthScale = null!;
+    private MelonPreferences_Entry<bool> handLayerFollowsWasher = null!;
+    private MelonPreferences_Entry<string> handFlipWinding = null!;
+    private MelonPreferences_Entry<string> handFixNormals = null!;
+    private MelonPreferences_Entry<string> handCull = null!;
+    private MelonPreferences_Entry<bool> handShadows = null!;
+    private bool loggedRenderLayers;
+
+    // Der Wert des Off-Hand-Triggers dieses Frames, dort gelesen, wo er schon
+    // gelesen wird. Ein zweiter Abgriff waere ein zweiter Zwischenstand.
+    private bool offHandTriggerHeld;
     private MelonPreferences_Entry<bool> menuRectCandidates = null!;
     private MelonPreferences_Entry<bool> menuSettingControls = null!;
     private MelonPreferences_Entry<bool> menuScroll = null!;
@@ -398,6 +437,25 @@ public sealed class Pose : MelonMod
     private readonly WashLaser washLaser = new();
     private readonly GameUi gameUi = new();
     private readonly GunRender gunRender = new();
+
+    // Die UI-Ausblendung des Werkzeugs. Eigene Klasse, weil sie einen eigenen
+    // Bestand fuehrt - die selbst abgeschalteten Knoten -, und der gehoert
+    // nicht in die 6DOF-Kette.
+    private readonly ToolHide toolHide = new();
+
+    // Der Aufprall an der eigenen Hand: Collider, Ebene, Maske und der eigene
+    // Pruefstrahl. Der Puls selbst bleibt hier, neben den anderen Haptiken.
+    private readonly HandSpray handSpray = new();
+
+    // Die Posen der beiden Haende. Eigene Klasse, weil sie eigene Assets haelt
+    // - zwei Controller und ihre Clips - und die Wahl der Pose davon getrennt
+    // bleibt.
+    private readonly HandPose handPose = new();
+    private bool handHitPulsing;
+    private float nextHandHitPulse;
+    private bool handHitPulseSent;
+    private string handHitProbeState = "";
+    private float nextHandHitReport;
     private string laserStatus = "";
     // Reference pose, captured on the first frame that reads a value.
     //
@@ -694,9 +752,24 @@ public sealed class Pose : MelonMod
         offsetX = settings.CreateEntry("PositionOffsetX", 0f, description: "Metres, added to the controller position.");
         offsetY = settings.CreateEntry("PositionOffsetY", 0f, description: "Metres, added to the controller position.");
         offsetZ = settings.CreateEntry("PositionOffsetZ", 0f, description: "Metres, added to the controller position.");
-        pitchOffset = settings.CreateEntry("RotationOffsetPitch", 0f, description: "Degrees, applied before the controller rotation.");
-        yawOffset = settings.CreateEntry("RotationOffsetYaw", 0f, description: "Degrees, applied before the controller rotation.");
-        rollOffset = settings.CreateEntry("RotationOffsetRoll", 0f, description: "Degrees, applied before the controller rotation.");
+        // DIE IM HEADSET GETRIMMTE HALTUNG ALS VORGABE, gemessen und nicht
+        // geraten: die cfg des Arbeitsplatzes gegen die Quell-Vorgaben
+        // verglichen, 194 Schluessel, und diese sechs Werte trugen die
+        // Abweichung. So eingestellt, dass die Hand nicht durch die Pistole
+        // clippt.
+        //
+        // Gerundet auf vier Dezimalen: die Werte kommen aus dem Loeser der
+        // Kalibriergeste, und dessen float-Aufloesung meint Zehntelmillimeter
+        // und Tausendstelgrad - beides jenseits der Wahrnehmung, aber im
+        // Klartext einer Vorgabe nur Rauschen.
+        //
+        // FUER EINEN TESTER MIT VORHANDENER cfg AENDERT DAS NICHTS: MelonLoader
+        // schreibt eine neue Vorgabe nicht ueber einen bestehenden Schluessel.
+        // Das ist die dokumentierte Falle dieses Projekts und gehoert in die
+        // Release-Notiz.
+        pitchOffset = settings.CreateEntry("RotationOffsetPitch", -5.5763f, description: "Degrees, applied before the controller rotation.");
+        yawOffset = settings.CreateEntry("RotationOffsetYaw", -0.073f, description: "Degrees, applied before the controller rotation.");
+        rollOffset = settings.CreateEntry("RotationOffsetRoll", 1.019f, description: "Degrees, applied before the controller rotation.");
 
         // THE GRIP OFFSET, and it is a different KIND of quantity from the three
         // above even though it is also three metre-valued scalars.
@@ -713,11 +786,14 @@ public sealed class Pose : MelonMod
         //
         // NEW entries, so MelonLoader writes them into the existing cfg with
         // these defaults. A CHANGED default would never reach this machine.
-        gripX = settings.CreateEntry("GripOffsetX", 0f,
+        // Aus demselben Vergleich wie der Rotationstrim darueber: der
+        // Griffversatz sitzt im Rahmen der Pistole und verschiebt sie
+        // gegenueber dem getrackten Punkt.
+        gripX = settings.CreateEntry("GripOffsetX", -0.0015f,
             description: "Metres in the washer's own frame. Positive is right, relative to the gun.");
-        gripY = settings.CreateEntry("GripOffsetY", 0f,
+        gripY = settings.CreateEntry("GripOffsetY", -0.0076f,
             description: "Metres in the washer's own frame. Positive is up, relative to the gun.");
-        gripZ = settings.CreateEntry("GripOffsetZ", 0f,
+        gripZ = settings.CreateEntry("GripOffsetZ", -0.0131f,
             description: "Metres in the washer's own frame. Positive is forward along the barrel.");
 
         // Split from UseAimPose, which now governs ROTATION only.
@@ -1496,6 +1572,237 @@ public sealed class Pose : MelonMod
                 + "game show gamepad button prompts. Needs UiNavigation on. "
                 + "Alt + keypad 9 toggles it by hand.");
 
+        // GEMELDET: in den DLC steht das Werkzeug beim Oeffnen des Menues
+        // weiter im Bild, zusammen mit dem Zeigestrahl.
+        //
+        // Die Ausblendung liest keinen Namen und keine Spielliste, sondern
+        // nimmt jeden Renderer unter dem Ausruestungsanker des Spiels - siehe
+        // ToolHide. Der Schalter ist der Ausstieg, falls ein kuenftiges DLC
+        // dort etwas haengen hat, das sichtbar bleiben muss.
+        // GEMELDET: der Strahl beginnt je Werkzeug woanders - bei langen
+        // Werkzeugen weit vor der Hand -, und beim Flaechenreiniger zeigt er
+        // zusaetzlich in die falsche Richtung und kreist mit der Animation.
+        //
+        // Der Ausstieg bleibt, weil Abschnitt 90 den Duesenstrahl bewusst
+        // gewaehlt hatte: wer den alten Ursprung sehen will, kommt ohne
+        // Neubau daran.
+        menuPointerFromHand = settings.CreateEntry("MenuPointerFromHand", true,
+            description: "Start the menu pointer at the HAND and take its direction "
+                + "from the controller instead of from the nozzle. Off puts it back on "
+                + "the nozzle tip, where tool length shifts its origin and a rotated "
+                + "or animated tool head bends its direction.");
+
+        hideToolInUi = settings.CreateEntry("HideToolInUi", true,
+            description: "Hide the tool in your hand while a UI is open and the "
+                + "pointer beam is active. Structural, not by name: everything under "
+                + "the game's own equipment anchor goes, so DLC tools are covered "
+                + "too. Needs MenuPointer on.");
+
+        // DER STRAHL AUF DIE EIGENE HAND. Zwei Schalter, weil es zwei
+        // Mechaniken sind: der Puls haengt am eigenen Pruefstrahl, der
+        // Spritzeffekt an der Maske des Spiels. Faellt eine aus, soll die
+        // andere nicht mit ihr fallen - und der Lauf soll sie
+        // auseinanderhalten koennen.
+        handHit = settings.CreateEntry("HandHit", true,
+            description: "Buzz the off-hand controller when the jet hits the off-hand, "
+                + "and give the hand a collider that matches its model so the game's own "
+                + "impact effect appears there. Needs ShowVrHands on.");
+
+        handHitWashMask = settings.CreateEntry("HandHitWashMask", true,
+            description: "Add the hand's collider layer to the game's own wash ray mask. "
+                + "This is what produces the standard splash effect and stops the jet at "
+                + "the hand. Off leaves the vibration but no visual impact.");
+
+        handHitAmplitude = settings.CreateEntry("HandHitAmplitude", 0.9f,
+            description: "Vibration strength on the off-hand while the jet hits it. "
+                + "High on purpose - it is a pressure washer.");
+
+        handHitSeconds = settings.CreateEntry("HandHitSeconds", 0.25f,
+            description: "Length of one off-hand pulse in seconds. It is re-issued while "
+                + "the jet stays on the hand.");
+
+        handHitRange = settings.CreateEntry("HandHitRange", 2.5f,
+            description: "How far along the jet the hand is looked for, in metres.");
+
+        handHitPadding = settings.CreateEntry("HandHitPadding", 0f,
+            description: "Grows the hand's collision BOX by this many metres on every "
+                + "side. Only used when HandHitMesh is off - a mesh collider cannot be "
+                + "inflated.");
+
+        // DIE FORM. Gemeldet mit Bildern: der Quader misst 0,146 x 0,212 x
+        // 0,08 m und umschliesst Handflaeche, abgespreizten Daumen UND
+        // Handgelenkstummel - eine Hand fuellt davon die Haelfte, der Rest ist
+        // Luft, in der das Wasser aufschlaegt.
+        handHitMesh = settings.CreateEntry("HandHitMesh", true,
+            description: "Use the hand's real geometry as its collider instead of a box. "
+                + "Keeps the gaps between the fingers and the spread thumb, so the splash "
+                + "lands where the hand is. Off falls back to the box, which is coarser "
+                + "but was the shape that proved the mechanism.");
+
+        // DER NAHBEREICH. Der Pruefstrahl hat HapticContactSkip mitbenutzt -
+        // 0,1 m, gedacht gegen die Colliders des Waschers. Hier fragt der
+        // Strahl NUR die Handebene, wo diese Begruendung nicht gilt, und die
+        // ersten zehn Zentimeter vor der Duese waren blind.
+        handHitSkip = settings.CreateEntry("HandHitSkip", 0.01f,
+            description: "Metres skipped in front of the muzzle before the hand is "
+                + "looked for. Small on purpose: this ray only queries the hand's own "
+                + "layer, so nothing else can be in the way.");
+
+        // DER INNENFALL, auf Wunsch: ein Strahl, der IN einem Collider
+        // beginnt, trifft ihn nicht - dokumentiertes Unity-Verhalten. Ein
+        // Rueckwaertsstrahl von vor der Hand faengt genau diesen Fall.
+        // DIE POSEN. Gemessen ist, dass die Haende geriggt sind (23 Knochen,
+        // eigene Wurzel je Hand) und dass die Posen als Assets im Spiel liegen
+        // - Anim@L_Grip / R_Grip / L_Open / R_Open, dazu die Controller
+        // Player_VRHand_L/R, die die spieleigene debug_hand nachweislich schon
+        // faehrt. Die Begruendungen stehen in HandPose.cs.
+        handPoses = settings.CreateEntry("HandPoses", true,
+            description: "Pose the VR hands: the washer hand grips the gun, the free "
+                + "hand closes when it grabs - interaction trigger, shoulder, holster "
+                + "and the grip on the washer for the extension. Off leaves both hands "
+                + "flat, exactly as before 1.43.0.");
+
+        // Vier Wege, und "auto" nimmt den ersten, der traegt: Clip sampeln,
+        // sonst Animator, sonst Knochen beugen. Erzwingen ist fuer den Fall
+        // da, dass einer im Bild besser aussieht als im Log.
+        handPoseRoute = settings.CreateEntry("HandPoseRoute", "auto",
+            description: "How a pose reaches the rig: auto, clip, animator or bones. "
+                + "auto tries them in that order and the log says which one took. "
+                + "clip samples the game's own pose clip once per change, animator hands "
+                + "the game's controller to an Animator, bones bends the finger chain "
+                + "without any asset.");
+
+        // DER KNOCHEN-WEG BRAUCHT ZWEI ZAHLEN, die nur das Bild entscheidet:
+        // wie weit ein Fingerglied beugt und um WELCHE lokale Achse. Gemessen
+        // ist das Rig (23 Knochen, L_Index1..3), nicht seine Beugeachse.
+        handPoseCurl = settings.CreateEntry("HandPoseCurl", 40f,
+            description: "Degrees each finger joint bends in the grip pose when the "
+                + "bones route is used. The thumb takes 55 percent of it.");
+
+        // WIE WEIT DIE FREIE HAND SCHLIESST, als Wert der fuenf
+        // Fingerparameter des Assets (0 offen, 1 geschlossen). Gemessen sind
+        // die Parameter, nicht der Geschmack - darum ein Schalter.
+        handPoseGrabCurl = settings.CreateEntry("HandPoseGrabCurl", 1f,
+            description: "How far the free hand closes when it grabs: 0 is open, 1 is "
+                + "the asset's closed pose. Drives the Index/Middle/Ring/Pinky/Thumb "
+                + "parameters of the game's own hand animator.");
+
+        handPoseCurlAxis = settings.CreateEntry("HandPoseCurlAxis", "x",
+            description: "Which local axis a finger joint bends around: x, y, z or "
+                + "-x, -y, -z. Rig-dependent, and ten seconds in the headset settle it.");
+
+        // DER ZWEITE BACKTERMIN. Ein Posenwechsel blendet; der Frame danach
+        // zeigt eine Zwischenstellung, und die blieb als Hitbox stehen.
+        handHitResettle = settings.CreateEntry("HandHitResettle", 0.35f,
+            description: "Seconds after a pose change before the hand's collision mesh "
+                + "is baked a second time, once the animator's blend has settled. The "
+                + "first bake happens immediately so there is never a frame without a "
+                + "collider. 0 turns the second bake off.");
+
+        // DIE TIEFENKOMPRESSION DER EGO-GEOMETRIE. Gemessen: die globalen
+        // Shader-Floats minDist und scale stehen auf 0,5, und die
+        // First-Person-Materialien lesen sie. Unsere Haende rechnen in echter
+        // Tiefe - darum liegt die Pistole immer vorn.
+        // GEMELDET UND GEMESSEN: die Pistole ueberdeckt die Haende immer, und
+        // die Tiefenglobale war es NICHT (1.46.0 hat sie eingeebnet, das Bild
+        // blieb gleich). Dass die Pistole nicht in Waende schneidet, sagt den
+        // Rest: sie wird in einem eigenen Durchgang mit geleerter Tiefe
+        // gezeichnet, und dann entscheidet die EBENE.
+        handLayerFollowsWasher = settings.CreateEntry("HandLayerFollowsWasher", true,
+            description: "Put the VR hands on the same layer as the washer so the same "
+                + "render pass draws both and the hands can occlude it. The game keeps "
+                + "one layer per view (PlayerCharacter.GetEquipmentLayer), which is what "
+                + "separates the passes. Off leaves the hands on their prefab layer.");
+
+        // GEMELDET: in die Finger der rechten Hand ist hineinzusehen, ihre
+        // Innenseiten sind sichtbar, und die Flaeche liest dunkel. Das ist
+        // EINE Ursache: die Dreiecke sind andersherum gewickelt, also werden
+        // die Vorderseiten weggeschnitten und die Normalen zeigen nach innen.
+        //
+        // Der Wert nennt die ASSET-Seite, nicht die Rolle: bei einem
+        // Linkshaender haelt die linke Hand die Pistole, aber R bleibt R.
+        // GEMESSEN, und es ist der Eingriff, der von der Lesbarkeit der
+        // Geometrie unabhaengig ist: cull 2 (einseitig), zwrite 1, und der
+        // Wurzelknochen der rechten Hand liest (-1, -1, -1).
+        //
+        // Eine Punktspiegelung dreht die Flaechenorientierung. Unitys eigene
+        // Kompensation haengt an der RENDERER-Transformation, und die liest
+        // scale 1 - die Spiegelung steckt in den KNOCHEN. Mit cull 2 wird also
+        // die zugewandte Seite weggeschnitten, und man sieht die Innenseiten.
+        //
+        // "auto" ist eine Regel und keine Vorliebe: negative Determinante in
+        // der Knochenkette -> Cull-Richtung drehen, sonst nichts anfassen.
+        handCull = settings.CreateEntry("HandCull", "auto",
+            description: "Which side of a VR hand mesh is drawn: auto, front, back, off "
+                + "or none. auto reverses the cull direction for a hand whose rig is "
+                + "mirrored (its root bone reads a negative scale) and leaves the other "
+                + "one alone. Written to an own material instance.");
+
+        // GEMESSEN: rootBone R_Wrist liest lossyScale (-1, -1, -1) - das R-Rig
+        // ist eine Punktspiegelung. Unity kompensiert daraufhin die WICKLUNG
+        // selbst, die NORMALEN aber nicht: die inverse Transponierte ist -1,
+        // sie zeigen nach innen, und die Flaeche liest dunkel.
+        //
+        // Darum werden nur die Normalen negiert. 1.48.0 hat die Dreiecke
+        // gedreht und damit die Wicklung kaputtgemacht, die vorher stimmte -
+        // gemeldet als "Farbe natuerlich, Innenseiten weiter sichtbar".
+        handFixNormals = settings.CreateEntry("HandFixNormals", "r",
+            description: "Negate the normals of a VR hand mesh on an own copy, for a hand "
+                + "whose rig is mirrored: r, l, both or none. A mirrored rig makes Unity "
+                + "flip the culling by itself but leaves the normals pointing inwards, "
+                + "which reads as a dark, inside-out hand.");
+
+        // BLEIBT ALS SCHALTER, ABER NICHT ALS VORGABE. Der Weg hat bewiesen,
+        // dass die eigene Meshkopie traegt; als Standardverhalten war er
+        // falsch, weil er Unitys eigene Kompensation aufhebt.
+        //
+        // NEUER SCHLUESSELNAME, und das ist die MelonPreferences-Falle: der
+        // alte HandFlipWinding steht in jeder cfg von 1.48.0 mit "r", und ein
+        // geaenderter Quell-Default greift bei vorhandenem Schluessel NICHT.
+        // Beide Korrekturen wuerden dann zugleich greifen und sich aufheben.
+        // Der alte Eintrag bleibt stehen und liest niemand mehr.
+        handFlipWinding = settings.CreateEntry("HandWindingFlip", "none",
+            description: "Reverse the triangle winding of a VR hand mesh on an own copy: "
+                + "r, l, both or none. Only needed if a hand's culling is wrong on top of "
+                + "its normals - a mirrored rig alone does NOT need this, because Unity "
+                + "already flips the culling for a negative scale.");
+
+        // ALS SCHALTER, ohne Vorgabewechsel: eine Hand am Griff liegt unter dem
+        // Pistolenkoerper und damit in dessen Schatten. Ob das stoert,
+        // entscheidet das Bild nach dem Wicklungsflip - eine zweite
+        // Verhaltensaenderung im selben Lauf waere die Vermischung, die dieses
+        // Projekt sich verbietet.
+        handShadows = settings.CreateEntry("HandShadows", true,
+            description: "Let the VR hands cast and receive shadows, as the game's own "
+                + "geometry does. Turn it off if the washer's shadow on the hand at arm's "
+                + "length reads as a fault rather than as lighting.");
+
+        // WIDERLEGT UND DARUM AUS: 1.46.0 hat die Globale eingeebnet, das Log
+        // belegt den Schreibzugriff ("neutralised to minDist 0 scale 1") und
+        // das Bild blieb unveraendert - die Ursache war die EBENE (Abschnitt
+        // 142). Ein Eingriff in globale Shader-Werte ohne belegte Wirkung
+        // gehoert nicht in ein Release; der Schalter bleibt fuer den Fall, dass
+        // ein Update die Tiefenstauchung wieder relevant macht.
+        washerDepthNeutral = settings.CreateEntry("WasherDepthNeutral", false,
+            description: "Let the washer render at its true depth so the VR hands can "
+                + "occlude it. The game compresses first-person depth so a tool never "
+                + "clips into walls; in VR the washer hangs on a real arm at a real "
+                + "distance, so the trick costs more than it buys. Off restores the "
+                + "game's own values.");
+
+        washerDepthMinDist = settings.CreateEntry("WasherDepthMinDist", 0f,
+            description: "The minimum-distance global written when WasherDepthNeutral "
+                + "is on. 0 is the identity; the game ships 0.5.");
+
+        washerDepthScale = settings.CreateEntry("WasherDepthScale", 1f,
+            description: "The depth-scale global written when WasherDepthNeutral is on. "
+                + "1 is the identity; the game ships 0.5.");
+
+        handHitInside = settings.CreateEntry("HandHitInside", 0.25f,
+            description: "Metres looked back towards the muzzle when the forward ray "
+                + "found nothing. This is what keeps the vibration going while the muzzle "
+                + "itself is inside the hand. 0 turns it off.");
+
         // SIX NEW ENTRIES, so the MelonPreferences trap does not apply to any of
         // them: MelonLoader adds a missing entry to an existing cfg with the
         // source default. The trap is about CHANGED defaults on entries that are
@@ -2070,6 +2377,23 @@ public sealed class Pose : MelonMod
             washLaser.Dispose(LoggerInstance);
             menuLaser.Dispose(LoggerInstance);
 
+            // RICHTIG ZURUECKGEBEN, nicht vergessen: hier laeuft das Spiel
+            // weiter, und ein Werkzeug, das nach F2 unsichtbar bleibt, waere
+            // der teurere Fehler - genau die Abwaegung, die GunRender fuer die
+            // Pistole schon dokumentiert.
+            toolHide.Restore(LoggerInstance, "mod off");
+
+            // DIE MASKE DES SPIELS ZURUECK, und den Puls aus. Eine erweiterte
+            // Waschmaske nach F2 waere ein Rest, den niemand mehr findet.
+            handSpray.Release(LoggerInstance, WashEquipmentHandle());
+            handSpray.Reset();
+
+            if (handHitPulsing)
+            {
+                handHitPulsing = false;
+                Haptics.Stop(LoggerInstance, !WasherHandRight);
+            }
+
             // OnGUI is not gated on `active`, so without this the overlay keeps
             // announcing a live laser for the rest of the session after F2 off.
             laserStatus = "laser: mod off";
@@ -2093,6 +2417,7 @@ public sealed class Pose : MelonMod
         publishedOffHandRotation = Quaternion.identity;
         publishedWasherHandRotation = Quaternion.identity;
         washerHandWorldPublished = false;
+        pointerPoseReady = false;
         handAssets.Reset();
         vrHands.Reset();
         refillArmed = true;
@@ -2201,6 +2526,22 @@ public sealed class Pose : MelonMod
         gameUi.ResetDepth(LoggerInstance);
         gameUi.Reset();
         gunRender.Reset();
+        toolHide.Reset();
+
+        // ZUERST die Maske zurueckschreiben, DANN den Zustand vergessen: nach
+        // Reset weiss niemand mehr, was vorher darin stand. Dieselbe
+        // Reihenfolge wie bei ResetDepth darueber.
+        handSpray.Release(LoggerInstance, WashEquipmentHandle());
+        handSpray.Reset();
+        handHitPulsing = false;
+        nextHandHitPulse = 0f;
+
+        // Die Clips ueberleben einen Levelwechsel, die Handinstanzen nicht -
+        // und die Pose gilt je Instanz. Reset wirft darum die Zuordnung weg,
+        // nicht die Assets; die laedt Probe beim naechsten Bedarf erneut.
+        handPose.Reset();
+        offHandTriggerHeld = false;
+        loggedRenderLayers = false;
         playerInput = null;
         characterController = null;
         loggedBlockedStance = -1;
@@ -2619,6 +2960,17 @@ public sealed class Pose : MelonMod
             gameUi.TouchDepth();
         }
 
+        // VOR DriveRay, und das ist ein Frame-Punkt, keine Lesereihenfolge:
+        // ApplyVisualSwap schreibt dort enabled auf die Pistolen- und
+        // Koerpermeshes. Stuende die Ruecknahme dahinter, waere die Spielhand
+        // fuer einen Frame sichtbar, bevor der Tausch sie wieder abschaltet.
+        //
+        // Die Anker sind damit die des VORIGEN Frames. Das ist der billigere
+        // Fehler: sie wechseln nur beim Levelwechsel und beim Zusammenbau, und
+        // waehrend einer offenen UI passiert beides nicht.
+        toolHide.Apply(LoggerInstance, HideToolForUi, gunRender.PlayerVisuals,
+            assembly, vrHands.WasherHandRoot);
+
         // Before DriveHead, so the yaw it composes is this frame's.
         ReadTurn();
         ReadOffHandTrigger();
@@ -2661,6 +3013,10 @@ public sealed class Pose : MelonMod
         DriveHapticGreeting();
         ReportSurfaces();
         DriveSprayHaptics();
+        // NACH DriveSprayHaptics und damit hinter DriveRay: der Pruefstrahl
+        // nimmt publishedAimOrigin/-Forward dieses Frames, und Washing kommt
+        // aus demselben Block wie die Spruehvibration.
+        DriveHandSpray();
         ReportCarryProbe();
         // AUS DEMSELBEN GRUND HIER und nicht in ReadOffHandTrigger: die
         // Weltposition der Hand entsteht in ApplyPoseSource, und die
@@ -2886,6 +3242,27 @@ public sealed class Pose : MelonMod
             publishedWasherHandWorld = handWorld;
             publishedWasherHandRotation = handRotWorld;
             washerHandWorldPublished = true;
+
+            // UND DIE POSE FUER DEN ZEIGESTRAHL, im selben Block und aus
+            // denselben drei Groessen. Ein Block, eine Momentaufnahme: waeren
+            // Ursprung und Richtung an zwei Stellen abgegriffen, koennten sie
+            // um einen Frame auseinanderlaufen, und ein Strahl, der aus der
+            // Hand kommt und woandershin zeigt, waere schlechter als der alte.
+            //
+            // handWorld ist der getrackte Punkt OHNE den Griffversatz - die
+            // Hand, nicht der Griff der Pistole. gunRotation traegt den
+            // Rotationstrim, ist also die Richtung, in die die Pistole heute
+            // zeigt; fuer die normalen Duesen bleibt die Zeigerichtung damit
+            // unveraendert.
+            //
+            // Die Kalibrierfrist (freezeThisFrame, weiter unten) bekommt der
+            // Zeiger NICHT mit: sie friert die Pistole fuer eine Geste ein, und
+            // waehrend einer Geste ist kein Menue offen. Steht hier einmal ein
+            // Menue waehrend des Einfrierens, zeigt der Strahl weiter mit der
+            // Hand - das ist die harmlosere Seite.
+            publishedPointerOrigin = handWorld;
+            publishedPointerForward = gunRotation * Vector3.forward;
+            pointerPoseReady = true;
 
             // DIE LINKE HAND, mit demselben toWorld und derselben Kopfpose wie
             // die rechte, also im selben Block gerechnet. OHNE den Trim-Offset:
@@ -3118,7 +3495,7 @@ public sealed class Pose : MelonMod
             + $"patch {(GameInput.Installed ? "on" : "OFF")}  reads {GameInput.FireReads}   "
             + "num 8/2 4/6 7/9 trim (shift=pos, ctrl=grip), 5 reset, 0 pos (ctrl=src), 1 target, 3 recenter");
         GUI.Label(new Rect(16f, 268f, 684f, 20f),
-            $"laser {laserDirection.Value}  {laserStatus}  {turnStatus}  {buttonStatus}  {headPositionStatus}  {gameUi.Status}  {gunRender.SwapStatus}  {gunRender.FovStatus}");
+            $"laser {laserDirection.Value}  {laserStatus}  {turnStatus}  {buttonStatus}  {headPositionStatus}  {gameUi.Status}  {gunRender.SwapStatus}  {gunRender.FovStatus}  {toolHide.Status}  {handSpray.Status}  {handPose.Status}  {gunRender.DepthStatus}");
         GUI.Label(new Rect(16f, 288f, 684f, 36f), status);
     }
 
@@ -4972,6 +5349,52 @@ public sealed class Pose : MelonMod
             vrHands.Apply(LoggerInstance, wantHands, gunRender.BodyAnchor,
                 node != XRNode.LeftHand);
 
+            // VOR DEN BEIDEN DriveHand-Aufrufen, und das ist der Frame-Punkt:
+            // ein Clip kann eine Wurzelkurve tragen, und die Wurzel gehoert der
+            // 6DOF-Kette. HandPose schreibt sie zwar selbst zurueck, aber
+            // danach setzt Place sie ohnehin noch einmal - zwei Wachen an
+            // derselben Tuer, und die aeussere kostet nichts.
+            if (wantHands && handPoses.Value)
+                DriveHandPoses();
+
+            // DIE EBENE DER HAENDE, direkt nach dem Anlegen: vorher gibt es
+            // keine Knoten, die sie tragen koennten.
+            if (wantHands && handLayerFollowsWasher.Value)
+                vrHands.ApplyLayer(LoggerInstance, gunRender.WasherLayer,
+                    "WetRealityHandHit");
+
+            // Direkt neben der Ebene, aus demselben Grund: erst wenn die
+            // Haende stehen, gibt es Renderer und Meshes, die etwas tragen.
+            if (wantHands)
+            {
+                // Eine neue Wicklung oder neue Normalen heissen eine neue
+                // Meshinstanz, und der Treffer-Collider ist aus der alten
+                // gebacken.
+                var meshChanged = vrHands.ApplyNormals(LoggerInstance,
+                    handFixNormals.Value);
+
+                meshChanged |= vrHands.ApplyWinding(LoggerInstance,
+                    handFlipWinding.Value);
+
+                if (meshChanged)
+                    handSpray.Invalidate(handHitResettle.Value);
+
+                // NACH den Meshwegen und unabhaengig von ihnen: die
+                // Cull-Richtung haengt am Material, nicht an der Geometrie -
+                // und genau darum greift sie auch an einem Mesh, das seine
+                // Kanaele nicht herausgibt.
+                vrHands.ApplyCull(LoggerInstance, handCull.Value);
+
+                vrHands.ApplyShadows(LoggerInstance, handShadows.Value);
+                vrHands.ReportSkin(LoggerInstance);
+            }
+
+            // EINMAL JE SITZUNG, und es ist die Messung, die diesen Abschnitt
+            // begruendet: WER zeichnet die Pistole. Eine zweite Kamera mit
+            // Depth-Clear und ein Renderer-Feature in einer Kamera sehen im
+            // Bild gleich aus und brauchen verschiedene Antworten.
+            ReportRenderLayers();
+
             // publishedOffHandWorld und die Rotation entstehen im Pose-Block mit
             // demselben toWorld wie die Pistolenhand; hier wird nur gesetzt.
             // SYMMETRISCH ZUR OFF-HAND: Weltpose vom Controller, Trimm darauf.
@@ -4993,6 +5416,12 @@ public sealed class Pose : MelonMod
             // of view, whose lock global reads a degenerate 1.
             gunRender.ApplyFovGlobals(LoggerInstance,
                 (aimSkip.Value & 16384) != 0, (aimSkip.Value & 32768) != 0, Camera.main);
+
+            // PRO FRAME, wie der FOV-Schalter daneben: es sind globale
+            // Shader-Werte, und das Spiel setzt sie selbst - ein einmaliger
+            // Schreibzugriff haette bis zum naechsten Setzen gehalten.
+            gunRender.ApplyDepthGlobals(LoggerInstance, washerDepthNeutral.Value,
+                washerDepthMinDist.Value, washerDepthScale.Value);
 
             // Computed once and handed to everything below, so the line that is
             // drawn, the origin the patches get and the distance the probe logs
@@ -6130,6 +6559,273 @@ public sealed class Pose : MelonMod
 
     // Die zwei Ausgaenge der Strahl-Haptik. Sie liegen hier und nicht in
     // SprayHaptics, damit dort keine Preference und keine Bruecke vorkommt.
+    // DAS WashEquipment DES SPIELERS, strukturell erreicht: ueber die Visuals,
+    // die GunRender schon aufloest, und den PlayerCharacter daran. Kein
+    // FindObjectOfType - im Mehrspielerbetrieb gibt es mehrere, und der erste
+    // Treffer ist nicht zwingend der eigene.
+    private Il2CppFuturLab.PW2.WashEquipment? WashEquipmentHandle()
+    {
+        try
+        {
+            var character = gunRender.PlayerVisuals?.PlayerCharacter;
+
+            if (character is null || character == null)
+                return null;
+
+            var found = character.WashEquipment;
+
+            return found is null || found == null ? null : found;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    // DER STRAHL AUF DER EIGENEN HAND.
+    //
+    // Die Vibration haengt am EIGENEN Pruefstrahl gegen die eigene Ebene, der
+    // Spritzeffekt an der Maske des Spiels - zwei Mechaniken, eine Geometrie.
+    // Genau deshalb koennen Bild und Gefuehl nicht auseinanderlaufen: beide
+    // fragen denselben Collider.
+    //
+    // menuMode nimmt den Puls mit, wie bei der Spruehvibration: ein brummender
+    // Controller im Menue waere ein Defekt.
+    // DIE POSENWAHL, und sie kommt ohne einen neuen Zustand aus.
+    //
+    // Die Pistolenhand haelt die Pistole immer, also traegt sie die Greifpose
+    // dauerhaft - damit sind Schultergriff und Holstergriff mit abgedeckt, denn
+    // die fahren dieselbe Hand.
+    //
+    // Die freie Hand greift, wenn sie greift: Greifachse ueber der
+    // Gestenschwelle (0,6 - derselbe Wert, den DriveBodyZones fuer washerGrip
+    // benutzt) ODER Interaktions-Trigger gehalten. Das deckt den Griff an die
+    // Pistole fuer die Verlaengerung und das Bedienen animierter Objekte mit
+    // EINER Bedingung ab.
+    //
+    // JEDER POSENWECHSEL WIRFT DEN TREFFER-COLLIDER WEG. HandSpray backt seinen
+    // MeshCollider aus der aktuellen Handgeometrie; ohne diese Zeile traefe der
+    // Strahl nach dem ersten Griff die Form von vorher.
+    // WER ZEICHNET WAS, einmal je Sitzung. Die Kameratabelle samt
+    // Culling-Masken und daneben die Ebenen von Pistole und Haenden - damit ist
+    // die Frage beantwortbar, statt sie ein zweites Mal zu vermuten.
+    private void ReportRenderLayers()
+    {
+        if (loggedRenderLayers)
+            return;
+
+        var washerLayer = gunRender.WasherLayer;
+
+        // Erst berichten, wenn die Pistole aufgeloest ist: eine Tabelle ohne
+        // ihren Vergleichswert waere die halbe Messung.
+        if (washerLayer < 0)
+            return;
+
+        loggedRenderLayers = true;
+
+        try
+        {
+            var handLayer = vrHands.WasherHandRoot is null
+                    || vrHands.WasherHandRoot == null
+                ? -1
+                : vrHands.WasherHandRoot.gameObject.layer;
+
+            LoggerInstance.Msg($"render layers: washer on {washerLayer} "
+                + $"(\"{LayerMask.LayerToName(washerLayer)}\")"
+                + $"   vr hand on {handLayer}"
+                + $" (\"{(handLayer < 0 ? "-" : LayerMask.LayerToName(handLayer))}\")");
+
+            var cameras = Camera.allCameras;
+            var count = cameras is null ? 0 : cameras.Length;
+
+            LoggerInstance.Msg($"  cameras: {count}");
+
+            for (var index = 0; index < count; index++)
+            {
+                var camera = cameras![index];
+
+                if (camera is null || camera == null)
+                    continue;
+
+                var mask = camera.cullingMask;
+
+                LoggerInstance.Msg($"    camera[{index}] {camera.name,-24}"
+                    + $" depth {camera.depth:0.#}"
+                    + $"   clear {camera.clearFlags}"
+                    + $"   enabled {camera.enabled}"
+                    + $"   mask 0x{mask:X8}"
+                    + $"   washer {((mask & (1 << washerLayer)) != 0 ? "IN" : "out")}"
+                    + $"   hand {(handLayer >= 0 && (mask & (1 << handLayer)) != 0 ? "IN" : "out")}");
+            }
+        }
+        catch (Exception exception)
+        {
+            LoggerInstance.Warning($"  render layers threw {exception.GetType().Name}: "
+                + exception.Message);
+        }
+    }
+
+    private void DriveHandPoses()
+    {
+        try
+        {
+            handPose.Probe(LoggerInstance);
+
+            var route = handPoseRoute.Value;
+            var grabbing = offHandTriggerHeld
+                || ButtonEdge.ReadAxis(leftSqueeze) > 0.6f;
+
+            // DIE REFERENZHAND IST debug_hand, und gunRender.BodyAnchor
+            // findet sie namensfrei. Ihr Animator ist die einzige
+            // funktionierende Konfiguration dieses Rigs im Prozess - von dort
+            // kommt der Avatar, ohne den humanoide Clips nichts bewegen.
+            var reference = gunRender.BodyAnchor;
+            var curl = handPoseCurl.Value;
+            var axis = handPoseCurlAxis.Value;
+
+            var grab = handPoseGrabCurl.Value;
+
+            // DIE ROLLE GEHT MIT, nicht nur die Seite: das Asset fuehrt ein
+            // IsOffhand-Bool, und die Griffpose der Pistolenhand haengt an
+            // seinem Grip-Bool. Rolle und Seite sind hier zwei verschiedene
+            // Groessen - dieselbe Unterscheidung wie bei der Vibration in
+            // Abschnitt 110.
+            var changed = handPose.Apply(LoggerInstance, vrHands.WasherHandRoot,
+                WasherHandRight, HandPoseKind.Grip, route, reference, curl, axis,
+                false, grab);
+
+            changed |= handPose.Apply(LoggerInstance, vrHands.OffHandRoot,
+                !WasherHandRight,
+                grabbing ? HandPoseKind.Grip : HandPoseKind.Open, route,
+                reference, curl, axis, true, grab);
+
+            if (changed)
+                handSpray.Invalidate(handHitResettle.Value);
+        }
+        catch (Exception exception)
+        {
+            LoggerInstance.Warning($"  hand poses threw {exception.GetType().Name}: "
+                + exception.Message);
+        }
+    }
+
+    private void DriveHandSpray()
+    {
+        if (!handHit.Value)
+        {
+            if (handHitPulsing)
+            {
+                handHitPulsing = false;
+                Haptics.Stop(LoggerInstance, !WasherHandRight);
+            }
+
+            handSpray.Release(LoggerInstance, WashEquipmentHandle());
+            handSpray.Report(false, false);
+            return;
+        }
+
+        try
+        {
+            var ready = handSpray.EnsureCollider(LoggerInstance,
+                vrHands.OffHandRoot, handHitMesh.Value, handHitPadding.Value,
+                publishedOffHandWorld, offHandWorldPublished);
+
+            handSpray.ApplyWashMask(LoggerInstance, WashEquipmentHandle(),
+                handHitWashMask.Value);
+
+            var washing = sprayHaptics.Washing && !menuMode;
+
+            // hapticContactMask traegt schon die Weltgeometrie fuer die
+            // Kontaktvibration - dieselbe Frage, dieselbe Maske. Eine zweite
+            // Maske daneben waere ein zweiter Wert fuer denselben Zweck.
+            // EIGENER VORLAUF, nicht der der Kontaktvibration: dieselbe
+            // Zahl haette hier die Begruendung ihres ersten Aufrufers
+            // mitgetragen, und die gilt fuer die Handebene nicht.
+            var hitting = ready && washing && aimPublished && offHandWorldPublished
+                && handSpray.Probe(publishedAimOrigin, publishedAimForward,
+                    publishedOffHandWorld, Mathf.Max(0.2f, handHitRange.Value),
+                    hapticContactMask.Value, Mathf.Max(0f, handHitSkip.Value),
+                    Mathf.Max(0f, handHitInside.Value));
+
+            if (hitting)
+            {
+                // NEU ANGESTOSSEN statt verlaengert: ein Impuls ist zeitlich
+                // begrenzt, und ein Dauerbrummen laesst sich aus dieser
+                // Bruecke nicht bestellen. 0,6 der Laenge ueberlappt knapp,
+                // damit keine Luecke hoerbar wird.
+                if (!handHitPulsing || Time.unscaledTime >= nextHandHitPulse)
+                {
+                    nextHandHitPulse = Time.unscaledTime
+                        + Mathf.Max(0.05f, handHitSeconds.Value * 0.6f);
+
+                    Haptics.Configure(LoggerInstance, hapticFrequency.Value,
+                        hapticUnfiltered.Value);
+                    handHitPulseSent = Haptics.Pulse(LoggerInstance, !WasherHandRight,
+                        handHitAmplitude.Value, handHitSeconds.Value, "hand hit");
+                }
+
+                if (!handHitPulsing)
+                {
+                    handHitPulsing = true;
+
+                    // EINE ZEILE JE FLANKE, mit den Zahlen, die den Ort
+                    // begruenden: die Entfernung zur Hand und die Seite, die
+                    // brummt. Pro Frame waere es unlesbar, und die Flanke ist
+                    // das Ereignis.
+                    var reach = Vector3.Dot(
+                        publishedOffHandWorld - publishedAimOrigin,
+                        publishedAimForward);
+
+                    LoggerInstance.Msg($"hand hit: jet ON the off-hand"
+                        + $"   along the jet {reach:0.###} m"
+                        + $"   buzzing {(WasherHandRight ? "left" : "right")}"
+                        + $"   amp {handHitAmplitude.Value:0.##}"
+                        + $"   pulse {(handHitPulseSent ? "sent" : "REFUSED")}"
+                        + (handSpray.InsideHand
+                            ? "   MUZZLE INSIDE THE HAND (backward ray)" : ""));
+                }
+            }
+            else if (handHitPulsing)
+            {
+                handHitPulsing = false;
+                Haptics.Stop(LoggerInstance, !WasherHandRight);
+                LoggerInstance.Msg("hand hit: jet off the off-hand");
+            }
+
+            handSpray.Report(hitting, washing);
+
+            // WARUM ER NICHT FEUERT, falls er nicht feuert. Ohne diese Zeile
+            // war "keine Vibration" nach 1.41.0 nicht von "kein Collider",
+            // "waescht nicht" und "nicht getroffen" zu unterscheiden - und die
+            // Ursache lag woanders (die Hand war unsichtbar, also unzielbar).
+            //
+            // Auf ZUSTANDSWECHSEL, sonst hoechstens alle zwei Sekunden und nur
+            // waehrend gewaschen wird. Im Leerlauf schreibt sie nichts.
+            var probeState = $"{ready}|{washing}|{hitting}|{aimPublished}"
+                + $"|{offHandWorldPublished}";
+
+            if (washing && (!string.Equals(probeState, handHitProbeState,
+                    StringComparison.Ordinal)
+                || Time.unscaledTime >= nextHandHitReport))
+            {
+                handHitProbeState = probeState;
+                nextHandHitReport = Time.unscaledTime + 2f;
+
+                LoggerInstance.Msg($"hand hit probe: collider {(ready ? "yes" : "NO")}"
+                    + $"   washing {washing}   hit {hitting}"
+                    + $"   aim {(aimPublished ? "yes" : "NO")}"
+                    + $"   offhand {(offHandWorldPublished ? "yes" : "NO")}"
+                    + $"   layer bit 0x{handSpray.LayerBit:X8}"
+                    + $"   {handSpray.Status}");
+            }
+        }
+        catch (Exception exception)
+        {
+            LoggerInstance.Warning($"  hand hit threw {exception.GetType().Name}: "
+                + exception.Message);
+        }
+    }
+
     private void SendSprayPulse(float amplitude, float seconds)
     {
         if (!haptics.Value)
@@ -11209,6 +11905,17 @@ public sealed class Pose : MelonMod
         menuSelectedPointer = IntPtr.Zero;
     }
 
+    // WO DER ZEIGESTRAHL AKTIV IST, IST DAS WERKZEUG IM WEG - und darum ist
+    // das Tor DIESELBE Bedingung und nicht eine zweite Liste von UI-Faellen.
+    //
+    // menuMode traegt schon das UiNavigation-Tor und deckt jede Einblendung ab,
+    // die dem Spieler die Bewegung nimmt: Pausenmenue, Aufgabenliste, das Popup
+    // nach Levelabschluss. menuPointer schaltet den Strahl. Kommt spaeter eine
+    // weitere Oberflaeche dazu, die den Strahl weckt, ist sie hier ohne
+    // Codeaenderung mit drin.
+    private bool HideToolForUi =>
+        hideToolInUi.Value && menuPointer.Value && menuMode;
+
     private void DriveMenuPointer()
     {
         // AUTOMATIC, so nobody has to find alt+Keypad9.
@@ -11257,6 +11964,39 @@ public sealed class Pose : MelonMod
             return;
         }
 
+        // AN DER HAND, NICHT AN DER WERKZEUGSPITZE - und das nimmt eine
+        // Annahme aus Abschnitt 90 zurueck: "Der Zeigestrahl IST der
+        // Duesenstrahl".
+        //
+        // Gemeldet, zwei Symptome mit einer Ursache. Der Ursprung wandert mit
+        // der Werkzeuglaenge, weil die Duesenlokatoren bei 0,12 / 0,2 / 0,4 /
+        // 0,65 und 1,0 m sitzen und ein ausgefahrenes DLC-Werkzeug noch mehr
+        // darauflegt. Und beim Flaechenreiniger kippt die RICHTUNG, weil
+        // raySpawn unter NozzleAnchor(Clone) in der Duesenkette haengt: ein
+        // verdreht angehaengter, animierter Kopf dreht die von DriveRay
+        // erzwungene Identitaet mit.
+        //
+        // Beides faellt weg, sobald KEIN GLIED DER DUESENKETTE mehr im Spiel
+        // ist. publishedPointerOrigin/-Forward kommen aus dem Pose-Block: der
+        // getrackte Handpunkt und die geschriebene Pistolendrehung.
+        //
+        // Der Rueckfall auf die Duese bleibt vollstaendig erhalten, samt der
+        // MuzzlePoint-Korrektur unten - ohne veroeffentlichte Pose (kein
+        // Weltraummodus, erster Frame) ist ein Strahl an der Duese besser als
+        // keiner.
+        //
+        // VOR dem Rueckleseblock, nicht danach: die Logzeile dort nennt beide
+        // Groessen.
+        var fromHand = menuPointerFromHand.Value && pointerPoseReady;
+        var spawnAlive = raySpawn is not null && raySpawn != null;
+
+        // WIE WEIT DIE SPITZE WEG WAR, als Zahl statt als Eindruck. Genau die
+        // Groesse, die der Nutzer am Bild gesehen hat - und beim naechsten
+        // Werkzeug steht sie im Log, ohne einen Testlauf dafuer.
+        var reach = spawnAlive && pointerPoseReady
+            ? (MuzzlePoint(raySpawn!) - publishedPointerOrigin).magnitude
+            : -1f;
+
         // READ BACK FIRST, before this frame overwrites it. That makes the drive
         // loop its own instrument: if what was written last frame is gone, the
         // cursor's own Update owns this transform and LateUpdate did not win -
@@ -11292,11 +12032,14 @@ public sealed class Pose : MelonMod
                     + $"   drift {drift:0.###} m"
                     + $"   wrote {Vector(pointerWrote)}   found {Vector(found)}"
                     + $"   hovering {cursor.Hovering}"
-                    + $"   cursorTarget {CursorTargetText()}");
+                    + $"   cursorTarget {CursorTargetText()}"
+                    + $"   origin {(fromHand ? "HAND" : "nozzle")}"
+                    + (reach < 0f ? "   hand-muzzle unknown"
+                        : $"   hand-muzzle {reach:0.###} m"));
             }
         }
 
-        if (raySpawn is null || raySpawn == null)
+        if (!fromHand && !spawnAlive)
         {
             menuLaser.Hide();
             pointerWroteValid = false;
@@ -11317,8 +12060,10 @@ public sealed class Pose : MelonMod
         // The wash laser has drawn from this corrected point since section 77.
         // Taking raySpawn.position here re-introduced a solved bug, which is
         // what the user recognised on sight.
-        var origin = MuzzlePoint(raySpawn);
-        var forward = raySpawn.forward;
+        var origin = fromHand
+            ? publishedPointerOrigin
+            : MuzzlePoint(raySpawn!);
+        var forward = fromHand ? publishedPointerForward : raySpawn!.forward;
 
         // Against the CURSOR's own canvas plane, not the UI root's. The cursor
         // lives in this canvas and the module derives its position from it, so
@@ -13270,12 +14015,23 @@ public sealed class Pose : MelonMod
     private void ReadOffHandTrigger()
     {
         if (offHandTrigger is null)
+        {
+            // AUCH IM FRUEHEN AUSSTIEG GERAEUMT: ein haengengebliebenes true
+            // wuerde die freie Hand fuer den Rest der Sitzung in der Greifpose
+            // halten, und "is null" sagt nichts ueber den Zustand davor.
+            offHandTriggerHeld = false;
             return;
+        }
 
         try
         {
             var raw = offHandTrigger.ReadValueAsObject();
             var value = raw is null ? 0f : raw.Unbox<float>();
+
+            // DIESELBE SCHWELLE, DIESELBE ZEILE. Die Posenwahl liest diesen
+            // Merker und greift den Trigger nicht ein zweites Mal ab - ein
+            // Block, eine Momentaufnahme.
+            offHandTriggerHeld = value > 0.6f;
 
             if (value > 0.6f)
             {

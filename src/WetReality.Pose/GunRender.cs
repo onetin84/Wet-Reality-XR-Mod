@@ -86,6 +86,14 @@ internal sealed class GunRender
 
     internal string Status { get; private set; } = "gun render: untouched";
 
+    // Fuer ToolHide: die Visuals des Spielers, die diese Klasse schon auf 0,5 s
+    // aufloest. Ueber sie haengen die Ausruestungsanker beider Personen - ein
+    // zweiter FindObjectOfType daneben waere eine zweite Antwort auf dieselbe
+    // Frage, und die vier Listen aus Abschnitt 109 haben gezeigt, was das
+    // kostet.
+    internal Il2CppFuturLab.PW2.CharacterVisualsFirstPerson? PlayerVisuals =>
+        visuals is null || visuals == null ? null : visuals;
+
     internal void Reset()
     {
         visuals = null;
@@ -106,6 +114,12 @@ internal sealed class GunRender
         loggedGlobals = false;
         wroteLock = float.NaN;
         FovStatus = "fov: untouched";
+        depthCaptured = false;
+        restMinDist = 0f;
+        restScale = 0f;
+        wroteDepth = false;
+        loggedDepth = false;
+        DepthStatus = "depth: untouched";
         applied = false;
         Status = "gun render: untouched";
     }
@@ -436,6 +450,34 @@ internal sealed class GunRender
     // Renderers, den BodyMeshes als Koerpergeometrie eingeordnet hat. Damit
     // haengt er an derselben gemessenen Regel wie das Ausblenden selbst und
     // nicht an einem Namen, der im naechsten DLC anders lautet.
+    // DIE EBENE, AUF DER DIE PISTOLE GEZEICHNET WIRD. Genommen von den
+    // gefahrenen Meshes, die diese Klasse schon fuehrt - nicht von einem Namen
+    // und nicht von einem gepinnten Pfad.
+    //
+    // Sie ist die Antwort auf "die Pistole ueberdeckt die Haende": wer eine
+    // Ebene je Sichtweise fuehrt (PlayerCharacter.GetEquipmentLayer), trennt
+    // damit Durchgaenge, und dann entscheidet die Ebene die Reihenfolge.
+    internal int WasherLayer
+    {
+        get
+        {
+            if (drivenMeshes is null)
+                return -1;
+
+            for (var index = 0; index < drivenMeshes.Length; index++)
+            {
+                var renderer = drivenMeshes[index];
+
+                if (renderer is null || renderer == null)
+                    continue;
+
+                return renderer.gameObject.layer;
+            }
+
+            return -1;
+        }
+    }
+
     internal Transform? BodyAnchor
     {
         get
@@ -1177,6 +1219,87 @@ internal sealed class GunRender
     // Written every frame from OnLateUpdate, after the game's own Update, so a
     // game that also sets it per frame still loses the last word before
     // rendering.
+    private bool depthCaptured;
+    private float restMinDist;
+    private float restScale;
+    private bool wroteDepth;
+    private bool loggedDepth;
+
+    internal string DepthStatus { get; private set; } = "depth: untouched";
+
+    // DIE TIEFENKOMPRESSION DER EGO-GEOMETRIE, und sie ist die Ursache dafuer,
+    // dass die Pistole die Haende immer ueberdeckt.
+    //
+    // m_washerDepthMinDist und m_washerDepthScale sind GLOBALE Shader-Floats
+    // (gelesen: 0,5 / 0,5), und die First-Person-Materialien lesen sie - fuenf
+    // auf der Pistole, vier auf Armen und Handschuhen. Sie stauchen die Tiefe,
+    // damit ein Werkzeug nicht in Waende schneidet. Unsere VR-Haende tragen
+    // "Universal Render Pipeline/Lit" und rechnen in echter Tiefe; eine
+    // halbierte Pistolentiefe liegt damit immer vor einer Hand, die wirklich
+    // dort ist. Zwei Tiefenraeume in einem Bild, keine Sortierfrage.
+    //
+    // Neutral ist minDist 0 und scale 1. Beides bleibt ein Schalter, weil die
+    // genaue Formel im Shader steht und nicht in der Interop-Assembly - und der
+    // Ausgangswert wird gemerkt, damit das Abschalten ihn zurueckgibt.
+    internal void ApplyDepthGlobals(MelonLogger.Instance log, bool neutral,
+        float minDist, float scale)
+    {
+        try
+        {
+            if (visuals is null || visuals == null)
+                return;
+
+            var minId = visuals.m_washerDepthMinDistPropID;
+            var scaleId = visuals.m_washerDepthScalePropID;
+
+            if (!depthCaptured)
+            {
+                depthCaptured = true;
+                restMinDist = Shader.GetGlobalFloat(minId);
+                restScale = Shader.GetGlobalFloat(scaleId);
+                log.Msg($"  washer depth: globals read minDist {restMinDist:0.###}"
+                    + $"   scale {restScale:0.###}");
+            }
+
+            if (neutral)
+            {
+                Shader.SetGlobalFloat(minId, minDist);
+                Shader.SetGlobalFloat(scaleId, scale);
+                wroteDepth = true;
+
+                if (!loggedDepth)
+                {
+                    loggedDepth = true;
+                    log.Msg($"  washer depth: neutralised to minDist {minDist:0.###}"
+                        + $"   scale {scale:0.###} (was {restMinDist:0.###} / "
+                        + $"{restScale:0.###}) - the hands and the washer now share "
+                        + "one depth space");
+                }
+
+                DepthStatus = $"depth {minDist:0.##}/{scale:0.##}";
+                return;
+            }
+
+            if (wroteDepth)
+            {
+                wroteDepth = false;
+                loggedDepth = false;
+                Shader.SetGlobalFloat(minId, restMinDist);
+                Shader.SetGlobalFloat(scaleId, restScale);
+                log.Msg($"  washer depth: restored to {restMinDist:0.###} / "
+                    + $"{restScale:0.###}");
+            }
+
+            DepthStatus = "depth: game";
+        }
+        catch (Exception exception)
+        {
+            log.Warning($"  washer depth threw {exception.GetType().Name}: "
+                + exception.Message);
+            DepthStatus = "depth: failed";
+        }
+    }
+
     internal void ApplyFovGlobals(MelonLogger.Instance log, bool overrideLock, bool zeroLock,
         Camera? camera)
     {
