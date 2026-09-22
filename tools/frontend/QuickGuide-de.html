@@ -280,12 +280,12 @@ footer .spacer { flex: 1; }
 <table>
   <tr><th>Controller bewegen</th><td>Die Pistole folgt deiner Hand in Position und Richtung</td></tr>
   <tr><th>Trigger</th><td>Sprühen, solange gedrückt</td></tr>
-  <tr><th>Grip</th><td>Dauersprühen ein und aus — kein Halten des Triggers nötig. Läuft er, schaltet der Griff ihn ab, statt ein Werkzeug zu wechseln.</td></tr>
+  <tr><th>Grip</th><td>Dauersprühen ein und aus — kein Halten des Triggers nötig. Läuft er, schaltet der Griff ihn ab, statt ein Werkzeug zu wechseln, und das Öffnen des Pausenmenüs schaltet ihn ebenfalls ab — ein laufender Strahl lässt sich also immer stoppen.</td></tr>
   <tr><th><kbd>A</kbd></th><td>Springen. Im Menü: auswählen</td></tr>
   <tr><th><kbd>B</kbd> tippen</th><td>Ducken</td></tr>
   <tr><th><kbd>B</kbd> halten</th><td>Ducken, langer Druck</td></tr>
   <tr><th>Stick links / rechts</th><td>Drehen</td></tr>
-  <tr><th>Stick oben / unten</th><td>Nächste oder vorige Düse in der Kategorie</td></tr>
+  <tr><th>Stick oben / unten</th><td>Nächste oder vorige Düse in der Kategorie. Es braucht einen bewussten Schubs, kurz gehalten — das Drehen nach links oder rechts wechselt die Düse nicht mehr aus Versehen</td></tr>
   <tr><th><kbd>R3</kbd> klicken</th><td>Düsenkategorie wechseln — Standard oder Seife</td></tr>
   <tr><th><kbd>R3</kbd> halten</th><td>Gerät wechseln, so kommst du an die Turbodüse</td></tr>
 </table>
@@ -297,7 +297,7 @@ footer .spacer { flex: 1; }
   <tr><th>Stick ganz durchdrücken</th><td>Sprinten</td></tr>
   <tr><th>Trigger</th><td>Animiertes Objekt öffnen oder schließen, wenn die Hand daran liegt — sonst Düse drehen und Reiniger nachfüllen</td></tr>
   <tr><th>Grip</th><td>Restlichen Schmutz hervorheben</td></tr>
-  <tr><th><kbd>X</kbd></th><td>Objekte aufnehmen und ablegen</td></tr>
+  <tr><th><kbd>X</kbd></th><td>Objekte aufnehmen und ablegen, und Schalter bedienen — etwa Heben und Senken am Lift. Gezielt wird mit der linken Hand: eine grüne Linie erscheint, sobald etwas in Reichweite ist, und nur dann — keine Linie heißt, da ist nichts. Ein Schalter, der gehalten werden muss, bleibt gedrückt, solange du <kbd>X</kbd> hältst</td></tr>
   <tr><th><kbd>Y</kbd> tippen</th><td>Aufgabenliste</td></tr>
   <tr><th><kbd>Y</kbd> halten</th><td>Möbel-Inventar</td></tr>
   <tr><th><kbd>Menü</kbd></th><td>Pausenmenü</td></tr>
@@ -356,7 +356,7 @@ footer .spacer { flex: 1; }
 
 <table>
   <tr><th>Linken Grip halten + linker Stick</th><td>Objekt drehen. Solange der Grip gehalten wird, ist das Laufen ausgesetzt — du drehst also das Objekt und nicht dich</td></tr>
-  <tr><th><kbd>X</kbd></th><td>Ablegen</td></tr>
+  <tr><th><kbd>X</kbd></th><td>Ablegen — aber nur, wo es passt. Solange das Spiel den Platz als belegt anzeigt, tut <kbd>X</kbd> nichts, statt das Objekt dort liegen zu lassen, wo es nicht mehr aufzunehmen ist. Ein Stück drehen oder zurücktreten, dann geht es hinunter</td></tr>
 </table>
 
 <h2>In Menüs</h2>
@@ -449,7 +449,30 @@ footer .spacer { flex: 1; }
   </tr>
   <tr>
     <th>Aus der Düse kommt eine grüne Linie</th>
-    <td>Das ist der Ziellaser, ein Entwicklungswerkzeug. Im Konfigurationswerkzeug abschaltbar</td>
+    <td>Die darf weg: im Konfigurationswerkzeug abschaltbar. Die kurze grüne Linie
+        an der LINKEN Hand ist etwas anderes und nützlich — sie erscheint nur, wenn
+        etwas in Reichweite ist, und endet auf dem, was <kbd>X</kbd> nehmen würde</td>
+  </tr>
+  <tr>
+    <th>Der Dauerstrahl geht nicht aus</th>
+    <td>Pausenmenü öffnen — das räumt ihn immer. Tut der Griff gar nichts, während
+        die Hand neben der Hüfte ruht, die Hand vom Körper wegnehmen und erneut
+        drücken — und bitte <code>Latest.log</code> schicken</td>
+  </tr>
+  <tr>
+    <th>Beim Drehen wechselt aus Versehen die Düse</th>
+    <td>Sollte nicht mehr passieren. Wenn doch,
+        <code>NozzleStickDominance</code> oder
+        <code>NozzleStickThreshold</code> in
+        <code>UserData\MelonPreferences.cfg</code> höher setzen, oder mit
+        <code>NozzleStick = false</code> den Stickweg ganz abschalten —
+        <kbd>R3</kbd> erreicht weiter jede Kategorie</td>
+  </tr>
+  <tr>
+    <th>Die Liftfahrt sieht gestuft aus</th>
+    <td>Bekannt, und nicht dein Headset. Die Plattform setzt den Spieler in Stufen
+        nach oben, und die Sicht folgt ihnen. Wird bearbeitet; die Fahrt selbst ist
+        gefahrlos</td>
   </tr>
   <tr>
     <th>Nach <kbd>F6</kbd> kommt VR nicht zurück</th>

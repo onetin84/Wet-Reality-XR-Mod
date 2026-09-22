@@ -31,6 +31,11 @@ internal sealed class ButtonEdge
     private float pressedAt;
     private bool holdFired;
 
+    // Was der Flankenzaehler fuer den aktuellen Zustand der Taste haelt.
+    // Nur zum Berichten: bleibt eine Rastung stehen, ist die Frage, ob hier
+    // noch "gedrueckt" steht, weil die Achse stumm wurde.
+    internal bool Down => down;
+
     // True for exactly one frame.
     internal bool Pressed { get; private set; }
     internal bool Released { get; private set; }
@@ -113,17 +118,55 @@ internal sealed class ButtonEdge
     }
 
     internal static float ReadAxis(InputAction? action)
+        => ReadAxis(action, out _);
+
+    // MIT DER ZWEITEN ANTWORT, und die ist der Grund fuer die Ueberladung:
+    // 0f bedeutete bisher ZWEI verschiedene Dinge - "der Griff ist offen"
+    // und "diese Achse ist nicht lesbar". Fuer eine FLANKE sind beide
+    // gleich, also kommt nach einem Verlust der Bindung nie wieder eine
+    // Abwaertsflanke - und wer davon einen DAUERZUSTAND abhaengig macht,
+    // haelt ihn dann fuer immer. Genau so blieb der Dauerstrahl stehen.
+    //
+    // readable wird erst nach dem vollstaendigen Lesen gesetzt: ein Wert,
+    // der beim Auspacken wirft, ist nicht gelesen.
+    internal static float ReadAxis(InputAction? action, out bool readable)
     {
+        readable = false;
+
         if (action is null)
             return 0f;
 
         try
         {
             var raw = action.ReadValueAsObject();
-            return raw is null ? 0f : raw.Unbox<float>();
+
+            // EIN FEHLENDER WERT IST KEIN FEHLER, und diese Verwechslung hat
+            // Geld gekostet. Eine Achse in Ruhe liefert null - die Action geht
+            // in den Wartezustand und hat keinen betaetigten Wert -, und das
+            // heisst OFFEN und nicht UNLESBAR.
+            //
+            // Die erste Fassung las es als unlesbar, und die Sicherung, die
+            // daran haengt, raeumte darauf die Spray-Rastung: Druck rastet ein,
+            // Loslassen raeumt. Gemessen 13 Mal, gemeldet als "kein Switch
+            // mehr, nur Gedrueckthalten". Die Sicherung gegen einen
+            // unentrinnbaren Dauerzustand hatte den Dauerzustand unmoeglich
+            // gemacht.
+            //
+            // UNLESBAR HEISST GENAU ZWEI DINGE: es gibt kein Action-Objekt,
+            // oder die Lesung wirft. Beides sind Fehler des LESEWEGS. Eine
+            // stumme Action, die nicht null ist, bleibt damit ununterscheidbar
+            // von einem offenen Griff - das ist eine echte Grenze dieses
+            // Signals und keine, die sich wegdefinieren laesst.
+            var value = raw is null ? 0f : raw.Unbox<float>();
+
+            readable = true;
+            return value;
         }
         catch
         {
+            // Der Leseweg selbst ist gescheitert - hier gehoert false hin,
+            // und nur hier sowie beim fehlenden Action-Objekt oben.
+            readable = false;
             return 0f;
         }
     }

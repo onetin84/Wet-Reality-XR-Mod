@@ -52,3 +52,10 @@ Thumbs.db
 desktop.ini
 *.bak
 *.tmp
+
+# ----------------------------------- Handbuch und offene Punkte, aus demselben
+# Grund wie das Designdokument: sie sind daraus abgeleitet und gehoeren zum
+# lokalen Gedaechtnis des Projekts. Sollen sie ins Repository, reichen zwei
+# geloeschte Zeilen - sie tragen keine lokalen Pfade.
+Wet Reality Handbuch.md
+Wet Reality Offene Punkte.md

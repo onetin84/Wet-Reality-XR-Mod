@@ -159,6 +159,14 @@ BEKANNTE GRENZEN
   - Der linke Stick reagiert sporadisch nicht, wenn der rechte Controller kurz
     einschläft. F2 zweimal behebt es. Bekannt und noch nicht behoben.
 
+  - Die Fahrt auf der Hebebuehne sieht gestuft aus, und die freie Hand zittert
+    mit. Gemeldet und nachvollzogen. Es ist NICHT das Protokoll: waehrend einer
+    gemessenen Fahrt schrieb das Log eine bis neun Zeilen pro Sekunde, und die
+    einzige groessere Spitze im ganzen Lauf war der Levelladevorgang. Die
+    Plattform setzt den Spieler in Stufen nach oben, und die Sicht folgt ihnen;
+    auf welcher Seite der Naht die Stufe entsteht, wird im naechsten Build
+    gemessen statt geraten. Die Fahrt funktioniert und ist gefahrlos.
+
   - VR kann innerhalb einer Sitzung nicht angehalten und neu gestartet werden.
     F6, das das Spiel auf den Monitor zurücklegte, ist in diesem Build unter
     anderem deshalb aus - stattdessen das Spiel neu starten.

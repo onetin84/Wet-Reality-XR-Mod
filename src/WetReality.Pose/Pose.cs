@@ -5,7 +5,7 @@ using UnityEngine.InputSystem;
 using UnityEngine.SubsystemsImplementation;
 using UnityEngine.XR;
 
-[assembly: MelonInfo(typeof(WetReality.Pose), "Wet Reality Pose", "1.51.0", "Wet Reality")]
+[assembly: MelonInfo(typeof(WetReality.Pose), "Wet Reality Pose", "1.63.0", "Wet Reality")]
 [assembly: MelonGame("FuturLab", "PowerWash Simulator 2")]
 
 namespace WetReality;
@@ -61,6 +61,7 @@ public sealed class Pose : MelonMod
     private MelonPreferences_Entry<bool> interactProbe = null!;
     private MelonPreferences_Entry<bool> carryFollowsHand = null!;
     private MelonPreferences_Entry<bool> carrySwapOrigin = null!;
+    private MelonPreferences_Entry<bool> carryFollowsOffHand = null!;
     private MelonPreferences_Entry<bool> interactGrab = null!;
     private MelonPreferences_Entry<float> interactZoneRadius = null!;
     private MelonPreferences_Entry<float> crouchedMoveCap = null!;
@@ -131,8 +132,30 @@ public sealed class Pose : MelonMod
     // statt einer Messung - dieselbe Begruendung, aus der die Zielsuche den
     // veroeffentlichten Strahl liest statt den Transform abzugreifen.
     private Vector3 publishedOffHandWorld;
+
+    // Nur fuer ReportVerticalStep. NaN heisst "noch keine Vorlesung" - 0 waere
+    // eine gueltige Hoehe und wuerde im ersten Frame eine Stufe erfinden.
+    private const int VerticalStepCap = 300;
+    private int verticalStepLines;
+    private float lastVerticalCameraY = float.NaN;
+    private float lastVerticalHandY = float.NaN;
     private Quaternion publishedOffHandRotation = Quaternion.identity;
+    private Quaternion publishedOffHandAimRotation = Quaternion.identity;
     private bool offHandWorldPublished;
+
+    // Quaternion.identity ist kein Kennzeichen fuer "nicht gelesen" - es ist
+    // eine gueltige Rotation. Ohne dieses Flag zeigte ein getragenes Objekt
+    // bei fehlender Bindung stur nach Weltvorn, und das saehe nach einem
+    // kaputten Halter aus statt nach einer fehlenden Bindung.
+    private bool offHandRotationPublished;
+    private bool offHandAimPublished;
+
+    // Nur fuer die Wechselmeldung, welche Pose die Richtung fuehrt.
+    private string offHandForwardSource = "";
+
+    // Nur fuer die Wechselmeldung der Tragehand - pro Frame zu melden waere
+    // der Posten aus Abschnitt 87.
+    private bool carryUsedOffHand;
 
     private Vector3 publishedWasherHandWorld;
     private Quaternion publishedWasherHandRotation = Quaternion.identity;
@@ -220,9 +243,15 @@ public sealed class Pose : MelonMod
     private MelonPreferences_Entry<float> turnSpeed = null!;
     private MelonPreferences_Entry<float> snapAngle = null!;
     private MelonPreferences_Entry<float> turnDeadzone = null!;
+    private MelonPreferences_Entry<bool> nozzleStick = null!;
+    private MelonPreferences_Entry<float> nozzleStickThreshold = null!;
+    private MelonPreferences_Entry<float> nozzleStickDominance = null!;
+    private MelonPreferences_Entry<float> nozzleStickSettle = null!;
     private MelonPreferences_Entry<string> uiHideKey = null!;
     private MelonPreferences_Entry<string> uiStereoKey = null!;
     private MelonPreferences_Entry<string> placeVerb = null!;
+    private MelonPreferences_Entry<bool> placeRequireValidSpot = null!;
+    private MelonPreferences_Entry<bool> placeRefusedBuzz = null!;
     private MelonPreferences_Entry<float> itemRotateSpeed = null!;
     private MelonPreferences_Entry<bool> autoEnableWithXr = null!;
     private MelonPreferences_Entry<bool> showSplash = null!;
@@ -271,6 +300,46 @@ public sealed class Pose : MelonMod
     private MelonPreferences_Entry<float> pickupDistanceMin = null!;
     private MelonPreferences_Entry<bool> aimInteraction = null!;
     private MelonPreferences_Entry<float> aimInteractionRadius = null!;
+    private MelonPreferences_Entry<float> aimSurfaceTolerance = null!;
+    private MelonPreferences_Entry<float> aimTargetRelease = null!;
+    private MelonPreferences_Entry<float> aimPerpTie = null!;
+    private MelonPreferences_Entry<bool> grabRaySnaps = null!;
+
+    // Welche der zwei Auswahlregeln den Gewinner bestimmt hat, fuer die
+    // Zielzeile. Ohne das sagt das Log nicht, ob die neue Regel gegriffen hat.
+    private string aimDecidedBy = "";
+    private MelonPreferences_Entry<bool> interactHold = null!;
+    private MelonPreferences_Entry<bool> aimFromOffHand = null!;
+    private MelonPreferences_Entry<bool> grabPointer = null!;
+    private MelonPreferences_Entry<bool> grabPointerBuzz = null!;
+    private MelonPreferences_Entry<float> grabPointerHz = null!;
+
+    // Die dritte Instanz neben washLaser und menuLaser. Diese Klasse kennt
+    // keine Preferences und zeichnet nur, was sie uebergeben bekommt.
+    private readonly WashLaser grabLaser = new();
+
+    // Gruen heisst zugreifbar. Es gibt keine zweite Farbe mehr: ohne Ziel wird
+    // NICHTS gezeichnet, auf Anforderung des Nutzers. Die Suchfarbe ist samt
+    // ihrem Zweig entfernt statt totzuliegen - eine Instrumentierung, die ihre
+    // Frage ueberlebt hat, ist der Posten aus Abschnitt 87.
+    private static readonly Color GrabReadyColor = new(0.35f, 1f, 0.45f, 1f);
+
+    // DIE RASTUNG DER HALTE-INTERAKTION. Gemerkt wird das gesendete VERB,
+    // damit das Cancel genau das abbricht, was gestartet wurde.
+    private bool holdLatched;
+    private Il2CppFuturLab.PW2.ItemInteraction holdLatchVerb;
+    private string holdLatchName = "";
+
+    // Der amtierende Kandidat, als NATIVER ZEIGER. Il2CppInterop gibt bei
+    // jedem Zugriff einen frischen Wrapper heraus, ReferenceEquals ist damit
+    // immer falsch - Abschnitt 81.
+    private IntPtr aimIncumbent = IntPtr.Zero;
+
+    private float nextGrabScan;
+    private bool grabHadTarget;
+    private bool grabWroteLine;
+    private Vector3 grabHeldPoint;
+    private bool aimUsedOffHand;
     private MelonPreferences_Entry<float> aimInteractionRange = null!;
     private MelonPreferences_Entry<bool> uiNavigation = null!;
     private MelonPreferences_Entry<bool> menuPointer = null!;
@@ -517,6 +586,12 @@ public sealed class Pose : MelonMod
     // stick returns inside the deadzone.
     private bool snapArmed = true;
     private bool nozzleArmed = true;
+
+    // WANN DIE ABSICHT BEGANN, und 0 heisst "keine". Ohne diese Uhr feuert
+    // der Wechsel auf dem ersten Frame, der passt - also auf dem
+    // Einschwingvorgang des Daumens und nicht auf der Absicht.
+    private float nozzleIntentSince;
+    private float nextNozzleBlockReport;
     private InputAction? offHandTrigger;
     private InputAction? offHandPosition;
 
@@ -525,6 +600,12 @@ public sealed class Pose : MelonMod
     // Hand an diesem Controller braucht sie, und deswegen wird sie jetzt
     // erhoben, bevor der naechste Lauf sie benutzt.
     private InputAction? offHandRotation;
+
+    // DIE ZEIGERICHTUNG, und sie ist eine andere Pose als die Grip-Rotation
+    // darueber. OpenXR legt die Vorwaertsachse der Grip-Pose durch die Roehre
+    // der gekruemmten Finger; die Aim-Pose zeigt per Definition in
+    // Zielrichtung. Abschnitt 54, dort fuer die Pistole.
+    private InputAction? offHandAimRotation;
 
     // Die VR-Haende des Spiels. Laedt und berichtet, haengt nichts ein.
     private readonly HandAssets handAssets = new();
@@ -904,6 +985,21 @@ public sealed class Pose : MelonMod
                 + "positioned. Off by default: it changes where the game's ground check "
                 + "starts from.");
 
+        // DIE FREIE HAND POSITIONIERT, nicht die Pistolenhand. Auf Anforderung
+        // des Nutzers, und konsistent mit dem, was schon gilt: X liegt auf der
+        // freien Hand, der Aufnehmen-/Ablegen-Puls liegt dort, und die
+        // Verweigerung einer Ablage pulst dort. Die Pistolenhand fuehrt das
+        // Werkzeug, die freie Hand fasst an.
+        //
+        // Faellt die Off-Hand-Rotation aus, greift die Pistolenhand - also das
+        // bisherige, funktionierende Verhalten. Der Ausfall nimmt die
+        // Verbesserung weg, er verschlechtert nichts.
+        carryFollowsOffHand = settings.CreateEntry("CarryFollowsOffHand", true,
+            description: "Position a carried object with the OFF hand - the one "
+                + "that holds the pick-up button - instead of the washer hand. "
+                + "Falls back to the washer hand if the off-hand rotation is not "
+                + "bound. Needs CarryFollowsHand on.");
+
         // PHYSISCHES GREIFEN ANIMIERTER OBJEKTE - Abschnitt 102, Lauf 2.
         //
         // Auf dem linken TRIGGER, nicht auf dem linken Griff. Damit entsteht
@@ -1204,6 +1300,31 @@ public sealed class Pose : MelonMod
         turnDeadzone = settings.CreateEntry("TurnDeadzone", 0.2f,
             description: "Deflection below this does not turn.");
 
+        // DER AUFSATZWECHSEL AUF DEMSELBEN STICK, und er braucht eigene
+        // Tore. Gemeldet wurde, dass eine Drehung immer wieder aus Versehen
+        // den Aufsatz wechselt, weil der Daumen etwas mitdrueckt.
+        //
+        // VIER NEUE SCHLUESSEL, und das ist Absicht: eine geaenderte Vorgabe
+        // eines ALTEN Schluessels erreicht eine vorhandene cfg nicht, ein
+        // neuer Schluessel schon.
+        nozzleStick = settings.CreateEntry("NozzleStick", true,
+            description: "Step the nozzle with the washer hand's stick on Y. "
+                + "Set to false to take the nozzle off the stick entirely - R3 for "
+                + "the category and L3 for the extension are unaffected.");
+        nozzleStickThreshold = settings.CreateEntry("NozzleStickThreshold", 0.7f,
+            description: "How far Y must be pushed for a nozzle step. Deliberately "
+                + "NOT TurnDeadzone: that number answers \"is the player turning\", "
+                + "which is no answer to \"does the player want a different nozzle\". "
+                + "Both questions hanging on the same 0.2 is why a small thumb roll "
+                + "was enough.");
+        nozzleStickDominance = settings.CreateEntry("NozzleStickDominance", 2.5f,
+            description: "Y must exceed X by this factor. 2.5 is 21.8 degrees around "
+                + "vertical, 1.5 was 33.7 - a diagonal no longer counts as vertical.");
+        nozzleStickSettle = settings.CreateEntry("NozzleStickSettle", 0.12f,
+            description: "Seconds the push must hold before it steps. This is the one "
+                + "that kills the accidental change: pushing diagonally, X rises, the "
+                + "ratio collapses and the clock resets, so it never fires.");
+
         // F1 and F12 are the only function keys the full audit of this game
         // folder found unclaimed.
         uiHideKey = settings.CreateEntry("UiHideKey", "F1",
@@ -1233,6 +1354,33 @@ public sealed class Pose : MelonMod
             description: "What the interact button does while carrying: cancel "
                 + "(InvokeCancelInteraction(PickUp)), remove (InvokeItemInteraction(Remove)), "
                 + "or use (InvokeItemInteraction(Use)). Ctrl+Num1 cycles it in the headset.");
+
+        // DER ROTE ZUSTAND IST EIN SPIELZUSTAND, und er hat einen Namen.
+        // InteractionVisualState hat genau ZWEI Werte, Default und
+        // PlacementBlocked, und ueberschrieben wird OnVisualStateChanged von
+        // PickableItem und PickablePhysicsItem - den Typen, die man in der Hand
+        // haelt. Der Zustand ist also das, worauf die Faerbung reagiert, und
+        // nicht bloss ein gleichnamiger Bezeichner.
+        //
+        // NICHT IsValidPlacement, obwohl es naeher laege: ueber alle 33
+        // archivierten Logs liest die Spalte 8x True und 0x False. Das ist eine
+        // Gutfall-Stichprobe - niemand hatte bisher Grund, X im roten Zustand zu
+        // druecken - und kein Beleg, dass die Groesse variiert. Sie bleibt als
+        // Diagnosespalte stehen.
+        placeRequireValidSpot = settings.CreateEntry("PlaceRequireValidSpot", true,
+            description: "Refuse to put a carried item down while the spot is "
+                + "blocked - either InteractionVisualState.PlacementBlocked (the "
+                + "red tint) or IsValidPlacement() reading false. Placing it there "
+                + "leaves it neither held nor placed, and it cannot be picked up "
+                + "again. Off restores the old behaviour.");
+
+        // Ohne Rueckmeldung sieht eine verweigerte Taste wie eine kaputte Taste
+        // aus - die Lehre aus Abschnitt 111, wo ein Umschalter ohne Anzeige
+        // seine eigene Fehlbedienung verborgen hat. Gepulst wird die FREIE Hand,
+        // weil X dort sitzt.
+        placeRefusedBuzz = settings.CreateEntry("PlaceRefusedBuzz", true,
+            description: "Short pulse on the hand that holds X when a placement is "
+                + "refused because the spot is blocked.");
 
         // Degrees per second at full stick deflection. The game's own
         // ItemRotationSpeed reads 1, and the unit of InvokeItemRotated(float) is
@@ -1326,9 +1474,106 @@ public sealed class Pose : MelonMod
                 + "game's own gaze targeting is untouched - this only takes over while the "
                 + "washer is actually pointing at something interactable.");
 
+        // DIE FREIE HAND ZIELT. Dort liegt X, und dort liegt seit Abschnitt 149
+        // auch das Positionieren eines getragenen Objekts - anzeigen, greifen,
+        // tragen, ablegen auf einer Hand. Faellt die Off-Hand-Rotation aus,
+        // greift der Pistolenstrahl, also das bisherige Verhalten.
+        aimFromOffHand = settings.CreateEntry("AimFromOffHand", true,
+            description: "Aim for pick-up with the OFF hand - the one that holds "
+                + "the pick-up button - instead of the washer. Falls back to the "
+                + "washer ray if the off-hand rotation is not bound.");
+
+        // OHNE RUECKMELDUNG IST EIN GREIFBEREICH UNSICHTBAR. Gemeldet: "der
+        // Nutzer kennt diesen eng begrenzten Greifbereich nicht, es gibt
+        // keinerlei visuelles Feedback". Die E-Einblendung des Spiels haengt an
+        // m_targetItem, das der Manager jedes Frame aus seinem waagerechten
+        // Blickstrahl zurueckschreibt - also zeichnet die Mod selbst.
+        grabPointer = settings.CreateEntry("GrabPointer", true,
+            description: "Draw a line from the grab hand that turns green and ends "
+                + "on the object as soon as something can be picked up. The game "
+                + "shows no prompt for this, because its own prompt follows the "
+                + "gaze and not the hand.");
+
+        grabPointerBuzz = settings.CreateEntry("GrabPointerBuzz", true,
+            description: "Short pulse on the grab hand when a target is acquired "
+                + "or lost. Works without looking.");
+
+        // GESUCHT WIRD AUF TAKT, GEZEICHNET PRO FRAME. Ueber alle Kandidaten mal
+        // alle Collider mal ClosestPoint pro Frame waere der Verschnitt, den
+        // Abschnitt 87 gemessen hat; 15 Hz sind fuer einen Zeiger nicht zu
+        // unterscheiden und sechsmal weniger Arbeit als 90.
+        grabPointerHz = settings.CreateEntry("GrabPointerHz", 15f,
+            description: "How often per second the grab pointer looks for a "
+                + "target. The line itself follows the hand every frame; only the "
+                + "search is throttled.");
+
         aimInteractionRadius = settings.CreateEntry("AimInteractionRadius", 0.5f,
             description: "Metres of sideways distance from the beam that still counts as "
                 + "pointing at an object.");
+
+        // DER ABSTAND ZUR OBERFLAECHE, und das ist eine andere Groesse als der
+        // Abstand zum Pivot. Ein eigener Schluessel statt aimInteractionRadius
+        // umzudeuten: der bleibt als Rueckfall in Kraft, wenn ein Objekt keinen
+        // lesbaren Collider hat, und eine Zahl, die zwei Dinge bedeutet, ist
+        // beim naechsten Nachjustieren eine Fehlerquelle.
+        aimSurfaceTolerance = settings.CreateEntry("AimSurfaceTolerance", 0.15f,
+            description: "How far the aim ray may pass from an object's COLLIDER "
+                + "SURFACE and still grab it. Replaces the old pivot cone for any "
+                + "object with a readable collider - a long flat item like a folded "
+                + "ladder has its pivot at one end, so the pivot cone only worked "
+                + "there. AimInteractionRadius still applies as the fallback.");
+
+        // EIN KLEINES ZIEL VOR EINEM GROSSEN konkurriert auf Messerschneide.
+        // Gemessen am Scherenlift: der Knopf liest perp 0,12 bis 0,15 bei einer
+        // Toleranz von 0,15, die Liftwanne liest 0,00 in 60 von 85 Messungen,
+        // weil der Strahl durch ihren Collider geht. Faellt der Knopf durch
+        // Wackeln aus dem Tor, uebernimmt die Wanne - mit Verb PickUp.
+        //
+        // Der amtierende Kandidat darf deshalb laenger bleiben, als er zum
+        // Erfassen gebraucht haette. Gelockert wird NUR der Kegel; Reichweite
+        // und "hinter der Muendung" sind keine Wackelfrage. Die Toleranz global
+        // anzuheben waere der falsche Hebel - das machte jedes Objekt
+        // greifbarer, und Abschnitt 102 hat vorgerechnet, was das kostet.
+        // WANN ZWEI KANDIDATEN "GLEICH GUT GETROFFEN" SIND.
+        //
+        // Darunter gilt die Raycast-Regel und die Tiefe entscheidet;
+        // darueber ist perp die Zielabsicht und die Ausrichtung entscheidet.
+        // Gemessen am Lift: die Unterschiede zwischen hoch und runter lagen
+        // bei 0,06 / 0,07 / 0,10 m, also klar darueber - und zwei Objekte, durch
+        // die der Strahl wirklich hindurchgeht, trennen Millimeter.
+        aimPerpTie = settings.CreateEntry("AimPerpTie", 0.05f,
+            description: "Metres. Two candidates whose distance to the beam differs "
+                + "by less than this count as equally well aimed, and then the nearer "
+                + "one along the beam wins - the raycast behaviour. Differ by more, "
+                + "and the better aimed one wins, because that is the only thing the "
+                + "player steers. Measured on the lift: the up and down buttons sit "
+                + "0.072 m apart while the tolerance allows 0.15, so without this the "
+                + "nearer button always won and the up switch was unreachable.");
+
+        grabRaySnaps = settings.CreateEntry("GrabRaySnapsToTarget", true,
+            description: "Point the grab beam AT the grasp point instead of merely "
+                + "ending it at the beam's closest approach. The old form was an honest "
+                + "picture of the tolerance - and read as a large offset above the real "
+                + "button. The beam is only ever drawn WITH a target, so a snapping "
+                + "beam is unambiguous: no beam means no target.");
+
+        aimTargetRelease = settings.CreateEntry("AimTargetRelease", 1.5f,
+            description: "Hysteresis for the grab target: the one already held "
+                + "keeps it until its distance to the surface exceeds "
+                + "AimSurfaceTolerance times this. Stops a small switch in front "
+                + "of a big object from flickering back to the big one. 1 = off.");
+
+        // HALTEN, weil das Spiel es so fuehrt. Die Schalter des Scherenlifts
+        // laufen ueber InteractablePressAndHoldInteraction, und BaseInput fuehrt
+        // dafuer zwei Ereignisse: Interacted startet, InteractionCancelled
+        // beendet. Es gibt kein Fuettern pro Frame - ein Halten laeuft, bis es
+        // abgebrochen wird, und dieser Mod hat nie ein Cancel gesendet.
+        interactHold = settings.CreateEntry("InteractHold", true,
+            description: "Hold the interact button for press-and-hold controls "
+                + "such as the scissor lift's raise and lower switches, and "
+                + "cancel the interaction when it is released. Only ever latches "
+                + "on a state the game itself names PressAndHold, so carrying an "
+                + "object is untouched.");
 
         aimInteractionRange = settings.CreateEntry("AimInteractionRange", 5f,
             description: "Metres ahead of the muzzle that are searched.");
@@ -1882,7 +2127,11 @@ public sealed class Pose : MelonMod
                 + "at the hip fired the gesture and the gesture ate the press.");
 
         sprayLatchZoneMargin = settings.CreateEntry("SprayLatchZoneMargin", 0.1f,
-            description: "Metres added to the shoulder and hip radius for the latch guard only. "
+            description: "Metres added to the shoulder and hip radius for the latch guard only, "
+                + "and since section 154 it only widens the sphere whose EXIT arms the grace "
+                + "window - it no longer blocks while the hand merely rests inside. A static "
+                + "radius could not tell a hand on its way to a gesture from a hand that rests "
+                + "there, and at 0.229 m it disabled the latch button entirely. "
                 + "The gesture zones themselves are unchanged. Measured: the accidental latches "
                 + "landed 4 to 36 mm outside the 0.20 m hip sphere, so this covers them with room.");
 
@@ -2376,6 +2625,7 @@ public sealed class Pose : MelonMod
             DisposeActions();
             washLaser.Dispose(LoggerInstance);
             menuLaser.Dispose(LoggerInstance);
+            grabLaser.Dispose(LoggerInstance);
 
             // RICHTIG ZURUECKGEBEN, nicht vergessen: hier laeuft das Spiel
             // weiter, und ein Werkzeug, das nach F2 unsichtbar bleibt, waere
@@ -2414,7 +2664,12 @@ public sealed class Pose : MelonMod
         offHandTrigger = null;
         offHandPosition = null;
         offHandRotation = null;
+        offHandAimRotation = null;
         publishedOffHandRotation = Quaternion.identity;
+        publishedOffHandAimRotation = Quaternion.identity;
+        offHandRotationPublished = false;
+        offHandAimPublished = false;
+        offHandForwardSource = "";
         publishedWasherHandRotation = Quaternion.identity;
         washerHandWorldPublished = false;
         pointerPoseReady = false;
@@ -2438,6 +2693,9 @@ public sealed class Pose : MelonMod
         stanceButton.Reset();
         sprayLatchButton.Reset();
         interactButton.Reset();
+        holdLatched = false;
+        holdLatchName = "";
+        aimIncumbent = IntPtr.Zero;
         taskButton.Reset();
         menuButton.Reset();
         dirtButton.Reset();
@@ -2737,6 +2995,7 @@ public sealed class Pose : MelonMod
             offHandTrigger = null;
             offHandPosition = null;
             offHandRotation = null;
+            offHandAimRotation = null;
             leftPrimary = null;
             leftSecondary = null;
             leftMenu = null;
@@ -2995,6 +3254,7 @@ public sealed class Pose : MelonMod
         // the last word before rendering.
         ClampReticle((aimSkip.Value & 131072) != 0);
         ReportReticleSeries();
+        ReportVerticalStep();
         DriveLookState();
         DriveHead();
         ReadTrigger();
@@ -3039,6 +3299,10 @@ public sealed class Pose : MelonMod
         // DriveRay, after the pose write. Same point in the frame, same
         // correctness - which is what "take the method from the laser" means
         // here. MuzzlePoint was only half of it; the other half is WHEN.
+        // VOR DriveMenuPointer, aus demselben Grund, aus dem der nach DriveRay
+        // sitzt: er braucht den veroeffentlichten Strahl DIESES Frames. Im
+        // Menue zeichnet er nicht, dort gehoert die Linie dem Menuezeiger.
+        DriveGrabPointer();
         DriveMenuPointer();
         // AFTER DriveMenuPointer, and for the same reason DriveMenuPointer sits
         // after DriveRay: it acts on the selection and the hit point of THIS
@@ -3276,14 +3540,39 @@ public sealed class Pose : MelonMod
                 // DIE ROTATION IM SELBEN BLOCK, mit demselben toWorld - genau
                 // wie handRotWorld ein paar Zeilen darueber. Woanders gerechnet
                 // waere sie ein Fremdwert: toWorld gilt nur hier.
+                // Das Flag im SELBEN Block wie der Wert, sonst sagt es etwas
+                // ueber einen anderen Frame.
                 if (TryReadRotation(offHandRotation, out var offRotation))
+                {
                     publishedOffHandRotation = toWorld * offRotation;
+                    offHandRotationPublished = true;
+                }
+                else
+                {
+                    offHandRotationPublished = false;
+                }
+
+                // DIE AIM-POSE, im SELBEN Block und mit demselben toWorld.
+                // Woanders gerechnet waere sie ein Fremdwert, und zwei
+                // Rotationen aus zwei Frames zu mischen ist die Falle aus
+                // Abschnitt 77.
+                if (TryReadRotation(offHandAimRotation, out var offAim))
+                {
+                    publishedOffHandAimRotation = toWorld * offAim;
+                    offHandAimPublished = true;
+                }
+                else
+                {
+                    offHandAimPublished = false;
+                }
 
                 offHandWorldPublished = true;
             }
             else
             {
                 offHandWorldPublished = false;
+                offHandRotationPublished = false;
+                offHandAimPublished = false;
             }
 
             // THE CALIBRATION GESTURE, resolved HERE rather than where the
@@ -3875,16 +4164,31 @@ public sealed class Pose : MelonMod
                 // exactly what sections 50 to 52 chased through the XR layer for
                 // two sessions before section 52 found it.
                 //
-                // Rotation is deliberately NOT captured: the washer-zone test
-                // only needs the off hand's POINT, and an unused binding would
-                // be a reader's puzzle.
+                // RICHTIGGESTELLT: hier stand "Rotation is deliberately NOT
+                // captured", und zwei Zeilen darunter wurde sie gebunden
+                // (Abschnitt 117). Heute fahren drei Dinge darauf - die
+                // Gestenzone, der Greifstrahl und der Trage-Halter.
                 offHandPosition ??= CaptureFromChild(device, "off-hand position",
                     new[] { "devicepose/position", "devicePosition" });
 
-                // Dieselbe Form wie gripRotation am Pistolenarm. In diesem Lauf
-                // nur erhoben und gemeldet - eingehaengt wird im naechsten.
+                // DIE GRIP-ROTATION, dieselbe Form wie gripRotation am
+                // Pistolenarm. Sie ist NICHT die Zeigerichtung: OpenXR legt
+                // ihre Vorwaertsachse durch die Roehre der gekruemmten Finger.
+                // Bleibt als Rueckfall und fuer den Punkt der Gestenzone.
                 offHandRotation ??= CaptureFromChild(device, "off-hand rotation",
                     new[] { "devicepose/rotation", "deviceRotation" });
+
+                // DIE AIM-ROTATION, Spiegelbild von aimRotation an der
+                // Waschhand. Sie zeigt per Definition in Zielrichtung, und sie
+                // ist der Grund, warum hier kein Euler-Korrekturwert steht:
+                // eine geratene Achse ist Abschnitt 122.
+                //
+                // KANDIDATENREIHENFOLGE NICHT VERHANDELBAR, aus demselben
+                // Grund wie zwei Zeilen darueber: das geerbte flache Control
+                // existiert und wird nie geschrieben.
+                offHandAimRotation ??= CaptureFromChild(device,
+                    "off-hand aim rotation",
+                    new[] { "pointer/rotation", "pointerRotation" });
             }
             else
             {
@@ -4759,6 +5063,77 @@ public sealed class Pose : MelonMod
     private static float SignedAngle(float degrees) =>
         degrees > 180f ? degrees - 360f : degrees;
 
+    // DAS RUCKELN BEIM HOCHFAHREN, und der Bericht trennt die zwei Ursachen
+    // statt sie zu vermuten.
+    //
+    // GEMELDET: "ich sehe auch an der off-hand ein Zittern beim Hochfahren,
+    // als wenn der Avatar immer wieder in sehr kurzer Zeit auf die neue Hoehe
+    // gesetzt wird." Das beschreibt eine GESTUFTE Bewegung.
+    //
+    // DIE LOGMENGE IST ES NICHT, gemessen: waehrend der Fahrt 1 bis 9 Zeilen
+    // pro Sekunde, Median 3; die 203er-Spitze lag im Levelladen.
+    //
+    // Zwei Kandidaten, und eine Spalte trennt sie:
+    //
+    //   Kamera stuft, Hand folgt  -> das Spiel bewegt die Plattform im
+    //                                Physiktakt, wir zeigen es ungefiltert
+    //   Kamera glatt, HAND stuft  -> unsere Zusammensetzung liest die
+    //                                Koerperpose am falschen Framepunkt
+    //
+    // PRO FRAME und nicht gedrosselt, denn eine Stufe von 20 ms ist in einer
+    // Zeile pro Sekunde unsichtbar - dafuer nur waehrend sich die Hoehe
+    // aendert, nur unter DevMode, und hart gedeckelt.
+    //
+    // NUR LESEN: die 6DOF-Kette bleibt unangetastet.
+    private void ReportVerticalStep()
+    {
+        if (!Dev(verboseDiagnostics) || verticalStepLines >= VerticalStepCap)
+            return;
+
+        try
+        {
+            var camera = Camera.main;
+
+            if (camera is null || camera == null)
+                return;
+
+            var cameraY = camera.transform.position.y;
+            var handY = offHandWorldPublished
+                ? publishedOffHandWorld.y
+                : float.NaN;
+
+            var cameraStep = float.IsNaN(lastVerticalCameraY)
+                ? 0f
+                : cameraY - lastVerticalCameraY;
+            var handStep = float.IsNaN(lastVerticalHandY) || float.IsNaN(handY)
+                ? 0f
+                : handY - lastVerticalHandY;
+
+            lastVerticalCameraY = cameraY;
+            lastVerticalHandY = handY;
+
+            // Nur waehrend es sich bewegt. Ein halber Millimeter pro Frame
+            // liegt unter dem Rauschen des Kopftrackings und ueber null.
+            if (Mathf.Abs(cameraStep) < 0.0005f && Mathf.Abs(handStep) < 0.0005f)
+                return;
+
+            verticalStepLines++;
+
+            LoggerInstance.Msg($"vertical step: frame {Time.frameCount}"
+                + $"   dt {Time.unscaledDeltaTime * 1000f:0.#} ms"
+                + $"   camY {cameraY:0.0000}"
+                + $"   dCam {cameraStep * 1000f:0.##} mm"
+                + $"   handY {handY:0.0000}"
+                + $"   dHand {handStep * 1000f:0.##} mm");
+        }
+        catch (Exception exception)
+        {
+            LoggerInstance.Warning($"  vertical step threw "
+                + $"{exception.GetType().Name} - not reporting again.");
+            verticalStepLines = VerticalStepCap;
+        }
+    }
+
     private static string Vector(Vector3 value) =>
         $"({value.x.ToString("0.###", Invariant)}, {value.y.ToString("0.###", Invariant)}, {value.z.ToString("0.###", Invariant)})";
 
@@ -5597,9 +5972,34 @@ public sealed class Pose : MelonMod
             // Tragens taucht der Tausch also gar nicht auf.
             GameInput.CarryFollowsHand = carryFollowsHand.Value;
             GameInput.CarrySwapOrigin = carrySwapOrigin.Value;
-            GameInput.CarryAimForward = raySpawn.forward;
-            GameInput.CarryAimOrigin = muzzle;
+
+            // DIE FREIE HAND, WENN SIE ETWAS ZU SAGEN HAT. Das Flag ist die
+            // Bedingung, nicht der Wert: publishedOffHandRotation behaelt bei
+            // fehlender Bindung ihren letzten Stand, und Identitaet waere eine
+            // gueltige Rotation nach Weltvorn.
+            var useOffHand = carryFollowsOffHand.Value
+                && offHandWorldPublished && offHandRotationPublished;
+
+            GameInput.CarryAimForward = useOffHand
+                ? OffHandForward()
+                : raySpawn.forward;
+            GameInput.CarryAimOrigin = useOffHand
+                ? publishedOffHandWorld
+                : muzzle;
             GameInput.CarryAimReady = carrying;
+
+            // Auf WECHSEL, nicht pro Frame. Ein Rueckfall auf die Pistolenhand
+            // mitten im Tragen ist genau die Beobachtung, die sonst als
+            // "der Halter zuckt" gemeldet wuerde, ohne Erklaerung im Log.
+            if (carrying && useOffHand != carryUsedOffHand)
+            {
+                carryUsedOffHand = useOffHand;
+                LoggerInstance.Msg("carry hand: "
+                    + (useOffHand ? "off-hand" : "washer hand")
+                    + $"   offHandWorld {offHandWorldPublished}"
+                    + $"   offHandRotation {offHandRotationPublished}"
+                    + $"   pref {carryFollowsOffHand.Value}");
+            }
 
             // The number the real fix will need, obtained without patching
             // anything: how far the nozzle and the gaze actually diverge.
@@ -5813,6 +6213,12 @@ public sealed class Pose : MelonMod
             turnStatus = "turn: menu open";
             snapArmed = true;
             nozzleArmed = true;
+
+            // ALLE Felder, die den Zustand tragen, zusammen - eine halb
+            // geraeumte Lage ist in diesem Projekt schon teuer geworden.
+            // Eine stehengebliebene Uhr wuerde beim Verlassen des Menues
+            // sofort als "lange genug gehalten" lesen.
+            nozzleIntentSince = 0f;
             return;
         }
 
@@ -5835,8 +6241,53 @@ public sealed class Pose : MelonMod
             // the nozzle. Edge-triggered and re-armed inside the deadzone, the
             // same shape snapArmed already uses for snap turn.
             var y = stick.y;
+            var absY = Mathf.Abs(y);
+            var absX = Mathf.Abs(x);
 
-            if (Mathf.Abs(y) > turnDeadzone.Value && Mathf.Abs(y) > Mathf.Abs(x) * 1.5f)
+            // DREI TORE STATT EINEM FRAME.
+            //
+            // Vorher stand hier ein Test auf den ERSTEN passenden Frame, mit
+            // der Dreh-Deadzone als Schwelle und Faktor 1,5. Beim diagonalen
+            // Andruecken laufen beide Achsen von null hoch und der Daumen
+            // rollt: fuer ein paar Frames FUEHRT das Y, bevor das X auflaeuft,
+            // und in diesem Fenster war die Bedingung erfuellt. Der Wechsel
+            // feuerte, bevor der Stick dort war, wo der Spieler ihn hinschob.
+            //
+            // Ein Tor auf einem einzelnen Frame misst den Einschwingvorgang
+            // und nicht die Absicht - dieselbe Klasse wie der statische
+            // Abstand des Zonen-Waechters in Abschnitt 154. Die Zeit trennt
+            // beides, und die Einschwingzeit unten ist das Tor, das wirkt.
+            var wantsNozzle = nozzleStick.Value
+                && absY >= nozzleStickThreshold.Value
+                && absY > absX * nozzleStickDominance.Value;
+
+            if (!wantsNozzle)
+            {
+                nozzleIntentSince = 0f;
+
+                // DER EINE FEHLERFALL, DEN DIESES TOR NEU ERZEUGEN KANN: ein
+                // gewollter senkrechter Schubs, der als Diagonale abgelehnt
+                // wird. Er meldet sich selbst, gedeckelt auf eine Zeile pro
+                // Sekunde - ist das Tor zu streng, steht der Beweis im
+                // naechsten Log und nicht in einer Vermutung.
+                if (nozzleStick.Value
+                    && absY >= nozzleStickThreshold.Value
+                    && Time.unscaledTime >= nextNozzleBlockReport)
+                {
+                    nextNozzleBlockReport = Time.unscaledTime + 1f;
+                    LoggerInstance.Msg($"nozzle: blocked, not vertical enough   "
+                        + $"y {y:0.00}   x {x:0.00}   "
+                        + $"needed |y| > {absX * nozzleStickDominance.Value:0.00}");
+                }
+            }
+            else if (nozzleIntentSince <= 0f)
+            {
+                nozzleIntentSince = Time.unscaledTime;
+            }
+
+            var nozzleHeld = wantsNozzle ? Time.unscaledTime - nozzleIntentSince : 0f;
+
+            if (wantsNozzle && nozzleHeld >= nozzleStickSettle.Value)
             {
                 if (nozzleArmed && playerInput is not null && playerInput != null)
                 {
@@ -5856,7 +6307,9 @@ public sealed class Pose : MelonMod
                     var before = DescribeConfiguration();
                     playerInput.InvokeSwitchNozzle(direction);
                     LoggerInstance.Msg($"nozzle: {(direction > 0 ? "next" : "previous")} "
-                        + $"(right stick Y)  before {before}  after {DescribeConfiguration()}");
+                        + $"(right stick Y)  y {y:0.00}  x {x:0.00}  "
+                        + $"held {nozzleHeld:0.00} s  "
+                        + $"before {before}  after {DescribeConfiguration()}");
                 }
             }
             // RE-ARMED ON THE WHOLE STICK, not on y alone - section 75 point 5.
@@ -6200,6 +6653,11 @@ public sealed class Pose : MelonMod
     // ihrer Laufzeit verschlucken und damit eine kleine Unbedienbarkeit dort
     // einbauen, wo gerade eine grosse ausgebaut wird.
     private int latchClearedFrame = -1;
+
+    // Nur fuer den Bericht waehrend der Rastung.
+    private float latchedSince;
+    private float nextLatchReport;
+    private string latchReportSignature = "";
     private float nextZoneDebug;
     private float torsoYaw;
     private bool torsoYawValid;
@@ -6220,13 +6678,26 @@ public sealed class Pose : MelonMod
 
     // DER WAECHTER, und er sperrt AUSSCHLIESSLICH das Einrasten.
     //
-    // Zwei Gruende, weil die Messung zwei zeigt: die Hand liegt zu nah an
-    // einer Gestenzone - gemessen 4 bis 36 mm ausserhalb der 0,20-m-Kugel -
-    // oder sie hat die Zone gerade verlassen, gemessen 0,07 bis 0,47 s vorher.
-    // Ein Radius allein erwischt den zweiten Fall nicht, denn der Griffdruck
-    // zieht die Hand im selben Zug aus der Kugel.
+    // ER MISST JETZT ZEIT UND NICHT ABSTAND, und der Grund steht in der
+    // Messung, die hier vorher stand: die Fehlgriffe lagen "4 bis 36 mm
+    // ausserhalb der 0,20-m-Kugel", also bei 0,204 bis 0,236 m. Gemeldet
+    // wurde dann eine RUHEHALTUNG bei 0,229 m - mitten in demselben Band,
+    // ueber zwanzig verschluckte Druecke in einem Lauf, "die Taste ist
+    // deaktiviert".
+    //
+    // Ein statischer Abstand kann "die Hand haelt hier auf dem Weg zu einer
+    // Geste" nicht von "die Hand wohnt hier" unterscheiden. Jede Wahl des
+    // Randes war deshalb falsch: zu klein laesst die Fehlgriffe durch, zu
+    // gross sperrt die Taste.
+    //
+    // DIE ZEIT TRENNT SIE, und das Instrument war schon da. Die sechs
+    // gemessenen Fehlgriffe waren AUSTRITTE - "der Griffdruck zieht die Hand
+    // im selben Zug aus der Kugel". Austritte hat eine Hand, die eine Geste
+    // macht; eine Hand, die neben der Huefte ruht, hat keine. Das
+    // Nachlauffenster erwischt die Fehlgriffe also vollstaendig und die
+    // Ruhehaltung nie - es ist selbstbegrenzend, ein Radius ist es nicht.
     private bool LatchGuarded() => sprayLatchZoneGuard.Value
-        && (nearGestureZone || Time.unscaledTime < zoneGuardUntil);
+        && Time.unscaledTime < zoneGuardUntil;
 
     // Die Zahlen hinter dem Urteil, fuer die Logzeile. Ein geschluckter Druck
     // ohne den Abstand daneben waere genau die Zeile, die den naechsten Lauf
@@ -6275,7 +6746,8 @@ public sealed class Pose : MelonMod
                 loggedZonePoses = true;
                 LoggerInstance.Msg("zones: head ok, washer hand ok, off-hand position "
                     + $"{(offHandPosition is null ? "NOT BOUND - the washer gesture is off" : "ok")}"
-                    + $", off-hand rotation {(offHandRotation is null ? "NOT BOUND" : "bound")}");
+                    + $", off-hand rotation {(offHandRotation is null ? "NOT BOUND" : "bound")}"
+                    + $", off-hand aim rotation {(offHandAimRotation is null ? "NOT BOUND - the grab ray stays on the grip pose and will be twisted" : "bound")}");
             }
 
             // THE TORSO YAW, and the fallback is the interesting half.
@@ -6349,9 +6821,23 @@ public sealed class Pose : MelonMod
             // Einrasten vorsichtiger wird.
             zoneShoulderDistance = shoulderDistance;
             zoneHipDistance = hipDistance;
+
+            // GEMERKT VOR DEM UEBERSCHREIBEN, denn gebraucht wird die FLANKE
+            // und nicht der Zustand. Genau das war der Fehler der alten
+            // Fassung: sie sperrte, solange der Zustand galt.
+            var wasNearGuardZone = nearGestureZone;
+
             nearGestureZone =
                 shoulderDistance <= shoulderZoneRadius.Value + sprayLatchZoneMargin.Value
                 || hipDistance <= hipZoneRadius.Value + sprayLatchZoneMargin.Value;
+
+            // DER RAND BEHAELT SEINE AUFGABE, statt zur Karteileiche zu
+            // werden (Abschnitt 87): er spannt das Fenster beim Austritt aus
+            // der VERBREITERTEN Kugel. Damit wirkt er weiter in die Richtung,
+            // fuer die er gemessen wurde - er verlaengert den Schutz in der
+            // ZEIT - und kann nie mehr dauerhaft sperren.
+            if (wasNearGuardZone && !nearGestureZone)
+                zoneGuardUntil = Time.unscaledTime + sprayLatchZoneGrace.Value;
 
             // NUR SCHULTER UND HUEFTE. Die Waschzone haengt am Griff der
             // freien Hand und hat mit der Rastung nichts zu tun; ihre
@@ -7160,11 +7646,38 @@ public sealed class Pose : MelonMod
                 // the rest: a press meant for a menu must not reach the world
                 // interaction on the way out.
                 interactButton.Poll(false, 0f);
+
+                // Ohne gelesene Taste kommt keine Loslass-Flanke mehr.
+                ReleaseHold("input stood down");
+
                 // Still false for the GAMEPLAY edges - dirt highlight and the
                 // spray latch must not fire from a menu - while DriveMenuTabs
                 // reads the same two grips through its own edge detectors.
                 dirtButton.Poll(false, 0f);
                 sprayLatchButton.Poll(false, 0f);
+
+                // DAS MENUE RAEUMT DIE RASTUNG, und das ist der zweite,
+                // UNABHAENGIGE Ausweg - der eigentliche Schutz.
+                //
+                // Die Rastung hatte genau einen Ausschalter, und der lag auf
+                // derselben Achse, die ausfallen kann. Wer feststeckte, musste
+                // das Spiel beenden. Dieser Zweig greift AUCH dann, wenn die
+                // Achse nicht null ist, sondern nur stumm - den Fall deckt die
+                // Sicherung unten nicht ab.
+                //
+                // Versehentlich kann er nicht greifen: er braucht ein offenes
+                // Menue. Und der Kommentar zwanzig Zeilen darueber nannte den
+                // Zustand schon als unerwuenscht - "the spray latch would leave
+                // the washer running".
+                if (GameInput.FireLatched)
+                {
+                    GameInput.FireLatched = false;
+
+                    if (sprayLatchBuzz.Value)
+                        Buzz(WasherHandRight, "spray latch off");
+
+                    LoggerInstance.Msg("continuous spray off (a menu opened)");
+                }
                 menuButton.Poll(ButtonEdge.IsDown(leftMenu), 0f);
 
                 // Y STAYS LIVE, and disabling it was the defect.
@@ -7212,7 +7725,13 @@ public sealed class Pose : MelonMod
             interactButton.Poll(ButtonEdge.IsDown(leftPrimary), 0f);
             menuButton.Poll(ButtonEdge.IsDown(leftMenu), 0f);
             dirtButton.Poll(ButtonEdge.ReadAxis(leftSqueeze) > 0.6f, 0f);
-            sprayLatchButton.Poll(ButtonEdge.ReadAxis(rightSqueeze) > 0.6f, 0f);
+            // EINE LESUNG, EINE MOMENTAUFNAHME. Derselbe Wert fuettert die
+            // Flanke, die Sicherung unten und den Bericht; zwei Lesungen
+            // derselben Achse in einem Frame waeren zwei Zahlen, die sich
+            // widersprechen koennen.
+            var squeeze = ButtonEdge.ReadAxis(rightSqueeze, out var squeezeReadable);
+
+            sprayLatchButton.Poll(squeeze > 0.6f, 0f);
 
             // These two carry a hold half, so their taps land on release.
             stanceButton.Poll(ButtonEdge.IsDown(rightSecondary), 0.4f);
@@ -7264,12 +7783,31 @@ public sealed class Pose : MelonMod
 
                 if (carrying)
                 {
-                    PlaceCarried();
+                    // Der Grund kommt ZURUECK, statt dass hier unbedingt eine
+                    // Ablage behauptet wird. Bei einer Verweigerung MUSS der
+                    // Zustand gleich bleiben - dieselbe Zeile ist damit auch der
+                    // Pruefstein fuer das Tor.
+                    var refusal = PlaceCarried();
 
-                    LoggerInstance.Msg($"interact: place/{placeVerb.Value}"
-                        + $"  before {before}  after {InteractionText()}");
+                    if (refusal is null)
+                    {
+                        LoggerInstance.Msg($"interact: place/{placeVerb.Value}"
+                            + $"  before {before}  after {InteractionText()}");
+                    }
+                    else
+                    {
+                        LoggerInstance.Msg($"interact: place REFUSED ({refusal})"
+                            + $"  before {before}  after {InteractionText()}");
+                    }
                 }
-                else if (!TryAimPickup(before))
+                else if (TryAimPickup(before))
+                {
+                    // NACH DEM DRUCK DEN ZUSTAND LESEN, den das Spiel daraus
+                    // gemacht hat. Heisst er PressAndHold, ist es eine
+                    // Halte-Interaktion und das Loslassen muss sie abbrechen.
+                    LatchHoldIfNeeded();
+                }
+                else
                 {
                     // DIE PISTOLE ZEIGT INS LEERE, also bleibt das Blickziel des
                     // Spiels zustaendig - dieser Pfad ist unveraendert, und dass
@@ -7295,6 +7833,12 @@ public sealed class Pose : MelonMod
                         + $"  before {before}  after {InteractionText()}");
                 }
             }
+
+            // DAS LOSLASSEN BEENDET EIN HALTEN. Die Flanke lag ungenutzt in
+            // ButtonEdge; X feuert seit Abschnitt 74 nur auf dem Druck, weil ein
+            // verzoegerter Sprung sich als verschluckte Eingabe liest.
+            if (interactButton.Released)
+                ReleaseHold("released");
 
             if (taskButton.Tap && !CalibrateSuppressed())
             {
@@ -7362,6 +7906,38 @@ public sealed class Pose : MelonMod
             // aufs Einrasten zu geben, und jeder nennt sich im Log - so sagt
             // ein Lauf, WELCHER Grund gegriffen hat, statt nur dass nichts
             // passierte.
+            // EIN SCHALTER, DER NICHT GELESEN WERDEN KANN, DARF KEINEN
+            // DAUERZUSTAND HALTEN.
+            //
+            // ReadAxis gab bisher 0f fuer "Griff offen" UND fuer "Achse nicht
+            // lesbar", und fuer eine Flanke sind beide gleich: nach einem
+            // Verlust der Bindung kommt nie wieder eine Abwaertsflanke, Tap
+            // bleibt fuer immer falsch, und FireLatched bleibt stehen. Der
+            // Strahl laeuft dann weiter, und sein einziger Ausschalter
+            // existiert nicht mehr - das ist die Spielermeldung.
+            //
+            // DASS DIE BINDUNG STERBEN KANN, IST GEMESSEN: "Controller actions
+            // are not delivering, and the device IS present" steht im Log vom
+            // 22.9. um 01:01:05. Der Waechter dort haengt an der POSE; stirbt
+            // nur die Achse, feuert er nicht - und der Reset sagt es selbst,
+            // "a stale InputAction reads nothing".
+            //
+            // Fallen gelassen statt stehen gelassen: ein Dauerzustand ohne
+            // erreichbaren Ausschalter ist schlechter als keiner.
+            if (GameInput.FireLatched && !squeezeReadable)
+            {
+                GameInput.FireLatched = false;
+
+                if (sprayLatchBuzz.Value)
+                    Buzz(WasherHandRight, "spray latch off");
+
+                LoggerInstance.Warning("continuous spray off: the right squeeze "
+                    + $"is unreadable (bound {(rightSqueeze is null ? "NO" : "yes")}), "
+                    + "so the latch had no way out. Dropped rather than left "
+                    + "running - and the re-bind watchdog reads the POSE, not this "
+                    + "axis, so nothing else would have caught it.");
+            }
+
             if (sprayLatchButton.Tap && LatchJustCleared())
             {
                 // ABSICHTLICH LEER. Der Druck hat in DriveBodyZones das
@@ -7429,6 +8005,7 @@ public sealed class Pose : MelonMod
                 // oben ab, also waere ein Umschalten hier eine Zeile, die
                 // etwas behauptet, was sie nicht mehr tut.
                 GameInput.FireLatched = true;
+                latchedSince = Time.unscaledTime;
 
                 // DER PULS, damit ein stilles Einrasten nicht wieder moeglich
                 // ist. "SPRAY LATCHED" steht nur im DevMode-Overlay und war im
@@ -7451,6 +8028,41 @@ public sealed class Pose : MelonMod
             // second, now that the EventSystem does sometimes hold a selection
             // again; the pause-menu toggle last. Each step logs whether it
             // fired, so the chain is readable from the log rather than inferred.
+            // WAEHREND DIE RASTUNG LIEGT, und nur dann. Ohne Rastung laeuft
+            // diese Zeile nie, also kostet sie im normalen Spiel nichts - der
+            // Posten aus Abschnitt 87 bleibt klein.
+            //
+            // Auf WECHSEL plus ein Herzschlag alle 10 s, nicht pro Frame. Und
+            // sie nennt genau die vier Groessen, die die Spielermeldung
+            // trennen: liest die Achse, ist sie lesbar, steht die Bindung, und
+            // haelt der Flankenzaehler die Taste noch fuer gedrueckt.
+            if (GameInput.FireLatched)
+            {
+                var latchSignature = $"{squeezeReadable}/{rightSqueeze is not null}"
+                    + $"/{sprayLatchButton.Down}";
+
+                if (latchSignature != latchReportSignature
+                    || Time.unscaledTime >= nextLatchReport)
+                {
+                    latchReportSignature = latchSignature;
+                    nextLatchReport = Time.unscaledTime + 10f;
+
+                    LoggerInstance.Msg("spray latch: held "
+                        + $"{Time.unscaledTime - latchedSince:0.#} s"
+                        + $"   squeeze {squeeze:0.00}"
+                        + $"   readable {squeezeReadable}"
+                        + $"   bound {(rightSqueeze is null ? "NO" : "yes")}"
+                        + $"   edgeDown {sprayLatchButton.Down}"
+                        + $"   triggerNow {TriggerHeldNow()}");
+                }
+            }
+            else if (latchReportSignature.Length > 0)
+            {
+                // Geraeumt, damit die naechste Rastung ihre erste Zeile
+                // wieder schreibt statt gegen einen alten Stand zu vergleichen.
+                latchReportSignature = "";
+            }
+
             if (menuButton.Tap)
                 PressMenuButton("world");
 
@@ -7902,36 +8514,367 @@ public sealed class Pose : MelonMod
     // naeher liegender Kandidat, den das Spiel ablehnt, wuerde einen weiter
     // entfernten nicht mehr blockieren. Dieser Lauf misst, er aendert nichts.
     private string AimGate(Il2CppFuturLab.PW2.PlayerInteractableBase item,
-        Vector3 origin, Vector3 forward, out float perp, out float ahead)
+        Vector3 origin, Vector3 forward, out float perp, out float ahead,
+        out Vector3 point, out string how)
     {
-        var toItem = item.transform.position - origin;
-        ahead = Vector3.Dot(toItem, forward);
+        var range = aimInteractionRange.Value;
+        var pivot = item.transform.position;
+        var toPivot = pivot - origin;
+        var pivotAhead = Vector3.Dot(toPivot, forward);
 
-        // Senkrechter Abstand zur Strahllinie. Kein Raycast, also kein
-        // RaycastHit - das ist die Struct-Familie, die dieses Projekt meidet,
-        // und fuer "worauf zeige ich" reicht die Geometrie.
-        //
+        // DER PIVOT-WEG BLEIBT DIE RUECKFALLEBENE, unveraendert gerechnet.
         // IMMER gerechnet, auch hinter der Muendung, damit der Bericht fuer
-        // jeden Kandidaten eine Zahl hat. Die Tore darunter stehen in der alten
-        // Reihenfolge, also entscheidet sich nichts anders als vorher.
-        perp = (toItem - (forward * ahead)).magnitude;
+        // jeden Kandidaten eine Zahl hat.
+        point = pivot;
+        how = "pivot";
+        ahead = pivotAhead;
+        perp = (toPivot - (forward * pivotAhead)).magnitude;
+
+        // ZWEI SCHRITTE, weil ClosestPoint einen PUNKT nimmt und keinen
+        // Strahl. Der erste Oberflaechenpunkt verschiebt die Projektion auf
+        // der Strahllinie, und erst an der neuen Stelle ist der naechste
+        // Oberflaechenpunkt der richtige. Der Seed wird geklemmt, damit die
+        // Probe auf dem benutzbaren Abschnitt liegt; die TORE unten rechnen
+        // mit dem ungeklemmten ahead, sonst koennte "zu weit" nie feuern.
+        var seed = origin + (forward * Mathf.Clamp(pivotAhead, 0f, range));
+        var surface = NearestColliderPoint(item.transform, seed, out var usable);
+
+        if (usable)
+        {
+            var step = Mathf.Clamp(Vector3.Dot(surface - origin, forward), 0f, range);
+            var refined = NearestColliderPoint(item.transform,
+                origin + (forward * step), out var stillUsable);
+
+            if (stillUsable)
+                surface = refined;
+
+            ahead = Vector3.Dot(surface - origin, forward);
+            perp = (surface - (origin + (forward * ahead))).magnitude;
+            point = surface;
+            how = "surface";
+        }
 
         if (ahead <= 0.1f)
             return "hinter der Muendung";
 
-        if (ahead > aimInteractionRange.Value)
+        if (ahead > range)
             return "zu weit";
 
-        if (perp > aimInteractionRadius.Value)
+        // Die Toleranz gehoert zur GROESSE, nicht zum Tor: Oberflaechenabstand
+        // und Pivotabstand sind nicht dasselbe und haben darum je einen
+        // eigenen Schluessel.
+        var tolerance = usable
+            ? aimSurfaceTolerance.Value
+            : aimInteractionRadius.Value;
+
+        if (perp > tolerance)
             return "ausserhalb des Kegels";
 
         return string.Empty;
     }
 
+    // Der naechste Punkt auf einer Collider-Oberflaeche unter diesem Knoten.
+    // usable liest false, wenn KEIN Collider antworten konnte - dann gilt der
+    // Pivot-Rueckfall, und der Rueckgabewert ist die Probe selbst.
+    //
+    // Dasselbe Muster wie NearestColliderDistance, das der Greif-Pfad seit
+    // Abschnitt 102 benutzt: der engste try/catch um den EINZELNEN Aufruf, ein
+    // Wurf kostet einen Collider und nicht die Suche.
+    private Vector3 NearestColliderPoint(Transform root, Vector3 probe,
+        out bool usable)
+    {
+        usable = false;
+        var best = probe;
+        var bestDistance = -1f;
+
+        try
+        {
+            var colliders = root.GetComponentsInChildren<Collider>();
+
+            if (colliders is null)
+                return probe;
+
+            for (var index = 0; index < colliders.Length; index++)
+            {
+                var collider = colliders[index];
+
+                if (collider is null || collider == null)
+                    continue;
+
+                try
+                {
+                    var point = collider.ClosestPoint(probe);
+                    var moved = (point - probe).sqrMagnitude > 1e-8f;
+
+                    // GIBT ER DIE EINGABE ZURUECK, sind zwei Faelle moeglich:
+                    // die Probe liegt INNERHALB - dann ist das die richtige
+                    // Antwort und der Abstand ist null -, oder der Collider
+                    // ist ein nicht-konvexer MeshCollider, fuer den
+                    // ClosestPoint undefiniert ist. Unity liefert in beiden
+                    // Faellen die Eingabe. Ein Collider der zweiten Sorte
+                    // laese als Abstand 0 und machte JEDES Objekt zum
+                    // Treffer, also wird er aussortiert.
+                    if (!moved && !ColliderAnswers(collider, probe))
+                        continue;
+
+                    var distance = (point - probe).magnitude;
+
+                    if (bestDistance < 0f || distance < bestDistance)
+                    {
+                        bestDistance = distance;
+                        best = point;
+                        usable = true;
+                    }
+                }
+                catch
+                {
+                    // Dieser Collider antwortet nicht. Der naechste vielleicht.
+                }
+            }
+        }
+        catch
+        {
+            usable = false;
+            return probe;
+        }
+
+        return best;
+    }
+
+    // Kann dieser Collider ClosestPoint ueberhaupt? Gefragt wird mit einer
+    // Probe 1000 m darueber - kein Collider dieses Spiels enthaelt sie, also
+    // MUSS ein funktionierender Collider dort einen anderen Punkt liefern.
+    // Eine Referenz, deren Ergebnis man kennt, prueft das Messgeraet selbst.
+    //
+    // Laeuft nur, wenn die erste Probe die Eingabe zurueckgab, also selten.
+    private static bool ColliderAnswers(Collider collider, Vector3 probe)
+    {
+        try
+        {
+            var far = probe + new Vector3(0f, 1000f, 0f);
+            return (collider.ClosestPoint(far) - far).sqrMagnitude > 1e-6f;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    // DER ECHTE IL2CPP-TYP, nicht GetType().Name:
+    // GetComponentsInChildren<Collider> gibt jeden Eintrag als
+    // Collider-HUELLE zurueck, und GetType().Name laese darum fuer eine Box
+    // wie fuer ein Mesh dasselbe. Dieselbe Stelle wie HandSpray.TypeName und
+    // GunRender.PlainGeometry.
+    private static string ColliderTypeName(Collider collider)
+    {
+        try
+        {
+            return collider.GetIl2CppType()?.Name ?? "?";
+        }
+        catch
+        {
+            return "?";
+        }
+    }
+
+    // DIE QUELLE DES ZIELSTRAHLS, an EINER Stelle. Entscheidung, Bericht und
+    // Tastendruck fragen hier, damit sie nie auseinanderlaufen koennen - in
+    // Abschnitt 109 hat derselbe Filter an einer zweiten Stelle gefehlt, und
+    // das war nicht als Fehler zu sehen, sondern als "ein Tab scrollt nicht".
+    //
+    // DIE FREIE HAND, WENN SIE ETWAS ZU SAGEN HAT. Das Flag ist die Bedingung
+    // und nicht der Wert: publishedOffHandRotation wird nur AKTUALISIERT, wenn
+    // TryReadRotation traegt, und Quaternion.identity ist kein Kennzeichen fuer
+    // "nicht gelesen" - es ist eine gueltige Rotation nach Weltvorn. Ein
+    // Ausfall nimmt die Verbesserung weg, er verschlechtert nichts.
+    // EIN ORT FUER DIE RICHTUNG DER FREIEN HAND. Greifen und Tragen lesen
+    // beide hier; zwei Kopien derselben Rechnung laufen auseinander, sobald
+    // eine davon ein Vorzeichen oder einen Trim bekommt.
+    private Vector3 OffHandForward()
+    {
+        // DIE AIM-POSE FUEHRT, WENN SIE ETWAS ZU SAGEN HAT. Das Flag ist die
+        // Bedingung und nicht der Wert: publishedOffHandAimRotation behaelt bei
+        // fehlender Bindung ihren letzten Stand, und Quaternion.identity ist
+        // eine gueltige Rotation nach Weltvorn.
+        var aim = offHandAimPublished;
+        var source = aim ? "aim pose" : "grip pose";
+
+        // Auf WECHSEL, nicht pro Frame. Ein Rueckfall auf die Grip-Pose mitten
+        // im Spiel waere sonst die Beobachtung "zielen geht auf einmal anders",
+        // ohne eine Zeile, die es erklaert.
+        if (source != offHandForwardSource)
+        {
+            offHandForwardSource = source;
+            LoggerInstance.Msg($"off-hand forward: {source}"
+                + $"   aimBound {(offHandAimRotation is null ? "NO" : "yes")}"
+                + $"   aimPublished {offHandAimPublished}"
+                + $"   gripPublished {offHandRotationPublished}");
+        }
+
+        return (aim ? publishedOffHandAimRotation : publishedOffHandRotation)
+            * Vector3.forward;
+    }
+
+    private void AimRay(out Vector3 origin, out Vector3 forward)
+    {
+        var useOffHand = aimFromOffHand.Value
+            && offHandWorldPublished && offHandRotationPublished;
+
+        if (useOffHand)
+        {
+            origin = publishedOffHandWorld;
+            forward = OffHandForward();
+        }
+        else
+        {
+            origin = aimPublished ? publishedAimOrigin : MuzzlePoint(raySpawn!);
+            forward = aimPublished ? publishedAimForward : AimForward(raySpawn!);
+        }
+
+        // Auf WECHSEL, nicht pro Frame. Ein Rueckfall auf den Pistolenstrahl
+        // mitten im Spiel ist sonst die Beobachtung "greifen geht auf einmal
+        // anders", ohne eine Zeile im Log, die es erklaert.
+        if (useOffHand != aimUsedOffHand)
+        {
+            aimUsedOffHand = useOffHand;
+            LoggerInstance.Msg("aim ray: "
+                + (useOffHand ? "off-hand" : "washer hand")
+                + $"   offHandWorld {offHandWorldPublished}"
+                + $"   offHandRotation {offHandRotationPublished}"
+                + $"   pref {aimFromOffHand.Value}");
+        }
+    }
+
+    // DIE RUECKMELDUNG, DIE DAS SPIEL NICHT GIBT.
+    //
+    // Gesucht wird auf Takt, gezeichnet pro Frame: die Suche laeuft ueber alle
+    // Kandidaten mal alle Collider mal ClosestPoint und gehoert nicht in jeden
+    // Frame (Abschnitt 87), die LINIE muss der Hand aber sofort folgen, sonst
+    // liest sie sich als Verzoegerung.
+    private void DriveGrabPointer()
+    {
+        // Im Menue gehoert die Linie dem Menuezeiger, und beim Tragen gibt es
+        // nichts zu greifen. Hide() ist ein bool-Write auf einem LineRenderer
+        // und wiederholbar, aber das Flag haelt es davon ab, eine ganze Sitzung
+        // lang jeden Frame gerufen zu werden.
+        if (!grabPointer.Value || !aimInteraction.Value || menuMode || carrying
+            || raySpawn is null || raySpawn == null)
+        {
+            if (grabWroteLine)
+            {
+                grabWroteLine = false;
+                grabLaser.Hide();
+            }
+
+            grabHadTarget = false;
+            return;
+        }
+
+        try
+        {
+            AimRay(out var origin, out var forward);
+
+            if (Time.unscaledTime >= nextGrabScan)
+            {
+                nextGrabScan = Time.unscaledTime
+                    + (1f / Mathf.Max(1f, grabPointerHz.Value));
+
+                // Dieselbe Drosselung wie die uebrigen Leser der Liste, damit
+                // der Zeiger keinen eigenen Sweep-Takt einfuehrt.
+                if (Time.unscaledTime >= nextInteractableScan)
+                {
+                    nextInteractableScan = Time.unscaledTime + 0.5f;
+                    ScanInteractables();
+                }
+
+                var found = FindAimTarget(out _, out _, out _, out _,
+                    out var foundPoint);
+                var has = found is not null && found != null;
+
+                if (has)
+                    grabHeldPoint = foundPoint;
+
+                // NUR AUF WECHSEL, nie pro Frame - und der Puls geht auf die
+                // ROLLE, nicht auf die Seite, damit er im Linkshaenderbetrieb
+                // nicht vertauscht ist (Abschnitt 110).
+                if (has != grabHadTarget)
+                {
+                    grabHadTarget = has;
+
+                    if (grabPointerBuzz.Value)
+                        Buzz(!WasherHandRight, has ? "grab ready" : "grab lost");
+                }
+            }
+
+            // OHNE ZIEL WIRD NICHTS GEZEICHNET, auf Anforderung des Nutzers:
+            // "wenn kein Objekt anvisiert ist, soll es auch keinen Strahl oder
+            // anderen Marker geben". Ein Suchstrahl, der immer da ist, sagt
+            // nichts und verdeckt das Bild.
+            //
+            // Der Puls beim Erfassen traegt damit mehr als vorher: er ist der
+            // einzige Kanal, der ohne Hinsehen sagt, dass jetzt gegriffen
+            // werden kann.
+            if (!grabHadTarget)
+            {
+                if (grabWroteLine)
+                {
+                    grabWroteLine = false;
+                    grabLaser.Hide();
+                }
+
+                return;
+            }
+
+            // DIE LINIE ENDET AM GREIFPUNKT, nicht auf einer festen Laenge: ein
+            // Strahl, der ueber das Objekt hinausschiesst, liest sich als
+            // Fehlschlag.
+            //
+            // UND SIE ZEIGT ZUM GREIFPUNKT, statt nur auf den Strahl projiziert
+            // zu werden. Gemeldet wurde "ein ziemlich grosses Offset zum
+            // wirklichen Knopf": der Endpunkt lag auf dem STRAHL, im kuerzesten
+            // Abstand zum Ziel - bei den gemessenen 16 bis 24 cm Abweichung also
+            // 16 bis 24 cm ueber dem Knopf. Keine Fehlfunktion, sondern eine
+            // korrekte Anzeige der Toleranz.
+            //
+            // Nur ist es die falsche Frage. Gebraucht wird "WAS habe ich", nicht
+            // "wie schief halte ich die Hand" - besonders bei zwei Nachbarn, wo
+            // die Antwort ueber hoch oder runter entscheidet. Und weil ohnehin
+            // nur MIT Ziel gezeichnet wird (Abschnitt 150), ist der schnappende
+            // Strahl eindeutig: kein Strahl heisst kein Ziel.
+            var toTarget = grabHeldPoint - origin;
+            var targetDistance = toTarget.magnitude;
+            var snap = grabRaySnaps.Value && targetDistance > 0.001f;
+
+            var drawDirection = snap ? toTarget / targetDistance : forward;
+
+            var length = Mathf.Clamp(
+                snap ? targetDistance : Vector3.Dot(grabHeldPoint - origin, forward),
+                0.05f, aimInteractionRange.Value);
+
+            grabLaser.Draw(LoggerInstance, origin, drawDirection, "grab", length,
+                laserWidth.Value, GrabReadyColor, laserAlwaysOnTop.Value);
+
+            grabWroteLine = true;
+        }
+        catch (Exception exception)
+        {
+            grabWroteLine = false;
+            grabHadTarget = false;
+            grabLaser.Hide();
+            LoggerInstance.Warning($"  grab pointer threw "
+                + $"{exception.GetType().Name}: {exception.Message}");
+        }
+    }
+
     private Il2CppFuturLab.PW2.PlayerInteractableBase? FindAimTarget(
         out float perp, out float ahead, out Il2CppFuturLab.PW2.ItemInteraction kind,
-        out string reason)
+        out string reason, out Vector3 point)
     {
+        // DER GREIFPUNKT WANDERT MIT HERAUS, weil der Zeiger ihn braucht und
+        // die Alternative waere, die Auswahlregel ein zweites Mal zu schreiben.
+        // Zwei Stellen, die dieselbe Frage beantworten, laufen auseinander -
+        // Abschnitt 109.
+        point = Vector3.zero;
         perp = 0f;
         ahead = 0f;
         kind = Il2CppFuturLab.PW2.ItemInteraction.None;
@@ -7987,12 +8930,12 @@ public sealed class Pose : MelonMod
         //
         // Vor dem ersten DriveRay-Durchlauf greift die alte Rechnung, damit
         // ein frueher Druck nicht ins Leere laeuft.
-        var origin = aimPublished ? publishedAimOrigin : MuzzlePoint(raySpawn);
-        var forward = aimPublished ? publishedAimForward : AimForward(raySpawn);
+        AimRay(out var origin, out var forward);
 
         Il2CppFuturLab.PW2.PlayerInteractableBase? best = null;
         var bestPerp = float.MaxValue;
-        var bestAhead = 0f;
+        var bestAhead = float.MaxValue;
+        var bestPoint = Vector3.zero;
 
         for (var index = 0; index < interactables.Count; index++)
         {
@@ -8001,22 +8944,93 @@ public sealed class Pose : MelonMod
             if (item is null || item == null)
                 continue;
 
-            if (AimGate(item, origin, forward, out var itemPerp, out var itemAhead).Length != 0)
-                continue;
+            var gate = AimGate(item, origin, forward, out var itemPerp,
+                out var itemAhead, out var itemPoint, out _);
 
-            // Nur der Naechste an der Strahllinie gewinnt. Das ist AUSWAHL und
-            // kein Tor, und steht darum hier statt in AimGate - der Bericht
-            // will jeden Kandidaten sehen, nicht nur den besseren.
-            if (itemPerp >= bestPerp)
+            if (gate.Length != 0)
+            {
+                // HYSTERESE, und nur fuer den KEGEL: der amtierende Kandidat
+                // darf bleiben, solange er innerhalb der Loese-Toleranz liegt.
+                // Reichweite und "hinter der Muendung" gelten unveraendert -
+                // die sind keine Wackelfrage.
+                //
+                // Verglichen wird der native Zeiger (Abschnitt 81).
+                var holds = aimIncumbent != IntPtr.Zero
+                    && item.Pointer == aimIncumbent
+                    && gate == "ausserhalb des Kegels"
+                    && itemPerp <= aimSurfaceTolerance.Value
+                        * Mathf.Max(1f, aimTargetRelease.Value);
+
+                if (!holds)
+                    continue;
+            }
+
+            // ZWEI REGELN, UND DIE MESSUNG SAGT, WELCHE WANN GILT.
+            //
+            // Hier stand "das erste entlang des Strahls gewinnt", mit einer
+            // guten Begruendung: seit gegen die OBERFLAECHE gemessen wird,
+            // lesen mehrere Kandidaten perp nahe null - der Strahl geht durch
+            // sie hindurch - und "kleinster perp" waere dann willkuerlich.
+            // Das ist das Verhalten eines Raycasts, ohne dessen Struct.
+            //
+            // DIE BEGRUENDUNG GILT NUR, WENN DIE PERPS SICH KAUM
+            // UNTERSCHEIDEN. Am Lift tun sie es sehr wohl, gemessen:
+            //
+            //     [1] ...ControlslDown   ahead 0.81   perp 0.16   ang fwd 14.6
+            //     [2] ...ControlslUp     ahead 0.85   perp 0.06   ang fwd  7.9
+            //     -> gewaehlt wurde DOWN, 4 cm naeher entlang des Strahls
+            //
+            // Der Spieler zielte 6 cm und 7,9 Grad neben HOCH und bekam
+            // RUNTER. Die beiden Knoepfe liegen 7,2 cm auseinander, waehrend
+            // die Toleranz 15 cm zulaesst - gemeldet als "den hoch-Schalter zu
+            // treffen ist eigentlich nicht mehr moeglich".
+            //
+            // Unterscheiden sich die perps um mehr als AimPerpTie, IST perp
+            // die Zielabsicht und entscheidet. Liegen beide praktisch auf der
+            // Linie, entscheidet die Tiefe wie bisher - die Raycast-Begruendung
+            // bleibt damit woertlich erhalten statt ueberschrieben.
+            //
+            // AUSWAHL und kein Tor, und steht darum hier statt in AimGate -
+            // der Bericht will jeden Kandidaten sehen, nicht nur den besseren.
+            bool better;
+            string decidedBy;
+
+            if (best is null || best == null)
+            {
+                // Kein Wettbewerb, und das ehrlich benannt: der erste
+                // Kandidat gewinnt gegen niemanden.
+                better = true;
+                decidedBy = "first";
+            }
+            else if (Mathf.Abs(itemPerp - bestPerp) > aimPerpTie.Value)
+            {
+                better = itemPerp < bestPerp;
+                decidedBy = "alignment";
+            }
+            else if (itemAhead != bestAhead)
+            {
+                better = itemAhead < bestAhead;
+                decidedBy = "depth";
+            }
+            else
+            {
+                better = itemPerp < bestPerp;
+                decidedBy = "alignment";
+            }
+
+            if (!better)
                 continue;
 
             bestPerp = itemPerp;
             bestAhead = itemAhead;
+            bestPoint = itemPoint;
             best = item;
+            aimDecidedBy = decidedBy;
         }
 
         if (best is null || best == null)
         {
+            aimIncumbent = IntPtr.Zero;
             reason = "nichts im Kegel";
             return null;
         }
@@ -8041,6 +9055,11 @@ public sealed class Pose : MelonMod
         perp = bestPerp;
         ahead = bestAhead;
         kind = interactionKind;
+        point = bestPoint;
+
+        // Der Amtsinhaber wird NACH CanInteract gesetzt, nicht davor: ein
+        // Kandidat, den das Spiel ablehnt, soll keine Hysterese erben.
+        aimIncumbent = best.Pointer;
 
         return best;
     }
@@ -8177,8 +9196,7 @@ public sealed class Pose : MelonMod
             // AUS DERSELBEN QUELLE WIE DIE ENTSCHEIDUNG, also dieselben Zahlen
             // - kein zweiter Rechenweg. Das gilt jetzt auch fuer den
             // Zeitpunkt: beide nehmen den von DriveRay festgehaltenen Strahl.
-            var origin = aimPublished ? publishedAimOrigin : MuzzlePoint(raySpawn);
-            var forward = aimPublished ? publishedAimForward : AimForward(raySpawn);
+            AimRay(out var origin, out var forward);
 
             // DIE QUELLEN DER RICHTUNG. Inzwischen ist gemessen, welche von
             // ihnen stimmte: keine. Der Fehler lag nicht in der Richtung,
@@ -8206,6 +9224,7 @@ public sealed class Pose : MelonMod
                 + $"   candidates {interactables.Count}"
                 + $"   ctrl {(hasHand ? Vector(handForward) : "unbound")}"
                 + $"   gaze {(gaze is null ? "none" : Vector(gaze.transform.forward))}"
+                + $"   surfaceTol {aimSurfaceTolerance.Value:0.##} m"
                 + $"   radius {aimInteractionRadius.Value:0.##} m"
                 + $"   range {aimInteractionRange.Value:0.##} m"
                 + $"   reach {(selector is null || selector == null ? -1f : selector.m_pickupDistance):0.#} m"
@@ -8247,8 +9266,48 @@ public sealed class Pose : MelonMod
             for (var rank = 0; rank < order.Count; rank++)
             {
                 var item = interactables[order[rank]];
-                var gate = AimGate(item, origin, forward, out var perp, out var ahead);
-                var offset = item.transform.position - (origin + (forward * ahead));
+                var gate = AimGate(item, origin, forward, out var perp, out var ahead,
+                    out var point, out var how);
+                var offset = point - (origin + (forward * ahead));
+
+                // DER PIVOT-WEG DANEBEN, im selben Block gerechnet. Die zwei
+                // Zahlen nebeneinander sind der Beleg, dass die Umstellung
+                // etwas bewirkt - oder dass sie es nicht tut, und dann ist der
+                // Collider die naechste Frage und nicht der Kegel.
+                var pivotTo = item.transform.position - origin;
+                var pivotAhead = Vector3.Dot(pivotTo, forward);
+                var pivotPerp = (pivotTo - (forward * pivotAhead)).magnitude;
+                var colliderCount = 0;
+                var colliderKinds = "none";
+
+                try
+                {
+                    var found = item.transform.GetComponentsInChildren<Collider>();
+
+                    if (found is not null)
+                    {
+                        colliderCount = found.Length;
+                        var kinds = new List<string>();
+
+                        for (var k = 0; k < found.Length && kinds.Count < 3; k++)
+                        {
+                            var one = found[k];
+
+                            if (one is null || one == null)
+                                continue;
+
+                            kinds.Add(ColliderTypeName(one)
+                                + (ColliderAnswers(one, origin) ? "" : "!"));
+                        }
+
+                        if (kinds.Count != 0)
+                            colliderKinds = string.Join(",", kinds);
+                    }
+                }
+                catch (Exception colliderException)
+                {
+                    colliderKinds = $"threw {colliderException.GetType().Name}";
+                }
                 var kind = item.PrimaryInteraction;
                 var can = "nicht gefragt";
 
@@ -8270,7 +9329,11 @@ public sealed class Pose : MelonMod
                     + $"   ptr 0x{item.Pointer.ToString("X")}"
                     + $"   pos {Vector(item.transform.position)}");
                 LoggerInstance.Msg($"      ahead {ahead:0.##} m   dist {dists[rank]:0.##} m"
-                    + $"   perp {perp:0.##} m   offset {Vector(offset)}"
+                    + $"   perp {perp:0.##} m ({how})"
+                    + $"   pivotPerp {pivotPerp:0.##} m"
+                    + $"   grab {Vector(point)}"
+                    + $"   collider {colliderCount} [{colliderKinds}]"
+                    + $"   offset {Vector(offset)}"
                     + $"   kind {kind}   canInteract {can}"
                     + $"   gate {(gate.Length == 0 ? "PASSIERT" : gate)}");
 
@@ -8320,6 +9383,11 @@ public sealed class Pose : MelonMod
     // gelaufen ist; dann hat diese Methode auch geloggt, weil nur hier Ziel,
     // Verb und Geometrie aus einem Block stammen. Bei false bleibt der
     // Blickziel-Pfad des Spiels zustaendig.
+    // Das VERB des letzten Zugriffs, damit ReleaseHold genau das abbricht, was
+    // gestartet wurde. Ein anderes Verb zu senden als das gepruefte waere eine
+    // stille Fehlzuendung - die Regel aus Abschnitt 98.
+    private Il2CppFuturLab.PW2.ItemInteraction lastAimVerb;
+
     private bool TryAimPickup(string before)
     {
         if (!aimInteraction.Value)
@@ -8352,7 +9420,7 @@ public sealed class Pose : MelonMod
             ScanInteractables();
 
             var target = FindAimTarget(out var perp, out var ahead, out var kind,
-                out var reason);
+                out var reason, out _);
 
             if (target is null || target == null)
             {
@@ -8369,6 +9437,7 @@ public sealed class Pose : MelonMod
             var name = target.name;
 
             manager.SetTargetAndInteractStateImmediate(target, kind);
+            lastAimVerb = kind;
             fired = true;
 
             // BEFORE UND AFTER SIND HIER NICHT DAS URTEIL.
@@ -8411,7 +9480,8 @@ public sealed class Pose : MelonMod
                 ScanInteractables();
             }
 
-            var best = FindAimTarget(out var perp, out var ahead, out var kind, out _);
+            var best = FindAimTarget(out var perp, out var ahead, out var kind,
+                out _, out _);
 
             if (best is null || best == null)
             {
@@ -8419,7 +9489,15 @@ public sealed class Pose : MelonMod
                 if (aimTargetPointer != IntPtr.Zero)
                 {
                     aimTargetPointer = IntPtr.Zero;
-                    LoggerInstance.Msg("aim target: none");
+
+                    // UNTER DEM HAUPTSCHALTER, seit Abschnitt 157. Reine
+                    // Diagnose - dieser Zweig aendert kein Verhalten -, und
+                    // mit 104 Zeilen der haeufigste Praefix im Messlauf.
+                    // Der Zustand selbst wird weiter gefuehrt, damit ein
+                    // spaeteres Einschalten nicht auf einem alten Zeiger
+                    // aufsetzt.
+                    if (Dev(aimChainReport))
+                        LoggerInstance.Msg("aim target: none");
                 }
 
                 return;
@@ -8433,8 +9511,21 @@ public sealed class Pose : MelonMod
                 aimTargetPointer = best.Pointer;
                 nextAimLog = Time.unscaledTime + 2f;
 
+                // UNTER DEM HAUPTSCHALTER, seit Abschnitt 157 - und die
+                // Buchhaltung darueber bleibt ausserhalb, damit ein
+                // eingeschalteter DevMode mitten im Spiel nicht mit einem
+                // veralteten Zeiger und einer alten Uhr anfaengt.
+                //
+                // Die EREIGNIS-Zeilen bleiben ungegattert: "interact: aim
+                // pickup" nennt perp und ahead beim Druck, also ueberlebt
+                // die Beweislage fuer einen Testerbericht auch ohne diese
+                // Dauerspur.
+                if (!Dev(aimChainReport))
+                    return;
+
                 LoggerInstance.Msg($"aim target: {best.name}"
                     + $"   perp {perp:0.##} m   ahead {ahead:0.##} m"
+                    + $"   by {(aimDecidedBy.Length == 0 ? "-" : aimDecidedBy)}"
                     + $"   kind {kind}   canInteract True");
             }
         }
@@ -8541,7 +9632,12 @@ public sealed class Pose : MelonMod
             var camForward = gaze is null || gaze == null
                 ? Vector3.zero
                 : gaze.transform.forward;
-            var handForward = aimPublished ? publishedAimForward : Vector3.zero;
+            // DER WERT, DER WIRKLICH GEFUETTERT WURDE, und nicht die
+            // Pistolenrichtung: seit die freie Hand positionieren kann, waere
+            // publishedAimForward hier die falsche Groesse und die Spalte
+            // falsch beschriftet. Kein zweiter Rechenweg - GameInput haelt
+            // genau den Wert, den SwapCameraForCarry unterschoben hat.
+            var handForward = GameInput.CarryAimForward;
 
             var angle = camForward == Vector3.zero || handForward == Vector3.zero
                 ? -1f
@@ -8587,7 +9683,7 @@ public sealed class Pose : MelonMod
                 + $"   camFwdAtMove {Vector(GameInput.CamFwdAtMove)}"
                 + $"   itemDist {flatItem.magnitude.ToString("0.##", Invariant)} m"
                 + $"   angle(cam) {(flatItem.sqrMagnitude < 0.0001f || flatCam.sqrMagnitude < 0.0001f ? "-" : Vector3.Angle(flatItem, flatCam).ToString("0.#", Invariant))}"
-                + $"   angle(hand) {(flatItem.sqrMagnitude < 0.0001f || flatHand.sqrMagnitude < 0.0001f ? "-" : Vector3.Angle(flatItem, flatHand).ToString("0.#", Invariant))}");
+                + $"   angle({(carryUsedOffHand ? "offhand" : "washer")}) {(flatItem.sqrMagnitude < 0.0001f || flatHand.sqrMagnitude < 0.0001f ? "-" : Vector3.Angle(flatItem, flatHand).ToString("0.#", Invariant))}");
         }
         catch (Exception exception)
         {
@@ -9288,9 +10384,25 @@ public sealed class Pose : MelonMod
         return null;
     }
 
-    private void PlaceCarried()
+    // Gibt null zurueck, wenn abgelegt wurde, sonst den GRUND der
+    // Verweigerung. Ein bool haette den letzten Zweig gezwungen, sich als
+    // blockierter Platz auszugeben, obwohl dort nur playerInput fehlt.
+    private string? PlaceCarried()
     {
         var verb = placeVerb.Value;
+
+        // EINMAL AUFGELOEST, zweimal gebraucht: fuer das Tor und fuer den
+        // request-place-Zweig. Der FindObjectsOfTypeAll-Sweep laeuft nur auf
+        // einem Tastendruck, die Begruendung dafuer traegt er seit Abschnitt 88.
+        var carried = FindCarriedItem();
+
+        // DAS TOR SITZT VOR DER VERB-VERZWEIGUNG, an genau einer Stelle. Neun
+        // Verben folgen; eine Zusicherung, die auf drei Zweige verteilt ist,
+        // vergisst der naechste - Abschnitt 111.
+        var blocked = PlacementRefusal(carried);
+
+        if (blocked is not null)
+            return blocked;
 
         // THE GAME'S OWN PLACE-DOWN, and the reason the old default was wrong.
         //
@@ -9316,7 +10428,7 @@ public sealed class Pose : MelonMod
         if (string.Equals(verb, "request-place", StringComparison.OrdinalIgnoreCase)
             || string.Equals(verb, "set-placed", StringComparison.OrdinalIgnoreCase))
         {
-            var item = FindCarriedItem();
+            var item = carried;
             var holder = item?.GetPlayerHolding();
 
             if (item is not null && item != null && holder is not null && holder != null)
@@ -9341,7 +10453,7 @@ public sealed class Pose : MelonMod
                             + $"  task {(pending is null ? "null" : "started")}.");
                     }
 
-                    return;
+                    return null;
                 }
                 catch (Exception exception)
                 {
@@ -9358,41 +10470,43 @@ public sealed class Pose : MelonMod
             // place-down that refuses to let go is worse than one that skips a
             // state change.
             interaction?.ClearInteractions();
-            return;
+            return null;
         }
 
         if (string.Equals(verb, "manager-remove", StringComparison.OrdinalIgnoreCase))
         {
             interaction?.OnInteractInput(Il2CppFuturLab.PW2.ItemInteraction.Remove);
-            return;
+            return null;
         }
 
         if (string.Equals(verb, "manager-use", StringComparison.OrdinalIgnoreCase))
         {
             interaction?.OnInteractInput(Il2CppFuturLab.PW2.ItemInteraction.Use);
-            return;
+            return null;
         }
 
         if (string.Equals(verb, "manager-pickup", StringComparison.OrdinalIgnoreCase))
         {
             interaction?.OnInteractInput(Il2CppFuturLab.PW2.ItemInteraction.PickUp);
-            return;
+            return null;
         }
 
         if (string.Equals(verb, "setstate-remove", StringComparison.OrdinalIgnoreCase))
         {
             interaction?.SetInteractStateImmediate(Il2CppFuturLab.PW2.ItemInteraction.Remove);
-            return;
+            return null;
         }
 
         if (string.Equals(verb, "clear", StringComparison.OrdinalIgnoreCase))
         {
             interaction?.ClearInteractions();
-            return;
+            return null;
         }
 
+        // Nicht "blockierter Platz", sondern der echte Grund - sonst nennt die
+        // Logzeile des Aufrufers eine Ursache, die es nicht gibt.
         if (playerInput is null)
-            return;
+            return "no player input";
 
         if (string.Equals(verb, "remove", StringComparison.OrdinalIgnoreCase))
             playerInput.InvokeItemInteraction(Il2CppFuturLab.PW2.ItemInteraction.Remove);
@@ -9400,6 +10514,197 @@ public sealed class Pose : MelonMod
             playerInput.InvokeItemInteraction(Il2CppFuturLab.PW2.ItemInteraction.Use);
         else
             playerInput.InvokeCancelInteraction(Il2CppFuturLab.PW2.ItemInteraction.PickUp);
+
+        return null;
+    }
+
+    // DAS TOR. Gibt null zurueck, wenn abgelegt werden darf, sonst den Grund.
+    //
+    // FAIL OPEN, und die Regel steht schon in PlaceCarried: eine Ablage, die
+    // nicht loslaesst, ist schlimmer als eine, die einen Zustandswechsel
+    // ueberspringt. Geblockt wird NUR bei einem positiven Lesevorgang auf
+    // PlacementBlocked. Kein Objekt, kein lesbarer Zustand, eine Ausnahme -
+    // alles laesst ablegen. Ein Tor, das bei einem Lesefehler zumacht, sperrt
+    // den Spieler mit einem Objekt in der Hand ein.
+    private string? PlacementRefusal(Il2CppFuturLab.PW2.MovableItemBase? carried)
+    {
+        if (!placeRequireValidSpot.Value)
+            return null;
+
+        // Unity-null UND Muster-null, weil ein zerstoertes Objekt das zweite
+        // nicht erfuellt - die Falle aus Abschnitt 85.
+        if (carried is null || carried == null)
+            return null;
+
+        // ZWEI SIGNALE, UND JEDES HAT EINEN ANDEREN BELEG.
+        //
+        // IsValidPlacement hat den VERHALTENSBELEG: im Log der gemeldeten
+        // Sitzung steht "valid False  task started" auf einer Stufenleiter,
+        // also genau der Fehlerfall, und 15x True bei gelungenen Ablagen. Der
+        // Mod hat die Antwort protokolliert und ignoriert.
+        //
+        // VisualState hat den STRUKTURBELEG: ein zweiwertiges Enum, dessen
+        // zweiter Wert PlacementBlocked heisst, und OnVisualStateChanged ist
+        // von PickableItem und PickablePhysicsItem ueberschrieben - sie
+        // schalten die Darstellung. Eine Laufzeitmessung fehlt ihm.
+        //
+        // Jedes einzeln waere eine Wahl auf halber Beweislage. Geblockt wird
+        // deshalb, wenn EINES blockiert meldet, und die Zeile nennt welches.
+        //
+        // EIN UNLESBARES SIGNAL SAGT NICHTS - es erlaubt nicht und blockiert
+        // nicht. Sind beide unlesbar, wird abgelegt.
+        var blockedByVisual = false;
+        var visualRead = "unread";
+
+        try
+        {
+            var visual = carried.VisualState;
+            blockedByVisual =
+                visual == Il2CppFuturLab.PW2.InteractionVisualState.PlacementBlocked;
+            visualRead = visual.ToString();
+        }
+        catch (Exception exception)
+        {
+            visualRead = $"threw {exception.GetType().Name}";
+        }
+
+        var blockedByValidity = false;
+        var validRead = "unread";
+
+        try
+        {
+            var valid = carried.IsValidPlacement();
+            blockedByValidity = !valid;
+            validRead = valid.ToString();
+        }
+        catch (Exception exception)
+        {
+            validRead = $"threw {exception.GetType().Name}";
+        }
+
+        if (!blockedByVisual && !blockedByValidity)
+            return null;
+
+        // EIN BLOCK, EINE MOMENTAUFNAHME. Die vier Nachbarsignale werden im
+        // selben Zugriff gelesen wie das Tor, damit der erste Lauf sagt, ob sie
+        // mitgehen - insbesondere IsValidPlacement, das ueber acht archivierte
+        // Ablagen 8x True und 0x False gelesen hat und damit unbelegt ist.
+        // Eigener try/catch: ein Lesefehler in der DIAGNOSE darf die
+        // ENTSCHEIDUNG nicht kippen, die oben schon gefallen ist.
+        var columns = "columns unread";
+
+        try
+        {
+            columns = $"obstructed {carried.Obstructed}"
+                + $"  state {carried.State}"
+                + $"  rejected {carried.RequestRejected}"
+                + $"  beingPlaced {carried.BeingPlaced}";
+        }
+        catch (Exception exception)
+        {
+            columns = $"columns threw {exception.GetType().Name}";
+        }
+
+        var name = "?";
+
+        try
+        {
+            name = carried.name;
+        }
+        catch
+        {
+            // Der Name ist Beschriftung, nicht Befund.
+        }
+
+        var why = blockedByVisual && blockedByValidity ? "both"
+            : blockedByVisual ? "visual" : "validity";
+
+        LoggerInstance.Msg($"place refused: \"{name}\" by {why}"
+            + $"  visual {visualRead}  valid {validRead}  {columns}");
+
+        // Die FREIE Hand, weil X dort sitzt - dieselbe Zuordnung wie der
+        // Aufnehmen-/Ablegen-Puls, und ueber die ROLLE statt ueber die Seite,
+        // damit sie im Linkshaenderbetrieb nicht vertauscht ist (Abschnitt 110).
+        if (placeRefusedBuzz.Value)
+            Buzz(!WasherHandRight, "place refused");
+
+        return $"spot is blocked, by {why}";
+    }
+
+    // RASTET NUR AUF EINEM ZUSTAND EIN, DEN DAS SPIEL SELBST PressAndHold
+    // NENNT. Nicht am Verb: Use steht auch an der Klobrille und am
+    // Wickeltisch, und die sind kein Halten. Erst fragen, wer den Zustand
+    // haelt (Abschnitt 111).
+    //
+    // Ein Aufnehmen fuehrt zu HoldingItemInteractionState. Ein Cancel auf der
+    // Loslass-Flanke wuerde den Gegenstand sofort fallen lassen - deshalb
+    // haengt die Sperre am NAMEN, und was nicht gelesen werden kann, rastet
+    // gar nicht ein.
+    private void LatchHoldIfNeeded()
+    {
+        if (!interactHold.Value)
+            return;
+
+        try
+        {
+            var state = interaction?.InteractionState;
+
+            if (state is null || state == null)
+                return;
+
+            var name = state.Name;
+
+            if (name is null || name.IndexOf("PressAndHold",
+                    StringComparison.OrdinalIgnoreCase) < 0)
+                return;
+
+            holdLatched = true;
+            holdLatchVerb = lastAimVerb;
+            holdLatchName = name;
+
+            LoggerInstance.Msg($"interact: hold latched on [{name}]"
+                + $"   verb {holdLatchVerb}");
+        }
+        catch (Exception exception)
+        {
+            // Nicht lesbar heisst NICHT gerastet. Ein Cancel auf Verdacht waere
+            // schlimmer als ein Halten, das nicht endet.
+            LoggerInstance.Warning($"  hold latch read threw "
+                + $"{exception.GetType().Name} - not latching.");
+        }
+    }
+
+    // GERAEUMT WIRD IMMER ZUSAMMEN, alle drei Felder. Eine Rastung, die einen
+    // Levelwechsel oder ein Abschalten ueberlebt, sendet ihr Cancel Minuten
+    // spaeter in eine fremde Interaktion - die Lehre aus Abschnitt 94.
+    private void ReleaseHold(string why)
+    {
+        if (!holdLatched)
+            return;
+
+        var verb = holdLatchVerb;
+        var name = holdLatchName;
+
+        holdLatched = false;
+        holdLatchName = "";
+
+        try
+        {
+            // InvokeCancelInteraction ist nativ PUBLIC, am Feldnamen geprueft:
+            // InvokeCancelInteraction_Public_Void_ItemInteraction_0. Es hebt
+            // BaseInput.InteractionCancelled, und daran haengt
+            // OnInteractionCancelled des Halte-Zustands.
+            playerInput?.InvokeCancelInteraction(verb);
+
+            LoggerInstance.Msg($"interact: hold cancelled ({why})"
+                + $"   verb {verb}   was [{name}]"
+                + $"   now {InteractionText()}");
+        }
+        catch (Exception exception)
+        {
+            LoggerInstance.Warning($"  hold cancel threw "
+                + $"{exception.GetType().Name}: {exception.Message}");
+        }
     }
 
     private string InteractionText()
@@ -10321,6 +11626,11 @@ public sealed class Pose : MelonMod
     // CurrentUIState and a virtual ForceSelect(). Activation still differs per
     // type and is handled by cast at the point of use.
     private readonly List<Il2CppFuturLab.UIStateMonoBehaviour> menuButtons = new();
+
+    // Die unprojizierbaren dieses Scans, bis entschieden ist, ob der Filter
+    // gewaehlt oder versagt hat. Ein Feld und keine lokale Liste: der Scan
+    // laeuft bis zu 10 Mal pro Sekunde.
+    private readonly List<Il2CppFuturLab.UIStateMonoBehaviour> offscreenRescue = new();
     private float nextMenuScan;
 
     // Nur fuer die Scan-Zeile: welche Kandidaten als "offscreen" herausfielen.
@@ -10995,8 +12305,77 @@ public sealed class Pose : MelonMod
         return anyInFront;
     }
 
-    private bool OnScreen(Transform node)
+    // WARUM ein Knoten als ausserhalb gilt, als kurze Spalte fuer die
+    // Scanzeile. Nur fuer die ersten drei Verworfenen, und nur wenn die Zahl
+    // sich geaendert hat - die Zeile laeuft ohnehin nicht pro Frame.
+    // DIE SPALTE, DIE BEIM LETZTEN AUSFALL FEHLTE. Das Rechteck sagt "hinter
+    // der Kamera" - aber nicht, MIT WELCHER. Projiziert wird mit Camera.main;
+    // positioniert wird der auf ScreenSpaceCamera umgestellte UI-Canvas von
+    // Unity vor seine worldCamera. Sind das zwei verschiedene, folgt der ganze
+    // Befund daraus, und keine Zahl im Rechteck haette es gesagt.
+    //
+    // KEINE REPARATUR: der Canvas wird nicht angefasst, solange nicht gemessen
+    // ist, dass er driftet.
+    private string MenuSurfaceText()
     {
+        try
+        {
+            var camera = Camera.main;
+            var root = gameUi.Root;
+            var canvas = root is null || root == null
+                ? null
+                : root.GetComponent<Canvas>();
+            var worldCam = canvas is null || canvas == null ? null : canvas.worldCamera;
+
+            return $"mainCam {(camera is null || camera == null ? "NULL" : camera.name)}"
+                + $"   canvas {(canvas is null || canvas == null ? "NULL" : canvas.renderMode.ToString())}"
+                + $"   worldCam {(worldCam is null || worldCam == null ? "NULL" : worldCam.name)}";
+        }
+        catch (Exception exception)
+        {
+            return $"surface threw {exception.GetType().Name}";
+        }
+    }
+
+    private string OffscreenWhy(Transform node)
+    {
+        try
+        {
+            var camera = Camera.main;
+
+            if (camera is null || camera == null)
+                return " (no camera)";
+
+            var rect = menuRectCandidates.Value ? node.TryCast<RectTransform>() : null;
+
+            if (rect is null || rect == null)
+            {
+                var point = camera.WorldToScreenPoint(node.position);
+                return $" (pivot {point.x:0}/{point.y:0} z {point.z:0.##}"
+                    + $" scr {Screen.width}x{Screen.height})";
+            }
+
+            if (!TryProjectRect(rect, camera, out var minX, out var maxX,
+                    out var minY, out var maxY))
+                return " (rect unprojectable)";
+
+            return $" (x {minX:0}..{maxX:0} y {minY:0}..{maxY:0}"
+                + $" scr {Screen.width}x{Screen.height})";
+        }
+        catch (Exception exception)
+        {
+            return $" (why threw {exception.GetType().Name})";
+        }
+    }
+
+    // MIT EINER ZWEITEN ANTWORT, denn "nicht projizierbar" ist etwas anderes
+    // als "ausserhalb". Gemessen um 01:26:59: 10 von 10 Kandidaten fielen mit
+    // "rect unprojectable" heraus, die Liste blieb leer, und der Zeiger
+    // zeichnete ins Nichts - der gemeldete Totalausfall mit Ausweg Alt+F4.
+    private bool OnScreen(Transform node, out bool unprojectable)
+    {
+        unprojectable = false;
+
         try
         {
             var camera = Camera.main;
@@ -11012,7 +12391,15 @@ public sealed class Pose : MelonMod
                 // report - see TryProjectRect.
                 if (!TryProjectRect(rect, camera,
                         out var minX, out var maxX, out var minY, out var maxY))
+                {
+                    // ALLE VIER ECKEN HINTER DER KAMERA. Gemeldet wird es, und
+                    // entschieden wird es NICHT hier: ein einzelner Knopf hinter
+                    // der Kamera ist richtig verworfen. Falsch wird die Antwort
+                    // erst, wenn sie fuer ALLE gilt - und das sieht nur der
+                    // Scan, der sie zaehlt.
+                    unprojectable = true;
                     return false;
+                }
 
                 // OVERLAP, not containment: a tile that runs off the edge of the
                 // screen is still partly visible and still pointable, and the
@@ -11169,6 +12556,7 @@ public sealed class Pose : MelonMod
         menuButtons.Clear();
         offscreenNames.Clear();
         lockedNames.Clear();
+        offscreenRescue.Clear();
 
         var droppedOffscreen = 0;
         var droppedFaded = 0;
@@ -11230,9 +12618,15 @@ public sealed class Pose : MelonMod
                 // two counters separate them without a new log line per frame -
                 // they ride along on the existing scan line, which only prints
                 // when the count changes.
-                if (!OnScreen(button.transform))
+                if (!OnScreen(button.transform, out var unprojectable))
                 {
                     droppedOffscreen++;
+
+                    // AUFBEWAHRT, NICHT AUFGENOMMEN. Ob diese Knoepfe zurueck
+                    // in die Liste kommen, entscheidet erst der Blick auf das
+                    // GANZE Ergebnis, unten hinter der Schleife.
+                    if (unprojectable)
+                        offscreenRescue.Add(button);
 
                     // DIE ERSTEN DREI MIT NAMEN, und der Grund steht in
                     // Abschnitt 107: nach Levelabschluss meldete der Scan "0
@@ -11240,8 +12634,17 @@ public sealed class Pose : MelonMod
                     // Knoepfe des Popups waren da und fielen hier heraus. Eine
                     // Zahl sagt nicht, WELCHE, und der vorhandene Bericht
                     // dafuer haengt hinter DevMode.
+                    // UND SEIT ABSCHNITT 151 AUCH DAS RECHTECK. Ein Name sagt
+                    // nicht, WARUM - und der Bericht, der die projizierten
+                    // Grenzen druckt, ist nie gelaufen: ReportPointerMiss
+                    // braucht Kandidaten, und bei einem Ausfall ist die Liste
+                    // leer. Null Bloecke im ganzen Log des gemeldeten Falls.
+                    //
+                    // Gerechnet mit TryProjectRect, also demselben Weg, den
+                    // OnScreen benutzt - ein zweiter Rechenweg waere eine neue
+                    // Fehlerquelle statt einer Diagnose (Abschnitt 90).
                     if (offscreenNames.Count < 3)
-                        offscreenNames.Add(button.name);
+                        offscreenNames.Add(button.name + OffscreenWhy(button.transform));
 
                     continue;
                 }
@@ -11253,6 +12656,28 @@ public sealed class Pose : MelonMod
                 }
 
                 menuButtons.Add(button);
+            }
+
+            // EIN FILTER, DER ALLES ABLEHNT, IST NICHT WAEHLERISCH - ER IST
+            // DEFEKT. Genau dann, und nur dann, kommen die unprojizierbaren
+            // zurueck: nichts ueberlebt das Filtern, und alles Verworfene lag
+            // rechnerisch hinter der Kamera.
+            //
+            // DER RADIUS IST GEMESSEN KLEIN. In jedem gesunden Scan des Laufs
+            // 01:26:21 blieben 7 bis 23 Kandidaten stehen; dort laeuft dieser
+            // Block nie. Er greift nur in der Lage, deren Preis Alt+F4 war.
+            //
+            // Und er SCHREIT. Eine stille Heilung wuerde die Ursache verdecken,
+            // die mit der neuen Kameraspalte gerade erst lesbar wird.
+            if (menuButtons.Count == 0 && offscreenRescue.Count > 0)
+            {
+                for (var index = 0; index < offscreenRescue.Count; index++)
+                    menuButtons.Add(offscreenRescue[index]);
+
+                LoggerInstance.Warning($"menu rescue: {offscreenRescue.Count} "
+                    + "candidate(s) re-admitted - EVERY rect projected behind the "
+                    + "camera, and a filter that rejects all of them is broken, "
+                    + "not selective. Read mainCam and worldCam on the scan line.");
             }
 
             // Insertion sort on the world position. The lists are short - a dozen
@@ -11346,6 +12771,7 @@ public sealed class Pose : MelonMod
                     + $" locked {droppedLocked}"
                     + $"{(lockedNames.Count == 0 ? "" : " [" + string.Join(", ", lockedNames) + "]")}"
                     + $"   rectCandidates {menuRectCandidates.Value}"
+                    + $"   {MenuSurfaceText()}"
                     + $"   moveAction {(moveAction is null ? "NULL" : "ok")}"
                     + $"   cursorTarget {CursorTargetText()}"
                     + $"   selectionReasserts {selectionReasserts}"
@@ -13865,12 +15291,29 @@ public sealed class Pose : MelonMod
         CollectBySubstring(root, "TabToggle", tabNodes);
 
         // Only what is on screen, and sorted by x so the order matches the bar.
+        //
+        // DER CONTAINER FAELLT MIT HERAUS. CollectBySubstring ist ein
+        // Teilstringtest, und "TabToggles" - der Elternknoten der Leiste -
+        // enthaelt "TabToggle". Er belegte einen Index und meldete selbst
+        // "NEITHER - cannot be activated": ein Schritt ins Nichts.
+        //
+        // Gefiltert wird STRUKTURELL und nicht ueber den Namen - ein Knoten
+        // ohne FuturButton und ohne FuturToggle kann kein Tab sein, und ein
+        // Namenstest waere die naechste stille Bruchstelle im naechsten DLC
+        // (Abschnitt 113). Gefragt werden dieselben zwei Komponenten, die
+        // StepTab zum Umschalten braucht.
         for (var index = tabNodes.Count - 1; index >= 0; index--)
         {
-            if (!tabNodes[index].gameObject.activeInHierarchy)
+            if (!tabNodes[index].gameObject.activeInHierarchy
+                || !CanStepTab(tabNodes[index]))
                 tabNodes.RemoveAt(index);
         }
 
+        // SORTIERT NACH DER RECHTECKMITTE, nicht nach dem Pivot. Die Spalte aus
+        // Abschnitt 151 hat gezeigt, warum: alle fuenf Tabs lasen screenX 1280,
+        // die Schirmmitte, weil sie EINEN Pivot teilen. Ein konstanter
+        // Schluessel sortiert nichts - der Insertionsort ist stabil und liess
+        // die Hierarchiereihenfolge stehen, und genau die sprang "falsch".
         var tabCamera = Camera.main;
 
         if (tabCamera is not null && tabCamera != null)
@@ -13878,10 +15321,10 @@ public sealed class Pose : MelonMod
             for (var i = 1; i < tabNodes.Count; i++)
             {
                 var candidate = tabNodes[i];
-                var key = ScreenOf(tabCamera, candidate).x;
+                var key = TabKeyX(tabCamera, candidate);
                 var j = i - 1;
 
-                while (j >= 0 && ScreenOf(tabCamera, tabNodes[j]).x > key)
+                while (j >= 0 && TabKeyX(tabCamera, tabNodes[j]) > key)
                 {
                     tabNodes[j + 1] = tabNodes[j];
                     j--;
@@ -13891,16 +15334,114 @@ public sealed class Pose : MelonMod
             }
         }
 
+        // WO DAS SPIEL STEHT, gefragt statt geraten. Ohne das springt der
+        // erste Druck nach StepTabs eigener Regel auf den ERSTEN oder den
+        // LETZTEN Tab - genau das gemeldete Bild. Nur wenn der Index noch
+        // unbekannt ist, damit ein laufendes Schrittwerk unberuehrt bleibt.
+        if (tabIndex < 0)
+            tabIndex = ActiveTabIndex();
+
         if (!loggedTabs && tabNodes.Count > 0)
         {
             loggedTabs = true;
 
+            // DIE BILDSCHIRM-X, also die Zahl, nach der auch sortiert wird.
+            // Vorher stand hier position.x - die WELTkoordinate -, und weil
+            // der Canvas zur Kamera gedreht wird, lasen alle sechs Tabs
+            // dasselbe. Eine Spalte, die eine andere Groesse zeigt als die
+            // benutzte, ist der Mechanismus hinter den drei Fehldiagnosen von
+            // Abschnitt 76 - und sie hat hier fast eine vierte getragen.
+            var tabCam = Camera.main;
+
             for (var index = 0; index < tabNodes.Count && index < 8; index++)
                 LoggerInstance.Msg($"    tab [{index + 1}] {tabNodes[index].name}   "
-                    + $"x {tabNodes[index].position.x:0.##}   {TabMechanism(tabNodes[index])}");
+                    + $"keyX {(tabCam is null || tabCam == null ? -1f : TabKeyX(tabCam, tabNodes[index])):0.#}"
+                    + $"   pivotX {(tabCam is null || tabCam == null ? -1f : ScreenOf(tabCam, tabNodes[index]).x):0.#}"
+                    + $"   worldX {tabNodes[index].position.x:0.##}"
+                    + $"   {TabMechanism(tabNodes[index])}"
+                    + $"{(index == tabIndex ? "   ACTIVE" : "")}");
 
-            LoggerInstance.Msg($"  menu tabs: {tabNodes.Count} found, left grip back, right grip forward");
+            LoggerInstance.Msg($"  menu tabs: {tabNodes.Count} found, left grip back, right grip forward"
+                + $"   starting index {tabIndex}");
         }
+    }
+
+    // Kann dieser Knoten ueberhaupt umgeschaltet werden? Gefragt werden
+    // dieselben zwei Komponenten, die StepTab dafuer braucht - eine dritte
+    // Antwort gibt es nicht, und ein Knoten ohne beide ist kein Tab.
+    private static bool CanStepTab(Transform node)
+    {
+        try
+        {
+            var button = node.GetComponent<Il2CppFuturLab.FuturButton>();
+
+            if (button is not null && button != null)
+                return true;
+
+            var toggle = node.GetComponent<Il2CppFuturLab.FuturToggle>();
+            return toggle is not null && toggle != null;
+        }
+        catch
+        {
+            // Unlesbar heisst DRIN: ein Filter, der wirft, darf kein Tab
+            // verschwinden lassen - dieselbe Regel wie in OnScreen.
+            return true;
+        }
+    }
+
+    // WO DAS SPIEL STEHT. Der aktive Tab ist der, dessen Toggle isOn liest -
+    // ein schlichter bool, kein Ratespiel ueber Hervorhebungen. Liest keiner
+    // true, bleibt es bei -1 und StepTab verhaelt sich wie bisher.
+    // WO DER TAB WIRKLICH STEHT, waagerecht und auf dem Schirm.
+    //
+    // Der Pivot taugt hier nicht: alle Tabknoten teilen einen, gemessen als
+    // fuenfmal screenX 1280 auf einem 2560 breiten Schirm. Die sichtbare Lage
+    // steckt in der Rect-Geometrie, und die liest GetWorldCorners - ueber
+    // TryProjectRect, also denselben Weg wie OnScreen und OffscreenWhy, damit
+    // kein zweiter Rechenweg zur neuen Fehlerquelle wird (Abschnitt 90).
+    //
+    // Spreizt das Rechteck nicht, gilt der Pivot wie bisher: ein Schluessel,
+    // der nicht messen kann, darf die Reihenfolge nicht erfinden.
+    private float TabKeyX(Camera camera, Transform node)
+    {
+        try
+        {
+            var rect = node.TryCast<RectTransform>();
+
+            if (rect is not null && rect != null
+                && TryProjectRect(rect, camera, out var minX, out var maxX,
+                    out _, out _)
+                && maxX > minX)
+                return (minX + maxX) * 0.5f;
+        }
+        catch
+        {
+            // Der Pivot unten antwortet immer.
+        }
+
+        return ScreenOf(camera, node).x;
+    }
+
+    private int ActiveTabIndex()
+    {
+        for (var index = 0; index < tabNodes.Count; index++)
+        {
+            try
+            {
+                var toggle = tabNodes[index]
+                    .GetComponent<Il2CppFuturLab.FuturToggle>();
+                var unityToggle = toggle?.Toggle;
+
+                if (unityToggle is not null && unityToggle != null && unityToggle.isOn)
+                    return index;
+            }
+            catch
+            {
+                // Dieser Knoten antwortet nicht. Der naechste vielleicht.
+            }
+        }
+
+        return -1;
     }
 
     // Says which of the two activation routes a tab node offers, so the log
@@ -13931,6 +15472,18 @@ public sealed class Pose : MelonMod
         if (tabNodes.Count == 0)
             return;
 
+        // NOCH EINMAL GEFRAGT, unmittelbar vor dem Schritt.
+        //
+        // ScanTabs setzt den Index aus dem aktiven Tab - aber wenn dort noch
+        // kein Toggle isOn liest, weil das Menue gerade erst aufgebaut wird,
+        // bleibt er -1, und die Regel darunter springt auf den ERSTEN oder
+        // LETZTEN Tab statt zum Nachbarn. Bei fuenf Tabs sieht das aus wie
+        // eine Richtungsumkehr, genau einmal - so gemeldet.
+        //
+        // Beim DRUCK ist der Zustand gesetzt, also antwortet das Spiel jetzt.
+        if (tabIndex < 0)
+            tabIndex = ActiveTabIndex();
+
         tabIndex = tabIndex < 0
             ? (direction > 0 ? 0 : tabNodes.Count - 1)
             : (tabIndex + direction + tabNodes.Count) % tabNodes.Count;
@@ -13958,16 +15511,46 @@ public sealed class Pose : MelonMod
             }
 
             var toggle = node.GetComponent<Il2CppFuturLab.FuturToggle>();
-            var unityToggle = toggle?.Toggle;
 
-            if (unityToggle is not null && unityToggle != null)
+            if (toggle is not null && toggle != null)
             {
-                // isOn is a plain bool property and firing its callback is the
-                // point - SetIsOnWithoutNotify would change the visual and not
-                // the page.
-                unityToggle.isOn = true;
+                // DER WEG DES SPIELS, nicht der Griff ans Widget.
+                //
+                // VORHER STAND HIER unityToggle.isOn = true. Das erledigt genau
+                // die halbe Arbeit: die ToggleGroup schaltet den ALTEN Tab AUS,
+                // und wer den NEUEN INHALT EINschaltet, haengt an FuturToggles
+                // eigenem Pfad - der so nie betreten wird. Das ist die gemeldete
+                // Erscheinung Wort fuer Wort: Tableiste da, Inhalt leer.
+                //
+                // Submit liest nativ Public_Abstract_Virtual auf der Basis und
+                // Public_Virtual_Final als Ueberschreibung, der Aufruf landet
+                // also in FuturToggles eigener - und es ist DIESELBE Methode,
+                // die der FuturButton-Zweig darueber benutzt und die im Log
+                // seit Abschnitt 111 wirkt. Interop-public ist nicht
+                // nativ-public, deshalb stand die Sichtbarkeit im Zeigernamen
+                // und nicht in der Signatur.
+                var how = "Submit";
+
+                try
+                {
+                    toggle.Submit();
+                }
+                catch (Exception submitFailed)
+                {
+                    // DER ALTE WEG ALS RUECKFALL, damit ein Tabwechsel nicht
+                    // ganz ausfaellt - aber BENANNT, denn ein Rueckfall, der
+                    // wie ein Erfolg aussieht, kostet den naechsten Lauf.
+                    var unityToggle = toggle.Toggle;
+
+                    if (unityToggle is null || unityToggle == null)
+                        throw;
+
+                    unityToggle.isOn = true;
+                    how = $"Toggle.isOn (Submit threw {submitFailed.GetType().Name})";
+                }
+
                 LoggerInstance.Msg($"menu tab [{tabIndex + 1}/{tabNodes.Count}] "
-                    + $"{node.name} via Toggle.isOn");
+                    + $"{node.name} via {how}");
 
                 menuButtons.Clear();
                 menuIndex = -1;

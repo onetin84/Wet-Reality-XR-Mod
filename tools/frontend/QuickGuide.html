@@ -281,12 +281,12 @@ footer .spacer { flex: 1; }
 <table>
   <tr><th>Move the controller</th><td>The washer follows your hand in position and direction</td></tr>
   <tr><th>Trigger</th><td>Spray, while held</td></tr>
-  <tr><th>Grip</th><td>Continuous spray on or off — no need to hold the trigger. While it is running, the grip switches it off instead of changing a tool.</td></tr>
+  <tr><th>Grip</th><td>Continuous spray on or off — no need to hold the trigger. While it is running, the grip switches it off instead of changing a tool, and opening the pause menu switches it off too, so a running jet can always be stopped.</td></tr>
   <tr><th><kbd>A</kbd></th><td>Jump</td></tr>
   <tr><th><kbd>B</kbd> tap</th><td>Crouch</td></tr>
   <tr><th><kbd>B</kbd> hold</th><td>Crouch, long press</td></tr>
   <tr><th>Stick left / right</th><td>Turn</td></tr>
-  <tr><th>Stick up / down</th><td>Next or previous nozzle in the current category</td></tr>
+  <tr><th>Stick up / down</th><td>Next or previous nozzle in the current category. It wants a deliberate flick, held for a moment — turning left or right no longer changes the nozzle by accident</td></tr>
   <tr><th><kbd>R3</kbd> click</th><td>Switch nozzle category — standard or soap</td></tr>
   <tr><th><kbd>R3</kbd> hold</th><td>Switch washer, which is how you reach the turbo</td></tr>
 </table>
@@ -298,7 +298,7 @@ footer .spacer { flex: 1; }
   <tr><th>Stick pushed all the way</th><td>Sprint</td></tr>
   <tr><th>Trigger</th><td>Open or close an animated interactable when your hand is on it — otherwise rotate the nozzle and refill detergent</td></tr>
   <tr><th>Grip</th><td>Highlight remaining dirt</td></tr>
-  <tr><th><kbd>X</kbd></th><td>Pick up and put down objects</td></tr>
+  <tr><th><kbd>X</kbd></th><td>Pick up and put down objects, and work switches such as a lift's up and down. Point with the left hand: a green line appears as soon as something is within reach, and only then — no line means nothing is there. A switch that has to be held stays pressed while you hold <kbd>X</kbd></td></tr>
   <tr><th><kbd>Y</kbd> tap</th><td>Task list</td></tr>
   <tr><th><kbd>Y</kbd> hold</th><td>Furniture inventory</td></tr>
   <tr><th><kbd>Menu</kbd></th><td>Pause menu</td></tr>
@@ -357,7 +357,7 @@ footer .spacer { flex: 1; }
 
 <table>
   <tr><th>Left grip held + left stick</th><td>Rotate the object. Walking is suspended while you hold the grip, so you turn the object instead of yourself</td></tr>
-  <tr><th><kbd>X</kbd></th><td>Put it down</td></tr>
+  <tr><th><kbd>X</kbd></th><td>Put it down — but only where it fits. While the game shows the spot as blocked, <kbd>X</kbd> does nothing rather than leaving the object somewhere it cannot be picked up again. Turn a little, or step back, and it goes down</td></tr>
 </table>
 
 <h2>In menus</h2>
@@ -434,7 +434,30 @@ footer .spacer { flex: 1; }
   </tr>
   <tr>
     <th>There is a green line coming out of the nozzle</th>
-    <td>That is the aiming laser, a development tool. Turn it off in the configurator</td>
+    <td>That one is the aiming laser and can go: turn it off in the configurator.
+        The short green line at the LEFT hand is a different thing and worth keeping —
+        it only appears when something is within reach, and it ends on whatever
+        <kbd>X</kbd> would take</td>
+  </tr>
+  <tr>
+    <th>The continuous jet will not switch off</th>
+    <td>Open the pause menu — that always clears it. If the grip does nothing at
+        all while your hand rests near your hip, move the hand away from your body
+        and press again, and please send <code>Latest.log</code></td>
+  </tr>
+  <tr>
+    <th>Turning changes the nozzle by accident</th>
+    <td>It should not any more. If it still does, raise
+        <code>NozzleStickDominance</code> or
+        <code>NozzleStickThreshold</code> in
+        <code>UserData\MelonPreferences.cfg</code>, or set
+        <code>NozzleStick = false</code> to take the nozzle off the stick entirely —
+        <kbd>R3</kbd> still reaches every category</td>
+  </tr>
+  <tr>
+    <th>Riding the lift looks stepped</th>
+    <td>Known, and not your headset. The platform moves the player in steps and the
+        view follows them. It is being worked on; the ride itself is safe</td>
   </tr>
   <tr>
     <th>VR will not come back after <kbd>F6</kbd></th>

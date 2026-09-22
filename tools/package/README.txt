@@ -145,6 +145,13 @@ KNOWN LIMITATIONS
     still shows up somewhere, send Latest.log - it names every renderer under
     the washer with its full path and why it was kept or hidden.
 
+  - Riding the scissor lift looks stepped, and the free hand shakes with it.
+    Reported and reproduced. It is NOT the logging: during a measured ride the
+    log wrote one to nine lines a second, and the only large burst in the whole
+    run was the level load. The platform moves the player in steps and the view
+    follows them; which side of the seam produces the step is measured in the
+    next build rather than guessed at. Riding works and is safe.
+
   - VR cannot be stopped and restarted inside one session. F6, which put the
     game back on the monitor, is off in this build for that reason among
     others - restart the game instead.
