@@ -5,7 +5,7 @@ using UnityEngine.InputSystem;
 using UnityEngine.SubsystemsImplementation;
 using UnityEngine.XR;
 
-[assembly: MelonInfo(typeof(WetReality.Pose), "Wet Reality Pose", "1.63.0", "Wet Reality")]
+[assembly: MelonInfo(typeof(WetReality.Pose), "Wet Reality Pose", "1.86.0", "Wet Reality")]
 [assembly: MelonGame("FuturLab", "PowerWash Simulator 2")]
 
 namespace WetReality;
@@ -240,6 +240,149 @@ public sealed class Pose : MelonMod
     private MelonPreferences_Entry<bool> driveHeadPosition = null!;
     private MelonPreferences_Entry<float> headRecenterJump = null!;
     private MelonPreferences_Entry<bool> snapTurn = null!;
+
+    // ====================================================== Abschnitt 147
+    //
+    // IMMERSION MODE IST EIN SITZUNGSZUSTAND UND BEWUSST KEINE PREFERENCE.
+    //
+    // Gespeichert waere er eine Falle: wer das Spiel startet und ohne jede UI
+    // in der Szene steht, ohne zu wissen warum, hat keinen Ausweg vor Augen -
+    // die Geste, die ihn zurueckholt, ist genau die, die er nicht kennt. Also
+    // beginnt jede Sitzung mit sichtbarer UI, und der Doppelklick ist eine
+    // Entscheidung fuer diese Sitzung.
+    private bool immersion;
+
+    // Die Tore des Teleports, JE STICK getrennt gehalten.
+    //
+    // Ein gemeinsamer Satz waere falsch: am dominanten Stick konkurriert die
+    // Drehung auf X, am Off-Hand-Stick nicht. Und ein gemeinsamer Merker
+    // "bewaffnet" wuerde bedeuten, dass ein Ausschlag am einen Stick den
+    // anderen entwaffnet.
+    private bool teleportArmedMain = true;
+    private float teleportIntentMain;
+    private bool teleportArmedOff = true;
+    private float teleportIntentOff;
+
+    // Was das Zielen dieses Frames ergeben hat. Getrennt vom Ausloesen, weil
+    // gezielt wird, solange der Stick steht, und ausgeloest beim Loslassen.
+    //
+    // KEIN eigener bool fuer "zielt gerade": das ist teleportOwner != 0. Ein
+    // zweites Feld daneben waere eine Kopie desselben Zustands, und die laeuft
+    // auseinander, sobald eine Stelle sie vergisst.
+    private bool teleportValid;
+    private Vector3 teleportTarget;
+    private string teleportWhy = "";
+    private string teleportStatus = "teleport: off";
+    private bool loggedEnvelope;
+
+    // Was die Vignette dieses Frames abdunkeln soll, gesetzt von den beiden
+    // Stick-Lesern und verbraucht am Frameende. Ein Wert, der bei den Lesern
+    // entsteht und beim Zeichner gebraucht wird - EIN Frame, EINE Grosse.
+    private float vignetteDemand;
+
+    // Ein kurzer Puls nach einer Sprungdrehung. Eine Snap-Drehung hat keine
+    // andauernde Bewegung, die eine Vignette abdecken koennte - also wird sie
+    // fuer einen Moment gehalten, statt einen Frame lang zu flackern.
+    private float turnPulseUntil;
+
+    // WELCHER STICK DEN TELEPORT HAELT. 0 keiner, 1 die dominante Hand, 2 die
+    // freie. Ein gemeinsamer bool waere zu wenig: ohne Besitzer koennte der
+    // zweite Stick einen laufenden Zielvorgang des ersten beenden.
+    private int teleportOwner;
+    private bool teleportCommitRequested;
+
+    // Der Gueltigkeitsstand des VORIGEN Frames, nur fuer den Puls: gebraucht
+    // wird die FLANKE "wird jetzt gueltig", nicht der Zustand. Ohne ihn
+    // brummte der Controller, solange man auf eine gueltige Stelle zeigt.
+    private bool teleportWasValid;
+
+    // DIE NACHMESSUNG IM NAECHSTEN FRAME - Abschnitt 155.
+    //
+    // Die Zeile nach einem Sprung las "moved 0.00 m" bei JEDEM Sprung, obwohl
+    // der Teleport funktioniert: der Charaktercontroller wendet TeleportTo in
+    // seinem naechsten FixedUpdate an, und ich habe davor gelesen. Nicht
+    // falsche Daten, falscher MOMENT.
+    private bool teleportVerifyPending;
+    private Vector3 teleportVerifyBefore;
+    private Vector3 teleportVerifyAsked;
+
+    // Die Punkte des Wurfbogens. EINE Liste, wiederverwendet: ein Bogen
+    // entsteht pro Frame, und eine neue Liste pro Frame waere Muell fuer den
+    // Sammler - derselbe Posten, den die Status-Zeichenketten aus Abschnitt 87
+    // schon tragen.
+    private readonly List<Vector3> teleportPath = new();
+    private float nextTeleportBlockReport;
+
+    // Die abgeleitete Form des Controllers. BaseCharacterController fuehrt
+    // TeleportTo, aber Sprunghoehe, Tempo, Ebenenmaske und Kapsel sitzen erst
+    // in PhysicalCharacterController - gehalten, weil TryCast pro Frame
+    // unnoetig waere.
+    private Il2CppFuturLab.PW2.PhysicalCharacterController? physicalController;
+
+    private MelonPreferences_Entry<float> menuHoldSeconds = null!;
+    private MelonPreferences_Entry<bool> comfortTeleport = null!;
+    private MelonPreferences_Entry<bool> comfortVignette = null!;
+    private MelonPreferences_Entry<bool> teleportJump = null!;
+    private MelonPreferences_Entry<bool> nozzleStickUp = null!;
+    private MelonPreferences_Entry<float> teleportStickThreshold = null!;
+    private MelonPreferences_Entry<float> teleportStickDominance = null!;
+    private MelonPreferences_Entry<float> teleportStickSettle = null!;
+    private MelonPreferences_Entry<float> teleportRayLength = null!;
+    private MelonPreferences_Entry<float> teleportReachFactor = null!;
+    private MelonPreferences_Entry<float> teleportGravity = null!;
+    private MelonPreferences_Entry<float> teleportFallbackRange = null!;
+    private MelonPreferences_Entry<float> teleportFallbackRise = null!;
+    private MelonPreferences_Entry<int> teleportLayerMask = null!;
+    private MelonPreferences_Entry<int> teleportBisectSteps = null!;
+    private MelonPreferences_Entry<bool> teleportTurnLock = null!;
+    private MelonPreferences_Entry<bool> teleportRequiresGround = null!;
+    private MelonPreferences_Entry<bool> jumpProbe = null!;
+    private MelonPreferences_Entry<float> teleportRiseTolerance = null!;
+    private MelonPreferences_Entry<bool> teleportSlopeWalk = null!;
+    private MelonPreferences_Entry<float> teleportSlopeSpacing = null!;
+    private MelonPreferences_Entry<float> teleportSlopeStepRise = null!;
+    private MelonPreferences_Entry<float> teleportSlopeStepDrop = null!;
+    private MelonPreferences_Entry<float> teleportProbeRadius = null!;
+    private MelonPreferences_Entry<float> teleportProbeHeight = null!;
+    private MelonPreferences_Entry<float> teleportProbeLift = null!;
+    private MelonPreferences_Entry<bool> volumetricFog = null!;
+    private MelonPreferences_Entry<bool> lightScattering = null!;
+    private MelonPreferences_Entry<string> disableRenderFeatures = null!;
+    private MelonPreferences_Entry<float> renderFeatureRescan = null!;
+    private MelonPreferences_Entry<float> fogTemporal = null!;
+    private MelonPreferences_Entry<bool> grassFins = null!;
+    private MelonPreferences_Entry<bool> grassShells = null!;
+    private MelonPreferences_Entry<bool> terrainFoliage = null!;
+    private MelonPreferences_Entry<bool> terrainInstancing = null!;
+    private MelonPreferences_Entry<float> stereoSeparationOverride = null!;
+    private MelonPreferences_Entry<bool> cameraInventory = null!;
+    private MelonPreferences_Entry<bool> lightBeams = null!;
+    private MelonPreferences_Entry<bool> postProcessing = null!;
+    private MelonPreferences_Entry<string> disableVolumeComponents = null!;
+    private MelonPreferences_Entry<bool> shaderProbe = null!;
+    private MelonPreferences_Entry<float> shaderProbeSeconds = null!;
+    private MelonPreferences_Entry<string> disableRenderersByShader = null!;
+    private float nextShaderProbe;
+    private MelonPreferences_Entry<bool> materialInventory = null!;
+    private MelonPreferences_Entry<string> disableKeywords = null!;
+    private MelonPreferences_Entry<float> teleportJumpSpeed = null!;
+    private MelonPreferences_Entry<bool> teleportBlocksJump = null!;
+    private MelonPreferences_Entry<string> pointerColor = null!;
+    private MelonPreferences_Entry<float> pointerAlpha = null!;
+    private MelonPreferences_Entry<float> vignetteDistance = null!;
+    private MelonPreferences_Entry<float> teleportBlinkSeconds = null!;
+    private MelonPreferences_Entry<bool> teleportBuzz = null!;
+    private MelonPreferences_Entry<float> teleportMarkerSize = null!;
+    private MelonPreferences_Entry<int> teleportGridCells = null!;
+    private MelonPreferences_Entry<float> teleportFillAlpha = null!;
+    private MelonPreferences_Entry<bool> ladderTeleport = null!;
+    private MelonPreferences_Entry<float> ladderTopOffset = null!;
+    private MelonPreferences_Entry<float> vignetteStrength = null!;
+    private MelonPreferences_Entry<float> vignetteInner = null!;
+    private MelonPreferences_Entry<float> vignetteFadeIn = null!;
+    private MelonPreferences_Entry<float> vignetteFadeOut = null!;
+    private MelonPreferences_Entry<bool> vignetteTurn = null!;
+    private MelonPreferences_Entry<bool> teleportReport = null!;
     private MelonPreferences_Entry<float> turnSpeed = null!;
     private MelonPreferences_Entry<float> snapAngle = null!;
     private MelonPreferences_Entry<float> turnDeadzone = null!;
@@ -322,7 +465,6 @@ public sealed class Pose : MelonMod
     // NICHTS gezeichnet, auf Anforderung des Nutzers. Die Suchfarbe ist samt
     // ihrem Zweig entfernt statt totzuliegen - eine Instrumentierung, die ihre
     // Frage ueberlebt hat, ist der Posten aus Abschnitt 87.
-    private static readonly Color GrabReadyColor = new(0.35f, 1f, 0.45f, 1f);
 
     // DIE RASTUNG DER HALTE-INTERAKTION. Gemerkt wird das gesendete VERB,
     // damit das Cancel genau das abbricht, was gestartet wurde.
@@ -507,6 +649,26 @@ public sealed class Pose : MelonMod
     private readonly GameUi gameUi = new();
     private readonly GunRender gunRender = new();
 
+    // Die Komfort-Vignette samt Teleport-Blende, und das Teleport-Ziel mit
+    // seinem Marker. Beide besitzen eigene GameObjects und Texturen und werden
+    // darum mit der Mod freigegeben - dieselbe Pflicht, die Splash und
+    // WashLaser schon tragen.
+    private readonly Vignette vignette = new();
+
+    // DIE EIN-AUGEN-EFFEKTE - Abschnitt 161. Haelt keine eigenen Unity-Objekte,
+    // nur Referenzen auf Assets des Spiels.
+    private readonly RenderFeatures renderFeatures = new();
+    private readonly TeleportAim teleportAim = new();
+
+    // DER ZIELSTRAHL DES TELEPORTS, und er fehlte ganz.
+    //
+    // Eigene Instanz und nicht die des Greifzeigers: beide koennen gleichzeitig
+    // gewollt sein - der Greifzeiger steht still, solange der Teleport zielt,
+    // aber eine geteilte Instanz haette Farbe, Laenge und Sichtbarkeit
+    // gegeneinander geschrieben. Dieselbe Trennung, die washLaser, menuLaser
+    // und grabLaser schon haben.
+    private readonly WashLaser teleportLaser = new();
+
     // Die UI-Ausblendung des Werkzeugs. Eigene Klasse, weil sie einen eigenen
     // Bestand fuehrt - die selbst abgeschalteten Knoten -, und der gehoert
     // nicht in die 6DOF-Kette.
@@ -630,6 +792,21 @@ public sealed class Pose : MelonMod
     private InputAction? rightStickClick;
 
     private readonly ButtonEdge jumpButton = new();
+
+    // Ob der laufende Sprungdruck tatsaechlich ans Spiel ging. Ohne diesen
+    // Merker wuerde ein Loslassen ohne vorherigen Druck verschickt - oder ein
+    // Druck ohne Loslassen stehenbleiben, wenn der Schalter mitten im Sprung
+    // umgestellt wird.
+    private bool jumpSent;
+
+    // Die Sprungmessung - Abschnitt 158. Der Zustand haengt am BODEN und nicht
+    // an der Taste, damit auch ein Sturz gemessen wird und die Messung nicht
+    // von TeleportBlocksJump abhaengt.
+    private bool jumpProbeAirborne;
+    private Vector3 jumpProbeTakeoff;
+    private float jumpProbeMaxRise;
+    private float jumpProbeStart;
+    private bool jumpProbeSprint;
     private readonly ButtonEdge stanceButton = new();
     private readonly ButtonEdge sprayLatchButton = new();
     private readonly ButtonEdge interactButton = new();
@@ -1195,7 +1372,7 @@ public sealed class Pose : MelonMod
         // Auf dem linken Trigger, ZUSAETZLICH zu dem, was er schon tut: der
         // Druck loest weiterhin Duese drehen und Seife aus. Dieser Lauf
         // aendert am Verhalten nichts, er schreibt einen Block pro Druck.
-        interactProbe = settings.CreateEntry("InteractProbe", true,
+        interactProbe = settings.CreateEntry("InteractProbe", false,
             description: "Measurement only: on every left-trigger press, dump where the child "
                 + "renderers and colliders of the animated interactables sit and how far the "
                 + "left hand is from them. The trigger keeps doing what it did.");
@@ -1290,8 +1467,15 @@ public sealed class Pose : MelonMod
             description: "Right stick X snaps by SnapAngle instead of turning smoothly.");
         turnSpeed = settings.CreateEntry("TurnSpeed", 90f,
             description: "Degrees per second at full deflection, smooth turn.");
-        snapAngle = settings.CreateEntry("SnapAngle", 30f,
-            description: "Degrees per flick, snap turn.");
+        // 45 GRAD, und die Aenderung erreicht eine bestehende cfg NICHT -
+        // das ist die MelonPreferences-Falle und hier ausdruecklich in Kauf
+        // genommen. Wer schon gespielt hat, behaelt seine 30 Grad; erreicht
+        // wird der neue Wert auf zwei Wegen, einer frischen Installation und
+        // dem Komfort-Preset im Konfigurator, das 45 ausdruecklich schreibt.
+        snapAngle = settings.CreateEntry("SnapAngle", 45f,
+            description: "Degrees per flick, snap turn. The configurator offers "
+                + "15, 30, 45 and 60 as a notched slider - a snap angle of 37 "
+                + "degrees is not a meaningful quantity.");
 
         // The movement stick needs no deadzone because it hands its raw Vector2
         // to the game, which applies the player's own sensitivity and deadzone.
@@ -1324,6 +1508,667 @@ public sealed class Pose : MelonMod
             description: "Seconds the push must hold before it steps. This is the one "
                 + "that kills the accidental change: pushing diagonally, X rises, the "
                 + "ratio collapses and the clock resets, so it never fires.");
+
+        // ================================================== ABSCHNITT 147
+        //
+        // DER ZIEL-TELEPORT NIMMT Y+ DER DOMINANTEN HAND, und die Duese
+        // behaelt Y-. Das ist ein Tausch mit einem benennbaren Preis: der
+        // Duesenwechsel laeuft nur noch abwaerts. Der Zyklus erreicht weiter
+        // jede Duese - bei den vier in Gruppe 0 gemessenen kostet die
+        // naechste rueckwaerts drei Drucke statt einen.
+        //
+        // NozzleStickUp gibt den alten Stand zurueck. Dann teilen sich Duese
+        // und Teleport die Richtung nicht mehr, sondern streiten darum, und
+        // die Duese gewinnt - das steht in DriveTurn.
+        nozzleStickUp = settings.CreateEntry("NozzleStickUp", false,
+            description: "Gives the nozzle Y+ back. Off by default because the "
+                + "target teleport took that direction. With it on, the nozzle wins "
+                + "the direction and the teleport is only reachable through the "
+                + "comfort option on the off hand.");
+        teleportJump = settings.CreateEntry("TeleportJump", true,
+            description: "Y+ on the washer hand stick teleports to where the free "
+                + "hand points. Available to EVERY player, comfort options or not - "
+                + "for deliberately placing yourself. Free locomotion on the off hand "
+                + "is untouched.");
+
+        // ============================================== DIE KOMFORTOPTIONEN
+        //
+        // ALLE DREI LIEFERN AUS ALS AUS. Ein Komfortschalter, der von selbst
+        // an ist, nimmt dem Spieler eine Entscheidung ab, die ihm gehoert -
+        // und kostet Bewegungsfreiheit, die er nicht abgegeben hat.
+        //
+        // SnapTurn ist der dritte und steht schon oben; sein Default ist
+        // bereits false und wird nicht angefasst.
+        comfortTeleport = settings.CreateEntry("ComfortTeleport", false,
+            description: "Teleport INSTEAD of free locomotion: pushing the off-hand "
+                + "stick forward jumps to where the free hand points, and walking is "
+                + "off. Turning stays on the washer hand, so position and rotation "
+                + "remain on separate sticks.");
+        comfortVignette = settings.CreateEntry("ComfortVignette", false,
+            description: "Darkens the edge of vision while moving and while turning "
+                + "smoothly.");
+
+        // =========================================== DIE TORE GEGEN VERSEHEN
+        //
+        // DIESELBE FORM WIE BEIM DUESENWECHSEL, und zwar weil sie dort
+        // GEMESSEN wirkt: Schwelle, Dominanz ueber X, Einschwingzeit, und
+        // Wiederbewaffnung erst mit BEIDEN Achsen in der Totzone.
+        //
+        // Das wirksame Tor ist die Einschwingzeit. Beim Drehen laeuft X auf,
+        // das Verhaeltnis bricht, die Uhr wird zurueckgesetzt - ein Teleport
+        // aus einer laufenden Drehung ist damit nicht bloss unwahrscheinlich,
+        // sondern unmoeglich.
+        //
+        // EIGENE SCHLUESSEL und nicht die der Duese: "ist der Spieler am
+        // Drehen" ist keine Antwort auf "will der Spieler springen". Dieselbe
+        // Begruendung, die NozzleStickThreshold schon traegt - und 0,15 s
+        // statt 0,12 s, weil ein Ortswechsel teurer zu widerrufen ist als ein
+        // Duesenwechsel.
+        teleportStickThreshold = settings.CreateEntry("TeleportStickThreshold", 0.7f,
+            description: "How far the stick must be pushed before the teleport aims.");
+        teleportStickDominance = settings.CreateEntry("TeleportStickDominance", 2.5f,
+            description: "Y must exceed X by this factor. 2.5 is 21.8 degrees around "
+                + "vertical - a diagonal while turning no longer counts as forward.");
+        teleportStickSettle = settings.CreateEntry("TeleportStickSettle", 0.15f,
+            description: "Seconds the push must hold before the aim appears. This is "
+                + "the gate that makes an accidental teleport impossible while "
+                + "turning: X rises, the ratio collapses, the clock resets.");
+
+        // ================================================= DIE HUELLE
+        //
+        // Die Reichweite ist die WURFPARABEL DES SPIELS, aus m_jumpHeight und
+        // m_movementSpeed - nicht eine gewaehlte Zahl. Flach die
+        // Normalsprungweite, nach unten weiter, nach oben kuerzer, ueber die
+        // Sprunghoehe hinaus unmoeglich. Siehe TeleportAim.Reach.
+        //
+        // Die beiden Fallback-Werte greifen NUR, wenn die Felder des Spiels
+        // nicht lesen - und dann sagt das Log es. Eine geratene Huelle, die
+        // sich als gemessene ausgibt, waere der schlimmere Fehler.
+        teleportRayLength = settings.CreateEntry("TeleportRayLength", 12f,
+            description: "Metres. How far the aiming ray from the free hand is cast. "
+                + "This is the SEARCH range, not the jump range - the envelope below "
+                + "decides what is reachable.");
+        // TeleportMaxDrop IST WEG - Abschnitt 157.
+        //
+        // Der Schluessel war seit Abschnitt 154 nur noch die Suchtiefe des
+        // Bogens, und in dieser Rolle hat er Schaden angerichtet: die Quelle
+        // stand auf 12, eine bestehende cfg auf 4, und der Bogen wurde 5 m
+        // unter dem Fuss abgeschnitten. Gemeldet als "die Treppe geht nicht".
+        //
+        // Eine Suchtiefe ist keine Benutzereinstellung. Sie liegt jetzt als
+        // Konstante in TeleportAim und kann nicht veralten. Ein alter Eintrag
+        // in der cfg bleibt als Waise stehen und wird nicht mehr gelesen.
+        teleportReachFactor = settings.CreateEntry("TeleportReachFactor", 1f,
+            description: "Scales the computed envelope. 1.0 is exactly what the jump "
+                + "button reaches; trim it in the headset if the effective gravity of "
+                + "the character differs from Physics.gravity.");
+        teleportGravity = settings.CreateEntry("TeleportGravity", 0f,
+            description: "Metres per second squared for the envelope. 0 reads "
+                + "Physics.gravity. Set it if the gravity factors of the character "
+                + "(BASE_GRAVITY_NEGATION_FACTOR, GetGravityFactor) turn out to "
+                + "matter.");
+        teleportFallbackRange = settings.CreateEntry("TeleportFallbackRange", 3.5f,
+            description: "Metres. Flat range used ONLY when m_movementSpeed cannot be "
+                + "read. The log says when this is in force.");
+        teleportFallbackRise = settings.CreateEntry("TeleportFallbackRise", 1.2f,
+            description: "Metres. Height limit used ONLY when m_jumpHeight cannot be "
+                + "read. The log says when this is in force.");
+        teleportLayerMask = settings.CreateEntry("TeleportLayerMask", 0,
+            description: "Raycast mask for the teleport. 0 reads the own "
+                + "m_navmeshCollisionLayer of the character, which is the answer of "
+                + "the game to what counts as ground. Set a number to override it.");
+        // EINE FARBE FUER ALLE ZEIGER - Abschnitt 150.
+        //
+        // Vier Namen statt eines Zahlentripels, damit der Wert in der cfg
+        // lesbar bleibt und der Konfigurator eine Auswahlliste anbieten kann.
+        // Ein unbekannter Name faellt auf pink zurueck UND sagt es - ein
+        // stillschweigend ignorierter Wert waere ein Regler ohne Wirkung.
+        pointerColor = settings.CreateEntry("PointerColor", "blue",
+            description: "Colour of the teleport arc, the teleport target, the menu "
+                + "pointer and the interaction pointer: pink, green, blue or yellow. "
+                + "A blocked teleport target stays RED regardless - none of the four "
+                + "is red, so the refusal can never be mistaken for a choice.");
+        // DIE BODENBEDINGUNG IST DER EIGENTLICHE RIEGEL - Abschnitt 154.
+        //
+        // Gemeldet war der Ausnutzweg: Sprung mit A, im Scheitelpunkt
+        // teleportieren, und man steht hoeher, als die Huelle erlaubt. Ein
+        // Teleport, der festen Boden verlangt, laesst diesen Zustand gar nicht
+        // entstehen - die Hoehe wird ab dem Fuss gerechnet, und der Fuss steht
+        // dabei immer.
+        // DEN ECHTEN SPRUNG MESSEN - Abschnitt 158.
+        //
+        // Die Huelle stand auf einer Rechnung aus m_jumpHeight und
+        // m_movementSpeed. Beide Zahlen sind gelesen, der WEG von ihnen zur
+        // Reichweite ist hergeleitet - und darin steckt alles, was ich nicht
+        // kenne: ob m_movementSpeed den Sprint schon enthaelt, ob
+        // GetJumpForceMultiplier eingeht, ob GroundCheck beim Landen eine Stufe
+        // schenkt.
+        //
+        // NICHT unter DevMode: das ist die Messung, um die gebeten wurde, und
+        // sie soll ohne Entwicklerschalter laufen. Eine Zeile je Luftphase, also
+        // nichts, was ein Log fluten kann.
+        jumpProbe = settings.CreateEntry("JumpProbe", true,
+            description: "Logs one line per airborne phase: horizontal reach, apex "
+                + "above takeoff, net rise, duration, and whether sprint was held - "
+                + "with the envelope's PREDICTION beside it. This is how the teleport "
+                + "range gets calibrated against the real jump instead of a derivation. "
+                + "Set false once the numbers are in.");
+
+        // OHNE ZIELEN ABLESEN - Abschnitt 165.
+        //
+        // Die Sonde aus Abschnitt 164 verlangte eine Zielhandlung UND ein
+        // Zeitfenster. Zwei Laeufe, 61 Berichte, null Zeilen vom gesuchten
+        // Boden - beide Male stand die Kamera in der Lobby. Das ist kein
+        // Bedienfehler, sondern ein falsch entworfenes Messgeraet.
+        materialInventory = settings.CreateEntry("MaterialInventory", false,
+            description: "Lists EVERY loaded material once per session, grouped by "
+                + "shader and keyword set with counts. Needs no aiming: load the level, "
+                + "quit, read the log. Grouped because a level carries thousands of "
+                + "materials and the group is the answer - which keyword sets exist, and "
+                + "how often.");
+        disableKeywords = settings.CreateEntry("DisableKeywords", "",
+            description: "Comma-separated SHADER KEYWORD names to switch off on every "
+                + "material that carries them, e.g. \"_DECAL_ENABLE\". This is both the "
+                + "test and the possible fix: a keyword makes a surface shader sample a "
+                + "screen-space buffer, which is exactly what goes wrong per eye under "
+                + "MultiPass. Cleared, it puts every keyword back, so trying the next one "
+                + "costs no restart.");
+
+        // ABLESEN STATT RATEN - Abschnitt 164.
+        //
+        // Sechs Ebenen sind abgeraeumt (alle Renderer-Features, beide
+        // Gras-Zeichner, Kantenglaettung, Nachbearbeitung, Schatten, die
+        // VFX-Schalter des Spiels), und jeder naechste Kandidat war eine
+        // Vermutung. Der Fehler war nicht die einzelne Vermutung, sondern die
+        // Methode.
+        //
+        // Der ausgewertete Hinweis: der Effekt ist NUR AUF DEM BODEN. Waende,
+        // Baeume und Himmel sind in beiden Augen sauber. Ein Pipeline-Effekt
+        // traefe alles; dieser trifft eine Materialklasse.
+        shaderProbe = settings.CreateEntry("ShaderProbe", false,
+            description: "Logs what is drawn straight ahead of the CAMERA: object path, "
+                + "renderer type, and per material its name, SHADER, render queue and "
+                + "active shader keywords. This exists because six guessed candidates "
+                + "were all wrong while the screenshots showed the answer: the artefact "
+                + "is on the GROUND only, so it belongs to a material, not to the "
+                + "pipeline. Read the shader name, do not guess it.");
+        shaderProbeSeconds = settings.CreateEntry("ShaderProbeSeconds", 2f,
+            description: "Seconds between two probe reports. Look around while it runs; "
+                + "several samples of ground, wall and sky separate the material that "
+                + "carries the artefact from the ones that do not.");
+        disableRenderersByShader = settings.CreateEntry("DisableRenderersByShader", "",
+            description: "Comma-separated shader-name fragments, case-insensitive. Every "
+                + "renderer using a matching shader is switched off. Crude - the ground "
+                + "will disappear - but decisive: if the artefact survives WITHOUT the "
+                + "ground, its material is not the source. Fill this from what ShaderProbe "
+                + "prints, so confirming the finding costs no new build.");
+
+        // VOLUMETRIC LIGHT BEAM AUF SINGLEPASS - Abschnitt 170.
+        //
+        // Der Shadername aus der Materialliste sagt es selbst:
+        // Hidden/VLB_URP_SinglePass. Single-Pass-Stereo, waehrend dieses Spiel
+        // unter MultiPass laeuft - ein benannter Modus-Widerspruch in
+        // gemessenen Daten, keine Analogie mehr.
+        lightBeams = settings.CreateEntry("LightBeams", true,
+            description: "Volumetric Light Beam components. The shader in this build is "
+                + "named VLB_URP_SinglePass, so the asset is configured for single-pass "
+                + "stereo while the game runs MULTIPASS - and VLB occludes its beams "
+                + "through the DEPTH BUFFER in screen space, which is the shape that goes "
+                + "wrong per eye. A beam grazing a surface brightens it and sits over the "
+                + "cast shadow, which is what was reported. Switches the COMPONENT off, "
+                + "not the object, so the lamp stays.");
+
+        // ACHT KAMERAS - Abschnitt 169.
+        //
+        // "off on 8 of 8 camera(s)" stand zweimal im Log und ich habe es
+        // zweimal ueberlesen. Eine Kamera mit stereoTargetEye Left oder Right
+        // zeichnet in genau EIN Augenziel - die direkteste denkbare Ursache
+        // fuer "in einem Auge da, im anderen abwesend", und die erste, die
+        // ohne Analogie zum Nebel auskommt.
+        cameraInventory = settings.CreateEntry("CameraInventory", false,
+            description: "Lists every camera with its stereoTargetEye, culling mask, "
+                + "depth, clear flags and target texture, and again whenever the count "
+                + "changes. A camera bound to ONE eye draws into a single eye target, "
+                + "which is exactly the observed shape - and unlike eleven refuted "
+                + "candidates it needs no assumption about per-camera buffering.");
+
+        // DIE KLASSE TRENNEN - Abschnitt 168.
+        //
+        // Elf Kandidaten gemessen abgeschaltet, das Artefakt blieb jedes Mal.
+        // Faellig ist damit nicht der zwoelfte, sondern die ungeprueft
+        // gebliebene Annahme hinter allen elf.
+        stereoSeparationOverride = settings.CreateEntry("StereoSeparation", -1f,
+            description: "Metres between the eyes, -1 to leave the game's value alone "
+                + "(the default). 0 renders BOTH eyes from the same point, which is a "
+                + "DIAGNOSTIC and not a fix - there is no depth without eye separation. "
+                + "If the one-eye artefact disappears at 0, it is a view inconsistency "
+                + "(a buffer computed for one eye and reused for the other); if it stays "
+                + "in one eye, something writes into a single eye target and that is a "
+                + "different problem entirely. Either answer halves the search.");
+
+        // INSTANZIERTES TERRAIN - Abschnitt 166.
+        //
+        // Der Befund stand in der Materialliste:
+        //
+        //     Universal Render Pipeline/Terrain/Lit
+        //         [_TERRAIN_INSTANCED_PERPIXEL_NORMAL]
+        //
+        // Der Boden ist ein Unity-Terrain und rendert INSTANZIERT. Damit passt
+        // zum ersten Mal alles zusammen: die Patch-Daten entstehen pro Kamera
+        // und Frame, der Shader liest die Normalen PRO PIXEL, falsche Patches
+        // heissen falsche Normalen heissen falsche BELEUCHTUNG - und es trifft
+        // nur den Boden, weil nur der Boden Terrain ist.
+        //
+        // Das erklaert auch, warum sieben abgeschaltete Ebenen nichts
+        // brachten: keine davon zeichnet das Terrain.
+        terrainInstancing = settings.CreateEntry("TerrainInstancing", true,
+            description: "Unity terrain GPU instancing (Terrain.drawInstanced). Instanced "
+                + "terrain builds its patch data per CAMERA per frame, and the shader "
+                + "reads normals PER PIXEL from a terrain normal map - so reusing the "
+                + "first eye's patches in the second gives wrong normals and therefore "
+                + "wrong LIGHTING, on the ground only. Off draws the terrain as ordinary "
+                + "patch meshes: same look, no instancing path, nothing lost.");
+
+        // DIE NACHBEARBEITUNG - Abschnitt 163.
+        //
+        // Ausgeschlossen sind inzwischen ALLE ZEHN Renderer-Features, beide
+        // Gras-Zeichner (ShellTextureGeometry existiert in der Szene gar nicht,
+        // das Terrain-Detailgras wurde geschaltet und aenderte nichts) und die
+        // zeitliche Kantenglaettung.
+        //
+        // Gemeldet wurde: "die Helligkeitsunterschiede sind deutlich staerker
+        // auf dem rechten Auge, so als wenn ein Beleuchtungsshader arbeitet" -
+        // und auf dem LINKEN Auge gar nicht vorhanden. Unter MultiPass rendert
+        // links zuerst; ein Puffer, der dort berechnet und rechts
+        // wiederverwendet wird, sitzt um die Augendistanz verschoben. Dieselbe
+        // Bauform wie Butos toPreviousView.
+        //
+        // EIN HEBEL FUER DIE EBENE, EINER FUER DAS TEIL: dieser schaltet die
+        // ganze Nachbearbeitung ab und beantwortet "ist es ueberhaupt die
+        // Ebene?" in einem Lauf.
+        postProcessing = settings.CreateEntry("PostProcessing", true,
+            description: "The whole post-processing layer "
+                + "(UniversalAdditionalCameraData.renderPostProcessing). Off answers "
+                + "whether the one-eye brightness artefact lives in post-processing at "
+                + "all, in ONE run, instead of guessing six components one at a time. "
+                + "It also removes tonemapping and colour grading, so the picture will "
+                + "look flat - that is expected for the test.");
+
+        // UND DAS EINZELNE TEIL, als Typnamen-Liste. Dasselbe Muster wie
+        // DisableRenderFeatures, und aus demselben Grund: es hat sich gerade
+        // bezahlt. Sechs Kandidaten einzeln zu bauen kostete sechs Builds; so
+        // kostet jeder null.
+        disableVolumeComponents = settings.CreateEntry("DisableVolumeComponents", "",
+            description: "Comma-separated type-name fragments of post-processing volume "
+                + "components to switch off, case-insensitive, e.g. \"MotionBlur\". The "
+                + "session log lists every component it found. MotionBlur is the prime "
+                + "suspect: URP motion blur computes with the PREVIOUS view-projection "
+                + "matrix, the same single-cached-matrix shape that made the fog "
+                + "one-eyed. Bloom and ScreenSpaceLensFlare are next, both built from a "
+                + "downsampled screen buffer.");
+
+        // DIE GRASKLINGEN SIND KAMERAZUGEWANDT - Abschnitt 162.
+        //
+        // Der Rasen war in Abschnitt 161 ausgeschlossen, mit der Begruendung
+        // "echte gestapelte Geometrie, also von Natur aus stereo-korrekt". Das
+        // Bild aus dem Spiel hat beides widerlegt: echte Geometrie schuetzt
+        // NICHT vor Einaeugigkeit, wenn ihre AUSRICHTUNG aus einer Kamera
+        // kommt. Fins sind kamerazugewandte Klingenkarten, gefuellt in EINEN
+        // ComputeBuffer per Dispatch - dieselbe Bauform wie der Nebel, nur mit
+        // Geometrie statt Froxeln.
+        //
+        // ZWEI SCHLUESSEL, und das ist der ganze Gewinn: die Schalen liegen
+        // parallel zum Boden und sind stereo-korrekt. Nur die Klingen muessen
+        // weg, der Rasen bleibt.
+        grassFins = settings.CreateEntry("GrassFins", true,
+            description: "Camera-facing grass blades (shell texturing 'fins'). They are "
+                + "oriented from ONE camera into a single ComputeBuffer per frame, so "
+                + "under MultiPass stereo they land in one eye - the scattered blades "
+                + "reported over grass, mulch and path edges. Off removes the blades and "
+                + "KEEPS the lawn, because the ground-parallel shells are a separate "
+                + "switch.");
+        grassShells = settings.CreateEntry("GrassShells", true,
+            description: "The ground-parallel grass layers. These have no camera "
+                + "dependency and should be stereo-correct - kept as its own key so the "
+                + "blades can go without the lawn going with them. Only switch this off "
+                + "to test whether the shells contribute to the one-eye effect too.");
+
+        // DER ZWEITE KANDIDAT, und er erklaert das gemeldete Bild sogar besser:
+        // die Klingen liegen auch ueber Mulch und Kies, wo es kein Rasenmesh
+        // gibt - Terrain-Detail sitzt unabhaengig von der Splat-Textur auf dem
+        // ganzen Terrain.
+        //
+        // Ob es zur Laufzeit ueberhaupt Terrains gibt, ist offen: der Build
+        // enthaelt TerrainToMesh und LinkedTerrain, also moeglicherweise
+        // gebackenes Terrain. Der Weg meldet darum seine ANZAHL.
+        terrainFoliage = settings.CreateEntry("TerrainFoliage", true,
+            description: "Unity terrain detail grass and trees "
+                + "(Terrain.drawTreesAndFoliage). Detail grass is drawn as camera-facing "
+                + "cards, so under MultiPass stereo it can land in one eye - the second "
+                + "candidate for the scattered blades, and the one that explains why they "
+                + "also appear over mulch and gravel where there is no lawn mesh. The log "
+                + "says how many terrains were found, so 'no effect' stays "
+                + "distinguishable from 'nothing there'.");
+
+        // DIE EIN-AUGEN-EFFEKTE - Abschnitt 161.
+        //
+        // Nebel (Buto) und Lichtstreuung (LSPP) werden unter MultiPass nur auf
+        // EINEM Auge gezeichnet, und das ist keine Fehlkonfiguration: beide
+        // Passes halten ihre Puffer pro KAMERA und eine einzige
+        // Reprojektionsmatrix, und in beiden Augenpaessen ist die Kamera
+        // dasselbe Objekt. Sie sind architektonisch einaeugig.
+        //
+        // Das Spiel hat dafuer eine eigene Grafikeinstellung mit Off-Stufe.
+        // Trotzdem gehoert der Schalter hierher, und der Grund gilt nur fuer
+        // VR: die Spieleinstellung ist GLOBAL. Flach ist der Nebel in Ordnung,
+        // er stoert nur im Headset - wer beides spielt, muesste sonst jedes Mal
+        // umstellen.
+        //
+        // BEIDE LIEFERN "AN" AUS. Ohne Zutun aendert sich nichts, und der erste
+        // Lauf hat damit eine Grundlinie fuer die Zuordnung.
+        volumetricFog = settings.CreateEntry("VolumetricFog", true,
+            description: "Buto volumetric fog. Under MultiPass stereo it is drawn into "
+                + "ONE eye only, because its render pass caches its buffers per CAMERA "
+                + "and both eye passes share the same camera object. Off removes it. "
+                + "The game has its own fog setting, but that one is global and would "
+                + "also change flat play.");
+        lightScattering = settings.CreateEntry("LightScattering", true,
+            description: "LSPP light scattering (god rays). Single-eye for the same "
+                + "reason as the fog: one RTHandle set, no eye index. A candidate for "
+                + "the banding reported on grass.");
+
+        // DER GENERISCHE WEG, und er ist eine Antwort auf "Testlaeufe sind
+        // teuer": fuenf Renderer-Features sind im Build, DREI davon sind
+        // keinem gemeldeten Artefakt zugeordnet. Mit einer Typnamen-Liste
+        // kostet der naechste Verdaechtige keinen neuen Build.
+        disableRenderFeatures = settings.CreateEntry("DisableRenderFeatures", "",
+            description: "Comma-separated type-name fragments of URP renderer features to "
+                + "switch off, case-insensitive, e.g. \"ModulatedOutline, SceneOverlay\". "
+                + "The session log lists every feature it found by name. This exists so "
+                + "that testing the next suspect costs no new build.");
+        renderFeatureRescan = settings.CreateEntry("RenderFeatureRescan", 5f,
+            description: "Seconds between two sweeps for renderer features. The sweep is "
+                + "expensive; the per-frame reconcile that keeps the game from switching "
+                + "them back on is not.");
+
+        // DER EINE VERSUCH, DEN NEBEL ZU BEHALTEN.
+        //
+        // Diese beiden Parameter treiben die temporale Reprojektion - den Teil,
+        // der die EINZIGE gemerkte Matrix benutzt. Auf 0 nimmt er ihn heraus,
+        // ohne den Nebel abzuschalten. Der geteilte Puffer bleibt, es ist
+        // ausdruecklich ein Versuch.
+        //
+        // ALS ZAHL UND NICHT ALS BOOL, damit "nicht anfassen" von "auf 0
+        // setzen" unterscheidbar bleibt. Ein bool haette keinen dritten Zustand
+        // und muesste beim Ausschalten raten, was vorher dort stand.
+        fogTemporal = settings.CreateEntry("FogTemporal", -1f,
+            description: "Buto temporal reprojection strength, -1 to leave it alone "
+                + "(the default, nothing changes). 0 removes the temporal component, "
+                + "which is the one part provably holding per-pass state - an ATTEMPT to "
+                + "keep the fog and still fix the eye. It cannot fix the per-camera "
+                + "buffer, so if the fog is entirely ABSENT in one eye rather than "
+                + "ghosting, expect this not to help.");
+
+        // WARUM KEINE TREPPE DIE PROBE BESTEHEN KONNTE - Abschnitt 160.
+        //
+        // Die untere Kugel der Probe sass 0,02 m ueber dem Ziel. Eine
+        // ansteigende Treppe von 33 Grad liegt in der Hoehe h nur 1,56*h
+        // waagerecht entfernt - bei h 0,02 m sind das 3 cm gegen einen Radius
+        // von 0,22 m. Unterhalb von 0,14 m ueberlappt jeder Radius ueber 3 cm.
+        // Das war nicht knapp, das war unmoeglich.
+        //
+        // Gemessen im Lauf mit 1.75.0: ELF Treppenversuche, elf Absagen "no
+        // room", NULL Absagen "too high". Der kletternde Gang aus Abschnitt 159
+        // haengt hinter der Hoehengrenze und lief damit nie.
+        teleportProbeLift = settings.CreateEntry("TeleportProbeLift", 0.45f,
+            description: "Metres above the target where the probe STARTS. Below this "
+                + "height an overlap is a STEP, not an obstacle - the same principle the "
+                + "slope walk uses, and the reason a stair tread can pass at all. A wall "
+                + "still fails, because it reaches through the upper band. The game's own "
+                + "character controller pushes out of the last centimetres, exactly as it "
+                + "does when WALKING up the same stair.");
+
+        // DIE GEMESSENE ABSPRUNGGESCHWINDIGKEIT - Abschnitt 160.
+        //
+        // 18 Luftphasen gemessen, die brauchbaren acht:
+        //
+        //     mit Sprint     7,58  7,54  7,74     Scheitel 1,31-1,33   1,09 s
+        //     ohne Sprint    4,60  5,27  3,58  3,93  3,41              1,09 s
+        //
+        // Die Huelle sagte 4,15 m. Das Maximum ist 7,74 m - sie war nicht zu
+        // weit, sie war um 47 Prozent ZU KURZ. m_movementSpeed 3,75 enthaelt
+        // den Sprint also NICHT, und das war die offene Frage.
+        //
+        // Verlangt ist die Weite, die ein Spieler MAXIMAL mit der Sprungtaste
+        // erreicht - und wer geht, kann auch sprinten. 7,74 m auf 1,106 s
+        // Flugzeit sind 7,00 m/s. Eingetragen wird die GESCHWINDIGKEIT statt
+        // eines Faktors, damit die Formel unveraendert die gemessene Weite
+        // ergibt.
+        //
+        // ALS NEUER SCHLUESSEL: TeleportReachFactor steht in einer vorhandenen
+        // cfg auf 1 und wuerde eine Default-Aenderung nie sehen. Abschnitt 157.
+        teleportJumpSpeed = settings.CreateEntry("TeleportJumpSpeed", 7f,
+            description: "Metres per second, MEASURED in game from the maximum sprinting "
+                + "jump (7.74 m over 1.106 s of flight). m_movementSpeed reads 3.75 and "
+                + "does NOT include the sprint, which made the envelope 47 percent too "
+                + "short. Set 0 to read m_movementSpeed instead and get the old, derived "
+                + "behaviour back.");
+
+        // EINE TREPPE IST KEIN SPRUNGZIEL, SONDERN EIN WEG - Abschnitt 159.
+        //
+        // Der Sprungtest auf der Treppe hat es entschieden: auch ein LAUFENDER
+        // Spieler kann dort nicht springen, weil die Steigung dem
+        // Absprungwinkel entspricht. Die Sprunghuelle ist fuer Treppen das
+        // falsche Modell - und die abgelehnten Hoehen lagen bei 2,7 bis 3,0 m,
+        // wohin kein Sprung kommt.
+        //
+        // Gefragt wird darum nicht mehr nur "passt das in die Huelle?", sondern
+        // auch "fuehrt von hier ein gehbarer Weg dorthin?".
+        teleportSlopeWalk = settings.CreateEntry("TeleportSlopeWalk", true,
+            description: "When the height limit refuses a target, walk the ground from "
+                + "the foot to it in small steps: if every step is within "
+                + "TeleportSlopeStepRise, it is a stair or a ramp and the height limit "
+                + "does not apply - only the reach. A wall fails because ONE step is "
+                + "too big, which an average gradient would have let through. Runs ONLY "
+                + "after the height limit has already said no, so it costs nothing in "
+                + "the common case.");
+        // ABSTAND STATT ANZAHL, gegen neun Bodenprofile geprueft.
+        //
+        // Mit fester Anzahl scheiterte die OFFENE Treppe: 12 Punkte auf 4,5 m
+        // sind 0,375 m Abstand, und aufeinanderfolgende Treffer lagen dann
+        // mehrere Stufen auseinander. 0,25 m war mit 0 von 18 Treffern sogar
+        // schlechter als 0,375 - es aliast gegen die Stufenteilung. 0,18 m
+        // bekommt alle neun Profile richtig.
+        teleportSlopeSpacing = settings.CreateEntry("TeleportSlopeSpacing", 0.18f,
+            description: "Metres between probes along the way. Must stay well BELOW a "
+                + "stair tread depth: a fixed count gave coarse steps on long throws, "
+                + "and an open staircase then failed because consecutive hits were "
+                + "several treads apart. 0.25 was WORSE than 0.375 because it aliases "
+                + "against the tread pitch. Capped at 60 probes.");
+        teleportSlopeStepRise = settings.CreateEntry("TeleportSlopeStepRise", 0.45f,
+            description: "Metres. The biggest rise between two neighbouring probes "
+                + "that still counts as walkable. A stair tread is about 0.18; 0.45 "
+                + "leaves room for a coarse sample without letting a wall through.");
+        teleportSlopeStepDrop = settings.CreateEntry("TeleportSlopeStepDrop", 0.6f,
+            description: "Metres. How far the walk may step DOWN between probes, so a "
+                + "dip in the way does not end it.");
+
+        // WIE HOCH EINE KANTE SEIN DARF - Abschnitt 156, und das korrigiert
+        // eine Behauptung aus Abschnitt 155.
+        //
+        // Dort stand, die Hoehengrenze sei nicht die Ursache; das war aus einem
+        // Bild geschaetzt. Gezaehlt im naechsten Lauf: 150 Ablehnungen "too
+        // high: rise 1.58 > jump 1.50", 13 "no room". Die Hoehe WAR die
+        // Ursache.
+        //
+        // m_jumpHeight ist der Scheitel des Sprungs. Zum Landen muss nur der
+        // Fuss ueber die Kante, und die letzten Zentimeter uebernimmt der
+        // Charaktercontroller mit seiner Stufentoleranz (GroundCheck fuehrt
+        // IsStep und DoSnapGroundCheck). Gemessen fehlten 8 cm.
+        teleportRiseTolerance = settings.CreateEntry("TeleportRiseTolerance", 0.35f,
+            description: "Metres ADDED to m_jumpHeight to get the highest edge a "
+                + "teleport may step onto. The jump height is the APEX; landing only "
+                + "needs the feet over the edge, and the character controller absorbs "
+                + "the rest with its own step tolerance. A measured stair tread was 8 cm "
+                + "over the raw jump height and was refused 150 times in one run. Does "
+                + "NOT affect the reach: the throw distance still comes from the raw "
+                + "jump height.");
+
+        // DIE PLATZPROBE IST SCHLANKER ALS DER SPIELER - Abschnitt 155.
+        //
+        // Gemessen traegt der Controller r 0,4 und h 1,8. Damit gefragt lautet
+        // die Frage "steht hier ein voll aufgerichteter Spieler frei?", und
+        // eine Treppenstufe zwischen zwei Gelaendern beantwortet sie mit nein,
+        // obwohl sie begehbar ist. Gemeldet als "Objekte teilweise blockiert".
+        //
+        // Gebraucht wird "ist hier Platz zum Stehen?". Die letzten Zentimeter
+        // loest der Charaktercontroller selbst.
+        teleportProbeRadius = settings.CreateEntry("TeleportProbeRadius", 0.22f,
+            description: "Metres. Radius of the room check at the target - deliberately "
+                + "SLIMMER than the character capsule (measured 0.4). A probe as wide "
+                + "as the player refuses stair treads and small ledges that are "
+                + "perfectly walkable. 0 falls back to the capsule radius.");
+        teleportProbeHeight = settings.CreateEntry("TeleportProbeHeight", 1.2f,
+            description: "Metres. Height of the room check - lower than the 1.8 the "
+                + "character stands, because there is room to STAND under a stair "
+                + "flight even when the head is not clear. 0 falls back to the capsule "
+                + "height. The jump-height limit is untouched by both of these.");
+        teleportRequiresGround = settings.CreateEntry("TeleportRequiresGround", true,
+            description: "No teleport while airborne - jumping or falling. This is what "
+                + "closes the jump-then-teleport exploit: the height limit is measured "
+                + "from the foot, and the foot is always on the ground when it is "
+                + "measured. Reads BaseCharacterController.IsGrounded.");
+
+        // A SPRINGT NICHT MEHR, und das ist die zweite Bitte. Der Preis steht
+        // in der Beschreibung, weil er nicht offensichtlich ist: TeleportJump
+        // liefert true aus, also nimmt dieser Schalter das Springen im
+        // Vorgabe-Build JEDEM - und der Ausnutzweg, den er schliessen soll,
+        // ist durch TeleportRequiresGround schon zu.
+        teleportBlocksJump = settings.CreateEntry("TeleportBlocksJump", true,
+            description: "A does not jump AT ALL while ComfortTeleport is on - also "
+                + "because of motion sickness, and because there is no walking there "
+                + "for a jump to serve. WITHOUT the comfort option jumping stays: the "
+                + "jump-then-teleport exploit is closed by TeleportRequiresGround, "
+                + "which makes the state impossible, rather than by taking a mechanic "
+                + "away.");
+        pointerAlpha = settings.CreateEntry("PointerAlpha", 0.75f,
+            description: "Opacity of the pointer BEAMS - teleport arc, menu pointer, "
+                + "interaction pointer and, outside DevMode, the aiming laser. 0.75 is "
+                + "a quarter transparent. The teleport TARGET is unaffected: its "
+                + "texture carries the transparency, and dimming the colour would take "
+                + "the grid lines their opacity.");
+        teleportTurnLock = settings.CreateEntry("TeleportTurnLock", true,
+            description: "While the washer hand stick is pushed FORWARD for a teleport, "
+                + "it no longer turns. TurnDeadzone is 0.2 and a thumb pushing forward "
+                + "easily carries that much sideways, so a snap turn fired in the middle "
+                + "of aiming. Turning is unaffected when the push is more sideways than "
+                + "forward, which is the natural motion for it anyway. False gives the "
+                + "old behaviour back.");
+        // TeleportArc IST WEG - Abschnitt 157. Der Schalter bot einen geraden
+        // Strahl als Rueckfallebene an, die niemand benutzt hat, und die darum
+        // dreimal stillschweigend andere Regeln bekam. Ein Rueckweg, der anders
+        // entscheidet als der Hauptweg, ist keine Sicherheit.
+        vignetteDistance = settings.CreateEntry("VignetteDistance", 0.5f,
+            description: "Metres in front of the eye. Raised from the first attempt's "
+                + "0.32 m because a plane nearer than the camera's near clip plane is "
+                + "cut away entirely - built, positioned, invisible. The value is "
+                + "clamped behind the measured near plane and both numbers are logged.");
+        teleportBisectSteps = settings.CreateEntry("TeleportBisectSteps", 12,
+            description: "How many bool raycasts bisect the hit distance. No RaycastHit "
+                + "may cross the interop boundary, so the distance is bracketed "
+                + "instead: 12 steps over 12 m is 3 mm.");
+
+        // ============================================ AUSGABE UND RUECKMELDUNG
+        teleportBlinkSeconds = settings.CreateEntry("TeleportBlinkSeconds", 0.12f,
+            description: "Seconds of black across the view on arrival. 0 turns it off. "
+                + "Works whether or not the comfort vignette is on - it belongs to the "
+                + "teleport, not to the comfort set.");
+        teleportBuzz = settings.CreateEntry("TeleportBuzz", true,
+            description: "A pulse on the free hand when the target becomes valid and "
+                + "when the jump happens.");
+        // 0,9 m statt 0,45: mit dem breiten Flaechenring aus Abschnitt 151
+        // braucht das Ziel Flaeche, sonst ist es fast nur Begrenzung. Die
+        // MelonPreferences-Falle gilt - eine vorhandene cfg behaelt ihre 0,45,
+        // erreicht wird der neue Wert nur von einer frischen Installation oder
+        // per Hand in der cfg.
+        teleportMarkerSize = settings.CreateEntry("TeleportMarkerSize", 0.45f,
+            description: "Metres. DIAMETER of the target on the ground - ring, fill "
+                + "and grid. The ring is 0.22 of the radius wide, so at 0.9 m it is "
+                + "about 10 cm.");
+        // ZWEI REGLER FUERS AUSSEHEN, als Schluessel und nicht als
+        // Konstanten: das ist Geschmack, und jeder Versuch an einer Konstante
+        // kostet einen Build und einen Testlauf.
+        //
+        // 8 Zellen sind die gefragten 35 Prozent mehr als die bisherigen 6.
+        // Das Vorbild sieht eher nach 13 aus - darum einstellbar statt geraten.
+        teleportGridCells = settings.CreateEntry("TeleportGridCells", 8,
+            description: "Grid cells across the teleport target. 8 is 35 percent finer "
+                + "than the first attempt; the reference picture looks more like 13. "
+                + "Changing it re-bakes the texture on the next aim, no restart.");
+        teleportFillAlpha = settings.CreateEntry("TeleportFillAlpha", 0.22f,
+            description: "Opacity of the fill inside the target. 0 leaves only the "
+                + "three rings, the grid and the centre dot - which is what the "
+                + "reference picture shows. Rings and grid lines stay OPAQUE either "
+                + "way: the texture carries that, not the colour.");
+        ladderTeleport = settings.CreateEntry("LadderTeleport", true,
+            description: "Aiming at a ladder puts you at its TOP instead of at the rung "
+                + "you pointed at - the one deliberate exception to the jump-height "
+                + "limit, because a ladder is the route the game intends. UNPROVEN: "
+                + "whether Ladder.ClimbableTop is filled, in world space and standable "
+                + "is not in any signature; the log names every value it used.");
+        ladderTopOffset = settings.CreateEntry("LadderTopOffset", 0.35f,
+            description: "Metres away from the climbing face at the top of a ladder, so "
+                + "you end up on the roof rather than on the rung.");
+        teleportReport = settings.CreateEntry("TeleportReport", true,
+            description: "One line per aim change. Capped by DevMode like every other "
+                + "diagnostic; the jump itself always logs, because it moves the player "
+                + "and a move without a record is not diagnosable.");
+
+        vignetteStrength = settings.CreateEntry("VignetteStrength", 0.7f,
+            description: "How black the edge gets at full movement, 0 to 1.");
+        // DIE BESCHREIBUNG WAR RICHTIG, DER CODE NICHT - Abschnitt 152.
+        //
+        // "As a fraction of the half field of view" stand hier von Anfang an.
+        // Gerechnet wurde aber als Anteil der FLAECHE, und die deckt 70 Grad
+        // Halbwinkel mit Reserve. Bei 90 Grad Sichtfeld reicht das Sichtbare
+        // nur bis 0,36 der Flaeche, die Rampe begann bei 0,55 - die Vignette
+        // lag vollstaendig ausserhalb des Blickfelds.
+        //
+        // Jetzt rechnet Vignette.cs den Anteil ueber das gemessene Sichtfeld
+        // um, und der Schluessel bedeutet, was hier steht.
+        vignetteInner = settings.CreateEntry("VignetteInner", 0.55f,
+            description: "Where the darkening starts, as a fraction of the half field "
+                + "of view - 0 darkens from the centre, 0.9 only at the very edge. "
+                + "Higher leaves more clear in the middle. Changing it re-bakes the "
+                + "texture.");
+        vignetteFadeIn = settings.CreateEntry("VignetteFadeIn", 0.1f,
+            description: "Seconds from clear to full. Short, or the vignette arrives "
+                + "after the motion it is meant to soften.");
+        vignetteFadeOut = settings.CreateEntry("VignetteFadeOut", 0.3f,
+            description: "Seconds from full back to clear. Longer than the fade in, so "
+                + "a stuttering stick does not flicker it.");
+        vignetteTurn = settings.CreateEntry("VignetteTurn", true,
+            description: "Smooth turning darkens as well as walking. Snap turn gives a "
+                + "short pulse instead, since there is no sustained motion to cover.");
+
+        // HALTEN STATT DOPPELKLICK - Abschnitt 149.
+        //
+        // Der Doppelklick war nicht benutzbar: Virtual Desktop belegt ihn auf
+        // der Menue-Taste selbst. Ein Halten ist ausserdem die bessere Geste,
+        // weil es KEIN Fenster braucht - der Doppelklick kostete 0,3 s
+        // Verzoegerung auf jeden Menuedruck, ein Halten kostet nur den
+        // Loslass-Zeitpunkt.
+        //
+        // NEUER SCHLUESSEL und nicht der alte mit anderem Sinn: MenuDoubleTap-
+        // Seconds steht in jeder vorhandenen cfg auf 0,3, und eine geaenderte
+        // BEDEUTUNG bei gleichem Namen waere in einer Datei, die der Spieler
+        // liest, eine Falle.
+        menuHoldSeconds = settings.CreateEntry("MenuHoldSeconds", 0.6f,
+            description: "Seconds to HOLD the menu button to toggle Immersion Mode "
+                + "(no game UI). A short press still opens the pause menu, now on "
+                + "release rather than on press. The pulse confirms the gesture while "
+                + "the button is still down, so there is no need to let go to find out. "
+                + "0 removes the gesture entirely.");
 
         // F1 and F12 are the only function keys the full audit of this game
         // folder found unclaimed.
@@ -1439,7 +2284,7 @@ public sealed class Pose : MelonMod
         // Default ON for this measuring build: it only fires when the pointer
         // hits nothing at all, and then at most every two seconds. It belongs on
         // false once the question is answered - the item from section 87.
-        menuMissReport = settings.CreateEntry("MenuMissReport", true,
+        menuMissReport = settings.CreateEntry("MenuMissReport", false,
             description: "When the pointer hits no element, log the three nearest "
                 + "candidates with their projected rectangles. For finding out why an "
                 + "element cannot be hit. Throttled to once every two seconds.");
@@ -1605,7 +2450,7 @@ public sealed class Pose : MelonMod
         // Der Test am Laser war nicht durchfuehrbar, weil ShowWashLaser auf
         // false steht - es gab keinen Punkt zu sehen. Also misst die Mod, was
         // der Punkt gezeigt haette.
-        aimChainReport = settings.CreateEntry("AimChainReport", true,
+        aimChainReport = settings.CreateEntry("AimChainReport", false,
             description: "Log the head, controller and gun pitch together whenever the "
                 + "head tilts by two degrees. For measuring whether the head rotation is "
                 + "counted twice in the aim chain. Belongs on false once answered.");
@@ -2028,7 +2873,7 @@ public sealed class Pose : MelonMod
         // 142). Ein Eingriff in globale Shader-Werte ohne belegte Wirkung
         // gehoert nicht in ein Release; der Schalter bleibt fuer den Fall, dass
         // ein Update die Tiefenstauchung wieder relevant macht.
-        washerDepthNeutral = settings.CreateEntry("WasherDepthNeutral", false,
+        washerDepthNeutral = settings.CreateEntry("WasherDepthNeutral", true,
             description: "Let the washer render at its true depth so the VR hands can "
                 + "occlude it. The game compresses first-person depth so a tool never "
                 + "clips into walls; in VR the washer hangs on a real arm at a real "
@@ -2157,7 +3002,7 @@ public sealed class Pose : MelonMod
         // cannot shrink the surface - only a scale on the child nodes can.
         // 0.45 rather than 0.5: measured in the headset. At the game's own
         // size the canvas fills well past the comfortable reading cone.
-        uiScale = settings.CreateEntry("UiScale", 0.45f,
+        uiScale = settings.CreateEntry("UiScale", 0.3627f,
             description: "Scale applied to the UI root's CHILD nodes. 1 is the game's own size. "
                 + "Alt + keypad 8/2 adjusts it, Alt + 4/6 the distance, Alt + 5 resets.");
 
@@ -2571,8 +3416,12 @@ public sealed class Pose : MelonMod
         // Outside the active gate on purpose. The UI is unreadable in the
         // headset whether or not the pose is being driven, so switching it off
         // must not require the controller aiming to be on first.
+        // AUF DENSELBEN ZUSTAND wie die Geste, und das ist der Punkt: zwei
+        // Besitzer derselben Sichtbarkeit laufen auseinander, sobald einer von
+        // beiden pro Frame abgleicht. F1 setzt darum den WUNSCH, und der
+        // Abgleich in OnLateUpdate setzt ihn um.
         if (DevKeyDown(uiHideKey))
-            gameUi.ToggleHidden(LoggerInstance);
+            ToggleImmersion("F1");
 
         if (DevKeyDown(uiStereoKey))
             gameUi.ToggleStereoFix(LoggerInstance, uiDistance.Value);
@@ -2626,6 +3475,21 @@ public sealed class Pose : MelonMod
             washLaser.Dispose(LoggerInstance);
             menuLaser.Dispose(LoggerInstance);
             grabLaser.Dispose(LoggerInstance);
+
+            // Beide halten eine selbst erzeugte Textur, und die geht NICHT
+            // mit dem GameObject - sie ist hier entstanden, nicht aus einem
+            // Asset geladen. Ohne diese zwei Zeilen bleibt je Umschaltung
+            // eine Textur liegen.
+            vignette.Dispose(LoggerInstance);
+
+            // Nur der Zwischenspeicher, und das ist Absicht: die Features sind
+            // Assets des SPIELS. Ein Destroy hier wuerde seine Renderpipeline
+            // zerlegen. Die Features bleiben in dem Zustand, in dem der
+            // Benutzer sie gewaehlt hat - ein Zurueckschalten beim Ausschalten
+            // des Mods waere eine Aenderung, um die niemand gebeten hat.
+            renderFeatures.Dispose();
+            teleportAim.Dispose(LoggerInstance);
+            teleportLaser.Dispose(LoggerInstance);
 
             // RICHTIG ZURUECKGEBEN, nicht vergessen: hier laeuft das Spiel
             // weiter, und ein Werkzeug, das nach F2 unsichtbar bleibt, waere
@@ -2690,6 +3554,8 @@ public sealed class Pose : MelonMod
         rightStickClick = null;
 
         jumpButton.Reset();
+        jumpSent = false;
+        jumpProbeAirborne = false;
         stanceButton.Reset();
         sprayLatchButton.Reset();
         interactButton.Reset();
@@ -2804,6 +3670,36 @@ public sealed class Pose : MelonMod
         characterController = null;
         loggedBlockedStance = -1;
         loggedNoController = false;
+
+        // ============================================== ABSCHNITT 147
+        //
+        // Der Teleport wird vollstaendig entspannt, und zwar ALLE Felder auf
+        // dasselbe Objekt - ein liegengebliebener Besitzer waere ein Teleport,
+        // der sich nach einem Levelwechsel nicht mehr ausloesen laesst, und
+        // ein liegengebliebenes commitRequested waere ein Sprung auf ein Ziel
+        // aus dem vorigen Level.
+        physicalController = null;
+        teleportOwner = 0;
+        teleportCommitRequested = false;
+        teleportValid = false;
+        teleportWasValid = false;
+        teleportTarget = Vector3.zero;
+        teleportWhy = "";
+        teleportStatus = "teleport: off";
+        teleportArmedMain = true;
+        teleportArmedOff = true;
+        teleportIntentMain = 0f;
+        teleportIntentOff = 0f;
+
+        // Die Huelle gehoert neu gemessen: Sprunghoehe und Tempo haengen am
+        // Controller, und der ist je Auftrag ein anderer.
+        loggedEnvelope = false;
+        nextTeleportBlockReport = 0f;
+
+        teleportVerifyPending = false;
+
+        vignetteDemand = 0f;
+        turnPulseUntil = 0f;
         interaction = null;
         nextInteractionSearch = 0f;
         carrying = false;
@@ -3302,6 +4198,16 @@ public sealed class Pose : MelonMod
         // VOR DriveMenuPointer, aus demselben Grund, aus dem der nach DriveRay
         // sitzt: er braucht den veroeffentlichten Strahl DIESES Frames. Im
         // Menue zeichnet er nicht, dort gehoert die Linie dem Menuezeiger.
+        // VOR DriveGrabPointer, aus demselben Grund, aus dem der nach
+        // DriveRay sitzt: der Strahl der freien Hand ist erst hier der dieses
+        // Frames. Und vor dem Greifzeiger, weil der sich zurueckzieht, wenn
+        // der Teleport zielt - nicht umgekehrt.
+        DriveTeleport();
+
+        // NACH DriveSprint und nach dem Controller: sprintHeld ist dann der
+        // Stand dieses Frames, und die Fussposition die nach der Bewegung.
+        ReportJump();
+
         DriveGrabPointer();
         DriveMenuPointer();
         // AFTER DriveMenuPointer, and for the same reason DriveMenuPointer sits
@@ -3317,6 +4223,42 @@ public sealed class Pose : MelonMod
                 uiAlwaysOnTop.Value, uiDepthRefresh.Value);
         else
             gameUi.Reapply(LoggerInstance, uiDistance.Value);
+
+        // DER IMMERSION-ABGLEICH - Abschnitt 147.
+        //
+        // UND NICHT menuMode, und dieses UND ist die ganze Benutzbarkeit der
+        // Funktion: das HUD ist weg, ein GEOEFFNETES MENUE aber sichtbar.
+        //
+        // Ohne die Klammer waere die Falle offensichtlich, sobald man sie
+        // einmal gesehen hat: ein Einzeldruck auf die Menue-Taste oeffnet im
+        // Immersion Mode ein unsichtbares Pausenmenue, AllowsPlayerMovement
+        // wird false, die Bewegung steht - und der Spieler sieht nichts, was
+        // ihm sagt, warum.
+        //
+        // ApplyHidden ist idempotent und vergleicht als erstes gegen seinen
+        // eigenen Stand, also kostet dieser Aufruf im Normalfall einen
+        // bool-Vergleich. Und weil es ein ABGLEICH und kein Umschalten ist,
+        // stellt er die Sichtbarkeit nach einem Levelwechsel von selbst wieder
+        // her - GameUi.Reset setzt hidden auf false, und ein Toggle haette das
+        // nie bemerkt.
+        gameUi.ApplyHidden(LoggerInstance, immersion && !menuMode);
+
+        // NACH DriveHead und NACH DriveMovement: die Flaeche wird an die
+        // Kamerapose dieses Frames gesetzt, und ihre Anforderung entsteht bei
+        // den beiden Stick-Lesern. Ein Takt davor haette die Pose des vorigen
+        // Frames genommen und waere im Headset als Nachziehen zu sehen.
+        DriveVignette();
+
+        // DER ABGLEICH DER RENDERER-FEATURES - Abschnitt 161.
+        //
+        // Er muss WIEDERHOLT laufen und nicht einmalig: FogManager
+        // .OnSceneChange und VolumetricFogSettingStrategy.HandleSettingChanged
+        // schalten die Features wieder ein. Dasselbe Problem und dieselbe
+        // Loesung wie bei gameUi.ApplyHidden - idempotent, und pro Frame
+        // billig, weil er nur bool-Eigenschaften LIEST und nur bei Abweichung
+        // schreibt. Der teure Sweep haengt an RenderFeatureRescan.
+        DriveRenderFeatures();
+        DriveShaderProbe();
 
         if (positionAction is null || rotationAction is null)
             return;
@@ -5526,6 +6468,39 @@ public sealed class Pose : MelonMod
             var raw = moveAction.ReadValueAsObject();
             var stick = raw is null ? Vector2.zero : raw.Unbox<Vector2>();
 
+            // DER KOMFORT-TELEPORT ERSETZT DAS GEHEN, er ergaenzt es nicht.
+            //
+            // Das Spiel ignoriert MovementRaw nicht von selbst - das steht
+            // dreissig Zeilen weiter oben fuer den Menuefall und gilt hier
+            // genauso. Ohne die Null liefe der Spieler zusaetzlich los, und
+            // ein Teleport aus der Bewegung landet woanders als der Marker
+            // stand.
+            //
+            // Die Drehung bleibt an der dominanten Hand. Damit sind Ort und
+            // Blickrichtung weiter auf getrennten Sticks, was die Bedingung
+            // war, unter der diese Option ueberhaupt Sinn hat.
+            if (comfortTeleport.Value)
+            {
+                DriveTeleportStick(stick.x, stick.y, false);
+
+                if (wroteMovement != Vector2.zero)
+                {
+                    wroteMovement = Vector2.zero;
+                    playerInput.MovementRaw = Vector2.zero;
+                }
+
+                moveStatus = $"move: teleport   {teleportStatus}";
+                return;
+            }
+
+            // Was die Vignette abdunkeln soll. Ohne Schalter: VignetteTurn
+            // regelt die DREHUNG, das Gehen ist der Fall, fuer den eine
+            // Vignette ueberhaupt da ist. Der Wert vor dem Haltungsdeckel -
+            // gefragt ist, wie viel sich BEWEGT, nicht wie viel das Spiel
+            // davon annimmt.
+            vignetteDemand = Mathf.Max(vignetteDemand,
+                Mathf.Clamp01(stick.magnitude));
+
             var heldBefore = playerInput.MovementRaw;
             var kept = (heldBefore - wroteMovement).sqrMagnitude < 0.0001f;
 
@@ -6257,7 +7232,33 @@ public sealed class Pose : MelonMod
             // und nicht die Absicht - dieselbe Klasse wie der statische
             // Abstand des Zonen-Waechters in Abschnitt 154. Die Zeit trennt
             // beides, und die Einschwingzeit unten ist das Tor, das wirkt.
+
+            // ================================================ ABSCHNITT 147
+            //
+            // WER BEKOMMT Y+. Die Entscheidung faellt an EINER Stelle und
+            // nicht in zwei Bedingungen, die auseinanderlaufen koennen -
+            // dieselbe Lehre wie in Abschnitt 109, wo derselbe Filter an einer
+            // zweiten Stelle fehlte und das als "ein Tab scrollt nicht"
+            // aussah.
+            //
+            // Vorgabe: der Teleport nimmt Y+, die Duese behaelt Y-. Wer
+            // NozzleStickUp einschaltet, dreht das um - dann gewinnt die
+            // Duese, und der Teleport ist nur noch ueber die Komfortoption an
+            // der freien Hand erreichbar.
+            var nozzleOwnsUp = nozzleStick.Value && nozzleStickUp.Value;
+            var teleportOwnsUp = teleportJump.Value && !nozzleOwnsUp;
+
+            // Nur die TORE, kein Zielen: das sitzt in DriveTeleport, weil die
+            // Handpose dieses Frames erst nach DriveHead steht.
+            var teleportBusy = teleportOwnsUp
+                && DriveTeleportStick(x, y, true);
+
+            // absY >= Schwelle UND die Richtung gehoert der Duese UND der
+            // Teleport zielt nicht gerade. Der letzte Punkt verhindert, dass
+            // ein Zielvorgang beim Loslassen noch die Duese mitnimmt.
             var wantsNozzle = nozzleStick.Value
+                && !teleportBusy
+                && (y < 0f || nozzleOwnsUp)
                 && absY >= nozzleStickThreshold.Value
                 && absY > absX * nozzleStickDominance.Value;
 
@@ -6271,6 +7272,7 @@ public sealed class Pose : MelonMod
                 // Sekunde - ist das Tor zu streng, steht der Beweis im
                 // naechsten Log und nicht in einer Vermutung.
                 if (nozzleStick.Value
+                    && (y < 0f || nozzleOwnsUp)
                     && absY >= nozzleStickThreshold.Value
                     && Time.unscaledTime >= nextNozzleBlockReport)
                 {
@@ -6331,6 +7333,42 @@ public sealed class Pose : MelonMod
                 nozzleArmed = true;
             }
 
+            // ================================================ ABSCHNITT 151
+            //
+            // DER STICK MACHT EINS, und das war der gemeldete Defekt: beim
+            // Zielen nach vorn drehte schon ein leichter Seitenanteil mit -
+            // TurnDeadzone ist 0,2, und so viel bringt ein vorwaerts
+            // druckender Daumen nebenbei auf X.
+            //
+            // Mein eigener Kommentar aus Abschnitt 147 hatte es falsch herum:
+            // dort stand, waehrend des Zielens duerfe weiter gedreht werden,
+            // "um sich umzusehen". Bei Snap Turn reisst das das Bild um den
+            // ganzen Sprungwinkel weg, waehrend man auf einen Punkt zielt.
+            //
+            // BEIDE ZUSTAENDE sind gesperrt - das laufende Zielen UND der
+            // Schubs, der noch in der Einschwingzeit steckt. Ohne den zweiten
+            // Teil schnappt die Drehung in den 0,15 s, bevor der Teleport
+            // uebernimmt, also genau im gemeldeten Moment.
+            //
+            // |y| > |x| ist das Tor: mehr nach vorn als zur Seite. Wer drehen
+            // will, schiebt seitlich - die natuerliche Bewegung dafuer - und
+            // merkt von der Sperre nichts.
+            var teleportHasStick = teleportTurnLock.Value
+                && (teleportBusy
+                    || (teleportOwnsUp && y > 0f
+                        && absY >= turnDeadzone.Value
+                        && absY > absX));
+
+            if (teleportHasStick)
+            {
+                // snapArmed wird NICHT gesetzt. Der Stick kommt nach dem Sprung
+                // von selbst in die Totzone, und DORT wird neu bewaffnet - hier
+                // zu bewaffnen hiesse, dass der erste Frame nach dem Loslassen
+                // noch eine Drehung ausloesen kann.
+                turnStatus = "turn: the teleport has the stick";
+                return;
+            }
+
             if (Mathf.Abs(x) < turnDeadzone.Value)
             {
                 snapArmed = true;
@@ -6344,6 +7382,11 @@ public sealed class Pose : MelonMod
                 {
                     bodyYaw += Mathf.Sign(x) * snapAngle.Value;
                     snapArmed = false;
+
+                    // Ein Sprung hat keine Dauer, also bekommt die Vignette
+                    // eine kurze Haltezeit statt eines einzelnen Frames.
+                    if (vignetteTurn.Value)
+                        turnPulseUntil = Time.unscaledTime + 0.14f;
                     LoggerInstance.Msg($"snap turn {(x < 0f ? "left" : "right")}"
                         + $" -> yaw {bodyYaw.ToString("0.#", Invariant)}");
                 }
@@ -6358,6 +7401,12 @@ public sealed class Pose : MelonMod
                 // Unscaled, so comfort turning does not freeze with the game's
                 // time scale.
                 bodyYaw += Mathf.Sign(x) * scaled * turnSpeed.Value * Time.unscaledDeltaTime;
+
+                // Die gleitende Drehung ist der Fall, fuer den eine Vignette
+                // erfunden wurde: der Horizont wandert, ohne dass der Koerper
+                // es spuert.
+                if (vignetteTurn.Value)
+                    vignetteDemand = Mathf.Max(vignetteDemand, scaled);
             }
 
             bodyYaw = Mathf.Repeat(bodyYaw, 360f);
@@ -7640,7 +8689,29 @@ public sealed class Pose : MelonMod
             if (menuMode)
             {
                 jumpButton.Poll(false, 0f);
-                stanceButton.Poll(false, 0.4f);
+
+                // ================================================ ABSCHNITT 150
+                //
+                // B WIRD IM MENUE DIE ZURUECK-TASTE, und der Platz war frei:
+                // hier stand Poll(false, 0.4f), B wurde also gar nicht
+                // gelesen. Die Begruendung dafuer war richtig - eine
+                // Haltungsaenderung im Menue ist sinnlos - aber sie liess die
+                // Taste ungenutzt.
+                //
+                // Gemeldet war, dass fuer die Popups des Spiels
+                // (Levelauswertung, Zeitungsartikel in der Lobby) kein
+                // ESC-Aequivalent existiert. Der Kontext ergibt sich von
+                // selbst: in der Welt ist B die Haltung, im Menue ist B
+                // zurueck. Keine Sonderregel, keine neue Taste.
+                //
+                // Haltefrist NULL: die Haltungs-Langfassung hat im Menue
+                // nichts zu tun, und ein Schliessen, das sofort landet, liest
+                // sich besser - dieselbe Begruendung, die taskButton zwei
+                // Zeilen weiter unten schon traegt.
+                stanceButton.Poll(ButtonEdge.IsDown(rightSecondary), 0f);
+
+                if (stanceButton.Tap)
+                    PressBackButton();
                 // X USED TO CONFIRM HERE and was therefore polled live. Accept
                 // moved to A, so X has no menu role left and is suppressed like
                 // the rest: a press meant for a menu must not reach the world
@@ -7678,7 +8749,7 @@ public sealed class Pose : MelonMod
 
                     LoggerInstance.Msg("continuous spray off (a menu opened)");
                 }
-                menuButton.Poll(ButtonEdge.IsDown(leftMenu), 0f);
+                menuButton.Poll(ButtonEdge.IsDown(leftMenu), menuHoldSeconds.Value);
 
                 // Y STAYS LIVE, and disabling it was the defect.
                 //
@@ -7699,7 +8770,13 @@ public sealed class Pose : MelonMod
                 if (taskButton.Tap && !TrySubmitCloseButton())
                     playerInput.InvokeToggleTaskList();
 
-                if (menuButton.Tap)
+                // DIE GESTE WIRKT AUCH IM MENUE. Wer ein Menue offen hat
+                // und die Sicht frei haben will, soll nicht erst schliessen
+                // muessen - und der Abgleich schaltet die UI ohnehin erst
+                // dann ab, wenn das Menue zu ist.
+                if (menuButton.Hold)
+                    ToggleImmersion("menu held, menu open");
+                else if (menuButton.Tap)
                     PressMenuButton("menu");
 
                 // A menu takes the sticks and the buttons, so the chord can
@@ -7723,7 +8800,7 @@ public sealed class Pose : MelonMod
             // press and feels instant. Jump and Interact must never wait.
             jumpButton.Poll(ButtonEdge.IsDown(rightPrimary), 0f);
             interactButton.Poll(ButtonEdge.IsDown(leftPrimary), 0f);
-            menuButton.Poll(ButtonEdge.IsDown(leftMenu), 0f);
+            menuButton.Poll(ButtonEdge.IsDown(leftMenu), menuHoldSeconds.Value);
             dirtButton.Poll(ButtonEdge.ReadAxis(leftSqueeze) > 0.6f, 0f);
             // EINE LESUNG, EINE MOMENTAUFNAHME. Derselbe Wert fuettert die
             // Flanke, die Sicherung unten und den Bericht; zwei Lesungen
@@ -7747,11 +8824,35 @@ public sealed class Pose : MelonMod
 
             // Jump takes a bool, and the two events Jump and JumpReleased plus
             // one helper leave only one sensible reading.
-            if (jumpButton.Pressed)
-                playerInput.InvokeJump(true);
+            //
+            // A SPRINGT IM KOMFORTMODUS NICHT - Abschnitt 154, und die
+            // Grenze sitzt bewusst dort und nicht weiter.
+            //
+            // Mit Komfort-Teleport gibt es kein Gehen, dem ein Sprung dienen
+            // koennte, und ein Sprung ist ausserdem genau die Bewegung, die
+            // Motion Sickness ausloest. Ohne die Komfortoption BLEIBT der
+            // Sprung: der Ausnutzweg "Sprung plus Teleport kommt hoeher" ist
+            // durch die Bodenbedingung in DriveTeleportStick geschlossen - der
+            // Zustand kann nicht entstehen -, und dafuer muss niemandem eine
+            // Mechanik weggenommen werden.
+            //
+            // LOSLASSEN WIRD TROTZDEM GESCHICKT, wenn der Druck durchgegangen
+            // ist - sonst bliebe ein bei ausgeschaltetem Schalter begonnener
+            // Sprung als gedrueckte Taste im Spiel stehen. Genau die Sorte
+            // Rest, die dieses Projekt sonst als Defekt protokolliert.
+            var jumpAllowed = !(teleportBlocksJump.Value && comfortTeleport.Value);
 
-            if (jumpButton.Released)
+            if (jumpButton.Pressed && jumpAllowed)
+            {
+                playerInput.InvokeJump(true);
+                jumpSent = true;
+            }
+
+            if (jumpButton.Released && jumpSent)
+            {
                 playerInput.InvokeJump(false);
+                jumpSent = false;
+            }
 
             if (stanceButton.Tap)
             {
@@ -8063,7 +9164,9 @@ public sealed class Pose : MelonMod
                 latchReportSignature = "";
             }
 
-            if (menuButton.Tap)
+            if (menuButton.Hold)
+                ToggleImmersion("menu held");
+            else if (menuButton.Tap)
                 PressMenuButton("world");
 
             DriveSprint();
@@ -8757,7 +9860,11 @@ public sealed class Pose : MelonMod
         // nichts zu greifen. Hide() ist ein bool-Write auf einem LineRenderer
         // und wiederholbar, aber das Flag haelt es davon ab, eine ganze Sitzung
         // lang jeden Frame gerufen zu werden.
+        // teleportOwner UND NICHT nur ein bool: zielt der Teleport, gehoert
+        // die Linie ihm. Zwei Strahlen aus derselben Hand sind kein Bild,
+        // sondern ein Fehler.
         if (!grabPointer.Value || !aimInteraction.Value || menuMode || carrying
+            || teleportOwner != 0
             || raySpawn is null || raySpawn == null)
         {
             if (grabWroteLine)
@@ -8852,7 +9959,7 @@ public sealed class Pose : MelonMod
                 0.05f, aimInteractionRange.Value);
 
             grabLaser.Draw(LoggerInstance, origin, drawDirection, "grab", length,
-                laserWidth.Value, GrabReadyColor, laserAlwaysOnTop.Value);
+                laserWidth.Value, BeamTint(), laserAlwaysOnTop.Value);
 
             grabWroteLine = true;
         }
@@ -10815,36 +11922,1184 @@ public sealed class Pose : MelonMod
     //
     // Liest die Haltung nicht, bleibt alles wie vorher - false heisst "nicht
     // gesperrt". Eine geratene Haltung waere schlimmer als keine.
+    // DER CONTROLLER, AN EINER STELLE - Abschnitt 147.
+    //
+    // Diese Auflösung stand INNERHALB von RunBlockedByStance, und das war ein
+    // Fehler, sobald ein zweiter Leser dazukam: RunBlockedByStance laeuft nur,
+    // wenn CrouchedMoveCap unter 1 steht (siehe DriveMovement), also haette
+    // der Teleport den Controller in der Vorgabekonfiguration NIE gefunden -
+    // und das haette wie ein Fehler des Teleports ausgesehen.
+    //
+    // GetComponentInParent vom aufgeloesten Anker aus: EquipmentAnchor ->
+    // PlayerCamera -> HeadTurn -> Spielerwurzel. Damit ist es der Controller
+    // DIESES Spielers und nicht der eines Mitspielers - BaseCharacterController
+    // ist eine NetworkBehaviour, und FindObjectOfType liefert die erste, die
+    // ihr begegnet.
+    private bool ResolveCharacterController()
+    {
+        // Unity-null UND Muster-null: eine zerstoerte Komponente ist kein
+        // Nullzeiger, und "is null" sieht sie nicht.
+        if (characterController is not null && characterController != null)
+            return true;
+
+        characterController = anchor is null || anchor == null
+            ? null
+            : anchor.GetComponentInParent<Il2CppFuturLab.PW2.BaseCharacterController>();
+
+        if (characterController is null || characterController == null)
+        {
+            characterController = null;
+
+            // ALLE Felder auf dasselbe Objekt geraeumt, nicht nur das eine.
+            physicalController = null;
+
+            if (!loggedNoController)
+            {
+                loggedNoController = true;
+                LoggerInstance.Msg("controller: no BaseCharacterController above"
+                    + " the anchor - stance and teleport stay as they were.");
+            }
+
+            return false;
+        }
+
+        loggedNoController = false;
+
+        // Neu aufgeloest heisst: die abgeleitete Form gehoert neu geholt.
+        physicalController = null;
+        return true;
+    }
+
+    // PhysicalCharacterController fuehrt die Zahlen, die die Sprunghuelle
+    // braucht - Sprunghoehe, Tempo, Ebenenmaske, Kapsel. TeleportTo dagegen
+    // sitzt schon auf der Basisklasse, also braucht der SPRUNG diesen Cast
+    // nicht, nur die GRENZE.
+    private Il2CppFuturLab.PW2.PhysicalCharacterController? PhysicalController()
+    {
+        if (physicalController is not null && physicalController != null)
+            return physicalController;
+
+        physicalController = null;
+
+        if (!ResolveCharacterController())
+            return null;
+
+        try
+        {
+            physicalController = characterController!
+                .TryCast<Il2CppFuturLab.PW2.PhysicalCharacterController>();
+        }
+        catch
+        {
+            physicalController = null;
+        }
+
+        return physicalController;
+    }
+
+    // FESTER BODEN UNTER DEN FUESSEN. IsGrounded ist ein nativ public
+    // bool-Getter auf BaseCharacterController - die billigste Form, die es
+    // gibt.
+    //
+    // OHNE CONTROLLER GILT "GEGRUENDET", und das ist die harmlose Richtung:
+    // ein nicht lesbarer Zustand darf den Teleport nicht dauerhaft sperren.
+    // Wer sonst feststeckt, hat keinen Ausweg - dieselbe Abwaegung wie bei der
+    // Spruehrastung in Abschnitt 156.
+    // DER ROHE BODENZUSTAND, ohne den Schalter des Teleports davor.
+    //
+    // StandsOnGround liefert bei ausgeschaltetem TeleportRequiresGround immer
+    // true - richtig fuer den Teleport, unbrauchbar fuer eine Messung. Zwei
+    // Fragen, zwei Funktionen.
+    private bool GroundedRaw(out bool readable)
+    {
+        readable = false;
+
+        if (!ResolveCharacterController())
+            return false;
+
+        try
+        {
+            var grounded = characterController!.IsGrounded;
+            readable = true;
+            return grounded;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    // ====================================================================
+    // DEN ECHTEN SPRUNG MESSEN - Abschnitt 158.
+    //
+    // Gemessen wird jede LUFTPHASE, nicht der Tastendruck: so wird auch ein
+    // Sturz erfasst, und die Messung haengt nicht an TeleportBlocksJump, das im
+    // Komfortmodus das Springen ganz abschaltet.
+    //
+    // Die Vorhersage der Huelle steht IN DERSELBEN ZEILE. Ein Messwert ohne sie
+    // beantwortet die Frage nicht - gefragt ist die Differenz.
+    private void ReportJump()
+    {
+        if (!jumpProbe.Value)
+            return;
+
+        var grounded = GroundedRaw(out var readable);
+
+        // Unlesbar heisst: nicht messen. Eine Messung aus einem unbekannten
+        // Zustand waere schlimmer als keine.
+        if (!readable || !TryFootPosition(out var foot))
+            return;
+
+        if (!jumpProbeAirborne)
+        {
+            if (grounded)
+                return;
+
+            jumpProbeAirborne = true;
+            jumpProbeTakeoff = foot;
+            jumpProbeMaxRise = 0f;
+            jumpProbeStart = Time.unscaledTime;
+            jumpProbeSprint = sprintHeld;
+            return;
+        }
+
+        jumpProbeMaxRise = Mathf.Max(jumpProbeMaxRise, foot.y - jumpProbeTakeoff.y);
+
+        if (!grounded)
+            return;
+
+        jumpProbeAirborne = false;
+
+        var flat = new Vector3(foot.x - jumpProbeTakeoff.x, 0f,
+            foot.z - jumpProbeTakeoff.z).magnitude;
+        var net = foot.y - jumpProbeTakeoff.y;
+        var seconds = Time.unscaledTime - jumpProbeStart;
+
+        // Was die Huelle fuer denselben Hoehenunterschied vorhergesagt haette.
+        var envelope = BuildEnvelope();
+        var predicted = TeleportAim.Reach(envelope, net);
+
+        LoggerInstance.Msg($"jump measured: reach {flat:0.00} m"
+            + $"   apex {jumpProbeMaxRise:0.00} m"
+            + $"   net rise {net:0.00} m"
+            + $"   {seconds:0.00} s"
+            + $"   sprint {(jumpProbeSprint ? "YES" : "no")}"
+            + $"   ENVELOPE SAYS reach {predicted:0.00} m"
+            + $" (flat {envelope.FlatReach:0.00})"
+            + $"   apex limit {envelope.JumpHeight:0.00}"
+            + $"   ceiling {envelope.RiseCeiling:0.00}");
+    }
+
+    private bool StandsOnGround()
+    {
+        if (!teleportRequiresGround.Value)
+            return true;
+
+        if (!ResolveCharacterController())
+            return true;
+
+        try
+        {
+            return characterController!.IsGrounded;
+        }
+        catch (Exception exception)
+        {
+            LoggerInstance.Warning("  teleport: IsGrounded threw "
+                + exception.GetType().Name + " - treating it as grounded");
+            return true;
+        }
+    }
+
+    // FootPosition ist ein nativ public Vector3-Getter. Vector3 als Rueckwert
+    // ist in diesem Projekt belegt sicher - HorizontalLookDirection und
+    // FootPosition gehen denselben Weg.
+    private bool TryFootPosition(out Vector3 foot)
+    {
+        foot = Vector3.zero;
+
+        if (!ResolveCharacterController())
+            return false;
+
+        try
+        {
+            foot = characterController!.FootPosition;
+            return true;
+        }
+        catch (Exception exception)
+        {
+            LoggerInstance.Warning("  teleport: FootPosition threw "
+                + exception.GetType().Name);
+            characterController = null;
+            physicalController = null;
+            return false;
+        }
+    }
+
+    // ====================================================================
+    // DIE HUELLE, AUS SPIELWERTEN.
+    //
+    // m_jumpHeight und m_movementSpeed sind die beiden Zahlen, die einen
+    // Tastensprung beschreiben; TeleportAim.Reach macht daraus die Parabel.
+    // Nichts hier ist gewaehlt - ausser den beiden Rueckfallwerten, und die
+    // sagen es.
+    private TeleportAim.Envelope BuildEnvelope()
+    {
+        var gravity = teleportGravity.Value > 0.01f
+            ? teleportGravity.Value
+            : ReadGravity();
+
+        var jumpHeight = 0f;
+        var speed = 0f;
+        var jumpMultiplier = 1f;
+        var capsuleHeight = 1.8f;
+        var capsuleRadius = 0.3f;
+        var mask = teleportLayerMask.Value;
+        var measured = false;
+
+        var physical = PhysicalController();
+
+        if (physical is not null && physical != null)
+        {
+            try
+            {
+                jumpHeight = physical.m_jumpHeight;
+                speed = physical.m_movementSpeed;
+                capsuleHeight = physical.m_capsuleHeightStanding;
+
+                // DER SPRUNGKRAFT-MULTIPLIKATOR, nur zum MITLESEN.
+                //
+                // PlayerMovementState fuehrt GetJumpForceMultiplier, und wenn
+                // der Stehzustand etwas ueber 1 liefert, ist die
+                // Hoehentoleranz oben durch Physik ersetzbar statt geschaetzt.
+                // Gelesen, geloggt, NICHT verrechnet: was er genau skaliert -
+                // Kraft, Geschwindigkeit oder Hoehe - steht in keiner
+                // Signatur, und eine falsch angewandte Zahl waere schlimmer
+                // als eine offen geschaetzte.
+                try
+                {
+                    var state = physical.CurrentMovementState;
+
+                    jumpMultiplier = state is null || state == null
+                        ? 1f
+                        : state.GetJumpForceMultiplier;
+                }
+                catch
+                {
+                    jumpMultiplier = 1f;
+                }
+
+                // m_Mask ist ein oeffentliches int-FELD auf LayerMask, kein
+                // Methodenaufruf - die billigste und sicherste Lesung.
+                if (mask == 0)
+                    mask = physical.m_navmeshCollisionLayer.m_Mask;
+
+                var capsule = physical.m_collision;
+
+                if (capsule is not null && capsule != null)
+                    capsuleRadius = capsule.radius;
+
+                measured = jumpHeight > 0.01f && speed > 0.01f;
+            }
+            catch (Exception exception)
+            {
+                LoggerInstance.Warning("  teleport: reading the envelope threw "
+                    + exception.GetType().Name + " - falling back");
+                measured = false;
+            }
+        }
+
+        if (!measured)
+        {
+            jumpHeight = teleportFallbackRise.Value;
+
+            // Die Ersatz-GESCHWINDIGKEIT ist die, die genau die
+            // Ersatz-FLACHWEITE ergibt. Anders gerechnet waere die
+            // Rueckfallebene eine zweite, stillschweigend andere Huelle.
+            var v0 = Mathf.Sqrt(2f * gravity * Mathf.Max(0.01f, jumpHeight));
+            var flatTime = v0 > 0.01f ? (2f * v0 / gravity) : 1f;
+            speed = teleportFallbackRange.Value / Mathf.Max(0.01f, flatTime);
+        }
+
+        if (mask == 0)
+            mask = Physics.DefaultRaycastLayers;
+
+        // DIE MESSUNG GEWINNT GEGEN DIE LESUNG - Abschnitt 160.
+        //
+        // NACH der Rueckfallebene, damit ein Ausfall der Spielfelder die
+        // gemessene Zahl nicht wegwirft: die Messung ist unabhaengig davon
+        // richtig. Und sie wird GENANNT, damit die Envelope-Zeile nicht eine
+        // gemessene Weite als gelesene ausgibt.
+        var speedSource = "m_movementSpeed";
+
+        if (teleportJumpSpeed.Value > 0.01f)
+        {
+            speed = teleportJumpSpeed.Value;
+            speedSource = "measured jump";
+        }
+
+        var envelope = new TeleportAim.Envelope(jumpHeight, speed, gravity,
+            capsuleHeight, capsuleRadius,
+            teleportRayLength.Value, teleportReachFactor.Value, mask,
+            teleportBisectSteps.Value, measured,
+            teleportProbeRadius.Value, teleportProbeHeight.Value,
+            teleportProbeLift.Value,
+            jumpHeight + Mathf.Max(0f, teleportRiseTolerance.Value),
+            teleportSlopeWalk.Value, teleportSlopeSpacing.Value,
+            teleportSlopeStepRise.Value, teleportSlopeStepDrop.Value);
+
+        // EINMAL, und diese Zeile ist die Messung: die Flachweite daneben
+        // gehalten gegen einen echten Sprung mit der Sprungtaste sagt, ob die
+        // effektive Schwerkraft des Spiels der von Physics entspricht.
+        if (!loggedEnvelope)
+        {
+            loggedEnvelope = true;
+            LoggerInstance.Msg($"teleport: envelope   h {jumpHeight:0.00} m"
+                + $"   s {speed:0.00} m/s ({speedSource})   g {gravity:0.00}"
+                + $"   flat {envelope.FlatReach:0.00} m"
+                + $"   mask 0x{mask:x8}"
+                + $"   capsule r {capsuleRadius:0.##} h {capsuleHeight:0.##}"
+                + $"   probe r {teleportProbeRadius.Value:0.##} "
+                + $"h {teleportProbeHeight.Value:0.##} "
+                + $"lift {teleportProbeLift.Value:0.##}"
+                + $"   rise ceiling {envelope.RiseCeiling:0.00} m"
+                + $" (tolerance {teleportRiseTolerance.Value:0.##})"
+                + $"   jumpForceMultiplier {jumpMultiplier:0.###}"
+                + $"   source {(measured ? "game fields" : "FALLBACK, m_jumpHeight/m_movementSpeed unreadable")}");
+        }
+
+        return envelope;
+    }
+
+    private static float ReadGravity()
+    {
+        try
+        {
+            var value = Mathf.Abs(Physics.gravity.y);
+            return value > 0.01f ? value : 9.81f;
+        }
+        catch
+        {
+            return 9.81f;
+        }
+    }
+
+    // ====================================================================
+    // DIE TORE. Nur Buchhaltung - gezielt wird in DriveTeleport, weil die
+    // Handpose dieses Frames erst nach DriveHead steht.
+    //
+    // Gibt true zurueck, wenn dieser Stick den Teleport in diesem Frame
+    // haelt; der Aufrufer stellt dann seine eigene Funktion still.
+    private bool DriveTeleportStick(float x, float y, bool mainStick)
+    {
+        var owner = mainStick ? 1 : 2;
+        var absX = Mathf.Abs(x);
+        var absY = Mathf.Abs(y);
+
+        if (menuMode)
+        {
+            if (teleportOwner == owner)
+                DropTeleportAim(mainStick, "a menu took the input");
+
+            return false;
+        }
+
+        // KEIN TELEPORT IN DER LUFT - Abschnitt 154, und das ist der Riegel
+        // gegen "Sprung plus Teleport kommt hoeher".
+        //
+        // Vor allen anderen Toren, weil es keine Absicht auswertet, sondern
+        // einen Zustand: wer faellt, zielt nicht.
+        if (!StandsOnGround())
+        {
+            if (teleportOwner == owner)
+                DropTeleportAim(mainStick, "no ground under the feet");
+
+            return false;
+        }
+
+        if (teleportOwner == owner)
+        {
+            // ================================================================
+            // DAS HALTE-TOR IST EIN ANDERES ALS DAS START-TOR, und das ist
+            // kein Versehen.
+            //
+            // Wer zielt und dann seitlich rollt, bricht die DOMINANZ. Ein
+            // Abbruch ueber dieselbe Bedingung haette den Sprung genau in
+            // diesem Moment ausgeloest und damit den Fall erzeugt, den die
+            // Tore verhindern sollen.
+            //
+            // Gehalten wird darum nur ueber Richtung und Totzone: der Sprung
+            // kommt, wenn der Stick ZURUECKKOMMT.
+            //
+            // NACHTRAG ABSCHNITT 151: hier stand als Begruendung, waehrend des
+            // Zielens duerfe weiter gedreht werden. Das war falsch herum - im
+            // Headset riss ein leichter Seitenanteil das Bild weg. Die Drehung
+            // ist jetzt gesperrt, solange der Teleport den Stick hat; siehe
+            // TeleportTurnLock in ReadTurn.
+            if (y > 0f && absY >= turnDeadzone.Value)
+                return true;
+
+            teleportOwner = 0;
+            teleportCommitRequested = true;
+
+            // Entwaffnet: die naechste Absicht braucht erst die Mitte wieder.
+            if (mainStick)
+            {
+                teleportArmedMain = false;
+                teleportIntentMain = 0f;
+            }
+            else
+            {
+                teleportArmedOff = false;
+                teleportIntentOff = 0f;
+            }
+
+            // Dieser Frame gehoert noch dem Teleport - der Aufrufer soll seine
+            // eigene Funktion nicht auch noch ausloesen.
+            return true;
+        }
+
+        if (teleportOwner != 0)
+        {
+            // Der andere Stick haelt ihn. Die eigene Absicht verfaellt, damit
+            // sie nicht als alte Uhr liegen bleibt.
+            if (mainStick)
+                teleportIntentMain = 0f;
+            else
+                teleportIntentOff = 0f;
+
+            return false;
+        }
+
+        var armed = mainStick ? teleportArmedMain : teleportArmedOff;
+        var intent = mainStick ? teleportIntentMain : teleportIntentOff;
+
+        // WIEDERBEWAFFNUNG UEBER BEIDE ACHSEN, wie beim Duesenwechsel - und
+        // das ist die Bedingung, die eine laufende Drehung voellig aussen vor
+        // laesst: waehrend gedreht wird, ist X gross, also wird nie neu
+        // bewaffnet, also kann nichts ausloesen.
+        if (absX < turnDeadzone.Value && absY < turnDeadzone.Value)
+            armed = true;
+
+        // DOMINANZ NUR AM DOMINANTEN STICK. Dort konkurriert die Drehung auf
+        // X; am freien Stick hat X mit eingeschaltetem Komfort-Teleport keine
+        // Aufgabe, und ein Tor gegen einen Gegner, den es nicht gibt, wuerde
+        // nur gewollte Schubser ablehnen.
+        var wants = y > 0f
+            && absY >= teleportStickThreshold.Value
+            && (!mainStick || absY > absX * teleportStickDominance.Value);
+
+        if (!wants)
+            intent = 0f;
+        else if (intent <= 0f)
+            intent = Time.unscaledTime;
+
+        var held = wants ? Time.unscaledTime - intent : 0f;
+        var started = wants && armed && held >= teleportStickSettle.Value;
+
+        if (started)
+        {
+            teleportOwner = owner;
+            armed = false;
+            intent = 0f;
+
+            LoggerInstance.Msg("teleport: aiming from the "
+                + (mainStick ? "washer" : "free") + " hand stick"
+                + $"   y {y:0.00}   x {x:0.00}   held {held:0.00} s");
+        }
+        else if (Dev(teleportReport) && mainStick && y > 0f && !wants
+            && absY >= teleportStickThreshold.Value
+            && Time.unscaledTime >= nextTeleportBlockReport)
+        {
+            // DER EINE FEHLERFALL, DEN DIESES TOR NEU ERZEUGEN KANN: ein
+            // gewollter senkrechter Schubs, der als Diagonale abgelehnt wird.
+            // Er meldet sich selbst, gedeckelt auf eine Zeile pro Sekunde -
+            // ist das Tor zu streng, steht der Beweis im naechsten Log und
+            // nicht in einer Vermutung. Dieselbe Vorkehrung wie beim
+            // Duesenwechsel.
+            nextTeleportBlockReport = Time.unscaledTime + 1f;
+            LoggerInstance.Msg("teleport: blocked, not vertical enough"
+                + $"   y {y:0.00}   x {x:0.00}"
+                + $"   needed |y| > {absX * teleportStickDominance.Value:0.00}");
+        }
+
+        if (mainStick)
+        {
+            teleportArmedMain = armed;
+            teleportIntentMain = intent;
+        }
+        else
+        {
+            teleportArmedOff = armed;
+            teleportIntentOff = intent;
+        }
+
+        return started;
+    }
+
+    private void DropTeleportAim(bool mainStick, string why)
+    {
+        teleportOwner = 0;
+        teleportCommitRequested = false;
+        teleportWasValid = false;
+        teleportValid = false;
+        teleportWhy = "";
+        teleportAim.Hide();
+        teleportLaser.Hide();
+        teleportStatus = "teleport: dropped";
+
+        if (mainStick)
+        {
+            teleportArmedMain = false;
+            teleportIntentMain = 0f;
+        }
+        else
+        {
+            teleportArmedOff = false;
+            teleportIntentOff = 0f;
+        }
+
+        LoggerInstance.Msg($"teleport: aim dropped ({why})");
+    }
+
+    // Laeuft NACH DriveHead und NACH DriveMovement: der Strahl der freien Hand
+    // ist erst hier der dieses Frames. Siehe den Kommentar an der Aufrufstelle.
+    private void DriveTeleport()
+    {
+        // ================================================================
+        // EIN BESITZER, DESSEN QUELLE ABGESCHALTET WURDE, BLIEBE STEHEN.
+        //
+        // DriveTeleportStick wird fuer die dominante Hand nur gerufen, solange
+        // TeleportJump gilt, und fuer die freie nur bei ComfortTeleport. Wird
+        // einer der beiden umgestellt, WAEHREND gezielt wird, ruft niemand
+        // mehr den Zweig, der den Besitzer freigibt - und ein haengender
+        // Besitzer haelt den Greifzeiger dauerhaft still.
+        //
+        // Kein hypothetischer Fall: die cfg ist Klartext und LiveTrim schreibt
+        // sie im Spiel. Dieselbe Klasse wie die Spruehrastung aus Abschnitt
+        // 156, die genau einen Ausschalter hatte - wer feststeckte, musste das
+        // Spiel beenden. Ein Zustand braucht einen Ausweg, der nicht an der
+        // Bedingung haengt, die ihn erzeugt hat.
+        if ((teleportOwner == 1 && !teleportJump.Value)
+            || (teleportOwner == 2 && !comfortTeleport.Value))
+        {
+            DropTeleportAim(teleportOwner == 1, "its source was switched off");
+        }
+
+        // DIE NACHMESSUNG ZUERST, weil sie in den Frame NACH dem Sprung
+        // gehoert und sonst nie liefe - der Normalfall unten kehrt zurueck.
+        if (teleportVerifyPending)
+        {
+            teleportVerifyPending = false;
+
+            var landed = TryFootPosition(out var after);
+
+            LoggerInstance.Msg("teleport: settled   "
+                + $"foot ({teleportVerifyBefore.x:0.00}, {teleportVerifyBefore.y:0.00}, "
+                + $"{teleportVerifyBefore.z:0.00})"
+                + (landed
+                    ? $" -> ({after.x:0.00}, {after.y:0.00}, {after.z:0.00})"
+                        + $"   moved {(after - teleportVerifyBefore).magnitude:0.00} m"
+                        + $"   off target {(after - teleportVerifyAsked).magnitude:0.00} m"
+                    : " -> unreadable")
+                + $"   asked ({teleportVerifyAsked.x:0.00}, {teleportVerifyAsked.y:0.00}, "
+                + $"{teleportVerifyAsked.z:0.00})");
+        }
+
+        // Der Normalfall kostet zwei Vergleiche und einen bool-Test in Hide.
+        if (teleportOwner == 0 && !teleportCommitRequested)
+        {
+            teleportAim.Hide();
+            teleportLaser.Hide();
+            return;
+        }
+
+        try
+        {
+            if (teleportOwner != 0)
+            {
+                AimTeleport();
+                return;
+            }
+
+            teleportCommitRequested = false;
+            teleportAim.Hide();
+            teleportLaser.Hide();
+            CommitTeleport();
+        }
+        catch (Exception exception)
+        {
+            teleportOwner = 0;
+            teleportCommitRequested = false;
+            teleportAim.Hide();
+            teleportLaser.Hide();
+            teleportStatus = "teleport: failed";
+            LoggerInstance.Warning($"  teleport threw {exception.GetType().Name}: "
+                + exception.Message);
+        }
+    }
+
+    // Gruen frei, rot gesperrt. Als Konstanten und nicht pro Frame gebaut:
+    // WashLaser schreibt die Farbe nur bei Aenderung, und ein frisch erzeugter
+    // Color-Wert waere bei jedem Vergleich derselbe, aber die Erzeugung nicht
+    // umsonst.
+    // ====================================================================
+    // DIE VIER FARBEN, an EINER Stelle.
+    //
+    // Vorher trugen Greifzeiger, Teleport und Menuezeiger je eine eigene
+    // Konstante - zwei davon ein leicht verschiedenes Gruen, ohne dass
+    // irgendwo stand, warum. Jetzt entscheidet ein Schluessel fuer alle drei.
+    //
+    // Die Werte sind die aus dem Auftrag, durch 255 geteilt:
+    //
+    //     pink     255,  45, 145     #FF2D91
+    //     green    100, 235,  95     #64EB5F
+    //     blue      40, 205, 245     #28CDF5
+    //     yellow   255, 215,  55     #FFD737
+    private static readonly Color PointerPink = new(1f, 0.176f, 0.569f, 1f);
+    private static readonly Color PointerGreen = new(0.392f, 0.922f, 0.373f, 1f);
+    private static readonly Color PointerBlue = new(0.157f, 0.804f, 0.961f, 1f);
+    private static readonly Color PointerYellow = new(1f, 0.843f, 0.216f, 1f);
+
+    // ROT IST KEINE AUSWAHL, sondern die Absage. Keine der vier Farben ist
+    // rot, also bleibt ein gesperrtes Ziel eindeutig.
+    private static readonly Color TeleportBlockedColor = new(1f, 0.3f, 0.25f, 1f);
+
+    // Der zuletzt gemeldete Name, damit der Fehlgriff EINMAL geloggt wird und
+    // nicht pro Frame.
+    private string loggedPointerColor = "";
+
+    // DIE FARBE FUER EINEN STRAHL, also mit Deckkraft. Getrennt von
+    // PointerTint, weil der Marker die VOLLE Farbe braucht: dort steckt die
+    // Transparenz in der Textur, und ein Alpha auf der Farbe wuerde die opaken
+    // Rasterlinien mit abdunkeln.
+    //
+    // Dass Alpha hier ankommt, ist geprueft und nicht angenommen:
+    // WashLaser.Paint schreibt startColor und endColor, und dieser Build loest
+    // auf Sprites/Default auf - ein mischender Shader, der Vertexfarben
+    // multipliziert.
+    private Color BeamTint()
+    {
+        var tint = PointerTint();
+        return new Color(tint.r, tint.g, tint.b,
+            Mathf.Clamp01(pointerAlpha.Value));
+    }
+
+    // Die gewaehlte Farbe, voll deckend. Pro Frame mehrfach gerufen, also
+    // nichts als ein Vergleich und eine Rueckgabe.
+    private Color PointerTint()
+    {
+        var name = pointerColor.Value;
+
+        switch (name.ToLowerInvariant())
+        {
+            case "pink": return PointerPink;
+            case "green": return PointerGreen;
+            case "blue": return PointerBlue;
+            case "yellow": return PointerYellow;
+        }
+
+        // EIN UNBEKANNTER NAME MELDET SICH. Ein Wert, den die Mod
+        // stillschweigend verwirft, ist ein Schalter ohne Wirkung - und der
+        // kostet eine Fehlersuche, die niemand fuehren muss.
+        if (!string.Equals(name, loggedPointerColor, StringComparison.Ordinal))
+        {
+            loggedPointerColor = name;
+            LoggerInstance.Warning($"PointerColor \"{name}\" is not one of "
+                + "pink, green, blue, yellow - using pink.");
+        }
+
+        return PointerPink;
+    }
+
+    // ====================================================================
+    // DER STRAHL GEHOERT AN DIE HAND, DIE IHN WIRFT - Abschnitt 149.
+    //
+    // Gemeldet: linker Stick, linke Hand; rechter Stick, rechte Hand. Vorher
+    // nahm AimTeleport immer AimRay, und das ist die Quelle der FREIEN Hand -
+    // am dominanten Stick zog der Bogen also aus der falschen Hand.
+    //
+    // NICHT ueber AimRay geloest, obwohl es danach aussieht: dessen Wahl haengt
+    // an AimFromOffHand und beantwortet die Frage "woher greift der Spieler".
+    // Hier ist die Frage "welcher Stick hat gedrueckt", und zwei verschiedene
+    // Fragen an derselben Weiche laufen auseinander (Abschnitt 109).
+    //
+    // Gibt false zurueck, wenn die Pose DIESER Hand nicht steht. Auf die andere
+    // auszuweichen waere schlimmer als nichts zu tun: der Spieler wuerde mit
+    // der einen Hand zielen und aus der anderen werfen.
+    private bool TeleportRay(bool mainStick, out Vector3 origin, out Vector3 forward)
+    {
+        origin = Vector3.zero;
+        forward = Vector3.forward;
+
+        if (mainStick)
+        {
+            // Die Waschhand: die Richtung der Pistole IST ihre Richtung.
+            if (aimPublished)
+            {
+                origin = publishedAimOrigin;
+                forward = publishedAimForward;
+                return true;
+            }
+
+            if (raySpawn is not null && raySpawn != null)
+            {
+                origin = MuzzlePoint(raySpawn);
+                forward = AimForward(raySpawn);
+                return true;
+            }
+
+            return false;
+        }
+
+        // Die freie Hand, dieselbe Quelle, aus der der Greifzeiger zieht.
+        if (offHandWorldPublished && offHandRotationPublished)
+        {
+            origin = publishedOffHandWorld;
+            forward = OffHandForward();
+            return true;
+        }
+
+        return false;
+    }
+
+    private void AimTeleport()
+    {
+        if (!TryFootPosition(out var foot))
+        {
+            teleportValid = false;
+            teleportWasValid = false;
+            teleportStatus = "teleport: no character controller";
+            teleportAim.Hide();
+            teleportLaser.Hide();
+            return;
+        }
+
+        // AUS DER HAND, DIE GEDRUECKT HAT. teleportOwner 1 ist die Waschhand,
+        // 2 die freie.
+        var mainStick = teleportOwner == 1;
+
+        if (!TeleportRay(mainStick, out var origin, out var forward))
+        {
+            teleportValid = false;
+            teleportWasValid = false;
+            teleportStatus = "teleport: no hand pose";
+            teleportAim.Hide();
+            teleportLaser.Hide();
+            return;
+        }
+
+        var envelope = BuildEnvelope();
+
+        teleportValid = teleportAim.ResolveArc(LoggerInstance, envelope,
+            origin, forward, foot, ladderTeleport.Value, ladderTopOffset.Value,
+            teleportPath, out teleportTarget, out var hasSurface, out var why);
+
+        // AUF DIE FLANKE, nicht auf den Zustand: ein Puls pro Frame, solange
+        // man auf eine gueltige Stelle zeigt, waere ein Dauerbrummen.
+        if (teleportValid && !teleportWasValid && teleportBuzz.Value)
+            Buzz(!WasherHandRight, "teleport ready");
+
+        teleportWasValid = teleportValid;
+
+        // AUF WECHSEL, nicht pro Frame. Die Begruendung ist die Zeile, an der
+        // sich ein zu strenges Tor von einem echten Hindernis unterscheiden
+        // laesst.
+        if (!string.Equals(why, teleportWhy, StringComparison.Ordinal))
+        {
+            teleportWhy = why;
+
+            // NICHT MEHR UNTER DevMode - Abschnitt 155.
+            //
+            // Diese Zeile hing an Dev(teleportReport), und DevMode liefert
+            // false aus. Ein Spieler sieht damit einen roten Marker und hat
+            // keine Moeglichkeit zu erfahren, WARUM - und bei einer gemeldeten
+            // "Treppe geht nicht" gab es nichts zu lesen.
+            //
+            // Sie laeuft auf WECHSEL, also eine Zeile je Zustandsaenderung des
+            // Ziels. Das ist kein Dauerbericht, und es ist der einzige Kanal,
+            // der eine Absage erklaerbar macht.
+            if (teleportReport.Value)
+            {
+                LoggerInstance.Msg("teleport: aim "
+                    + (teleportValid ? "ok" : "refused") + "   " + why);
+            }
+        }
+
+        // ================================================================
+        // GEZEICHNET WIRD IMMER, SOLANGE GEZIELT WIRD - und das ist der
+        // Unterschied zum Greifzeiger, der ohne Ziel absichtlich nichts
+        // zeichnet (Abschnitt 150).
+        //
+        // Dort ist "kein Strahl" eine Aussage: kein Ziel. Hier waere es die
+        // Abwesenheit jeder Rueckmeldung, und genau so wurde es gemeldet -
+        // "man weiss nicht genau was passiert". Wer den Stick haelt, muss
+        // sehen, wohin er zeigt, auch wenn dort nichts erlaubt ist.
+        //
+        // Ohne Trefferflaeche endet der Strahl auf voller Suchlaenge und der
+        // Marker bleibt weg: ein Ring braucht einen Boden, auf dem er liegt.
+        // Der Bogen mit Deckkraft, das ZIEL ohne: Show bekommt die volle
+        // Farbe, weil dort die Textur die Transparenz traegt.
+        var color = teleportValid
+            ? BeamTint()
+            : new Color(TeleportBlockedColor.r, TeleportBlockedColor.g,
+                TeleportBlockedColor.b, Mathf.Clamp01(pointerAlpha.Value));
+
+        // Der Bogen endet dort, wo er auftrifft - ResolveArc hat den Endpunkt
+        // schon angehaengt. Ohne Treffer traegt er den vollen Wurf, was genau
+        // die richtige Auskunft ist: so weit kaeme der Stein, und dort ist kein
+        // Boden.
+        teleportLaser.DrawPath(LoggerInstance, teleportPath, "teleport",
+            laserWidth.Value, color, laserAlwaysOnTop.Value);
+
+        if (hasSurface)
+        {
+            teleportAim.Show(LoggerInstance, teleportTarget, teleportValid,
+                teleportMarkerSize.Value, PointerTint(),
+                teleportGridCells.Value, teleportFillAlpha.Value);
+        }
+        else
+        {
+            teleportAim.Hide();
+        }
+
+        teleportStatus = teleportValid ? "teleport: aimed" : "teleport: blocked";
+    }
+
+    private void CommitTeleport()
+    {
+        if (!teleportValid)
+        {
+            // IMMER geloggt und NICHT unter Dev: ein verweigerter Sprung ist
+            // fuer den Spieler die Meldung "es tut nichts", und die muss
+            // erklaerbar sein, ohne dass er erst DevMode einschaltet.
+            LoggerInstance.Msg($"teleport: refused   {teleportWhy}");
+            teleportStatus = "teleport: refused";
+            teleportWasValid = false;
+            teleportWhy = "";
+            return;
+        }
+
+        if (!TryFootPosition(out var before))
+        {
+            LoggerInstance.Msg("teleport: refused, no character controller");
+            teleportStatus = "teleport: no controller";
+            return;
+        }
+
+        var called = false;
+
+        try
+        {
+            // DIE ROUTE DES SPIELS, nicht ein Schreibvorgang auf die
+            // Transform. TeleportTo ist nativ Public_Virtual_New und nimmt
+            // einen Vector3 - dieselbe sichere Form wie MovementRaw.
+            characterController!.TeleportTo(teleportTarget);
+            called = true;
+        }
+        catch (Exception exception)
+        {
+            LoggerInstance.Warning("  teleport: TeleportTo threw "
+                + $"{exception.GetType().Name}: {exception.Message}");
+        }
+
+        // ================================================================
+        // EIN BLOCK, EINE MOMENTAUFNAHME.
+        //
+        // Vorher, nachher und das ERBETENE Ziel in derselben Zeile, weil
+        // genau ihre Differenz die offene Frage beantwortet: WIRKT die
+        // virtuelle Methode, und rastet sie auf den Boden?
+        //
+        // Eine Zeile "gerufen" ohne die Positionen waere eine Erfolgsmeldung,
+        // die den Aufruf zaehlt statt der Wirkung - der Fehler, den
+        // Abschnitt 146 zweimal notiert hat.
+        var haveAfter = TryFootPosition(out var after);
+
+        LoggerInstance.Msg($"teleport: {(called ? "jumped" : "call failed")}"
+            + $"   foot ({before.x:0.00}, {before.y:0.00}, {before.z:0.00})"
+            + (haveAfter
+                ? $" -> ({after.x:0.00}, {after.y:0.00}, {after.z:0.00})"
+                    + $"   moved {(after - before).magnitude:0.00} m"
+                : " -> unreadable")
+            + $"   asked ({teleportTarget.x:0.00}, {teleportTarget.y:0.00}, "
+            + $"{teleportTarget.z:0.00})   {teleportWhy}");
+
+        if (called)
+        {
+            if (teleportBuzz.Value)
+                Buzz(!WasherHandRight, "teleport");
+
+            vignette.Blink(teleportBlinkSeconds.Value);
+
+            // Nachgemessen wird im NAECHSTEN Frame. Die Zeile oben liest den
+            // Fuss, bevor der Controller den Sprung angewendet hat, und meldete
+            // darum immer "moved 0.00".
+            teleportVerifyPending = true;
+            teleportVerifyBefore = before;
+            teleportVerifyAsked = teleportTarget;
+        }
+
+        teleportStatus = called ? "teleport: jumped" : "teleport: call failed";
+        teleportValid = false;
+        teleportWasValid = false;
+        teleportWhy = "";
+    }
+
+    // Der Vignetten-Takt. VERBRAUCHT die Anforderung und raeumt sie: sie
+    // entsteht bei den Stick-Lesern und wird hier gebraucht, also gehoert sie
+    // genau einem Frame.
+    // ====================================================================
+    // DIE EIN-AUGEN-EFFEKTE - Abschnitt 161.
+    //
+    // Die zwei Komfortnamen werden hier zur Typnamen-Liste zusammengesetzt,
+    // statt in RenderFeatures zwei Sonderfaelle zu fuehren. Die Klasse kennt
+    // damit nur EINEN Begriff - eine Liste von Typnamen - und die Zuordnung
+    // "welcher Schalter meint welches Asset" steht an genau einer Stelle.
+    // ====================================================================
+    // ABLESEN STATT RATEN - Abschnitt 164.
+    //
+    // Der Strahl geht aus der KAMERA und nicht aus der Hand: das Artefakt
+    // sitzt in der Bildmitte auf dem Boden, und die Hand zeigt woanders hin.
+    //
+    // Kein RaycastHit - die Entfernung kommt aus der monotonen Bisektion
+    // (TeleportAim.TryHitDistance), das Objekt aus OverlapSphere am
+    // Trefferpunkt. Beide Bausteine sind im Projekt bewaehrt und beide geben
+    // nur Klassenreferenzen ueber die Grenze.
+    private void DriveShaderProbe()
+    {
+        if (!shaderProbe.Value)
+            return;
+
+        if (Time.unscaledTime < nextShaderProbe)
+            return;
+
+        nextShaderProbe = Time.unscaledTime
+            + Mathf.Max(0.25f, shaderProbeSeconds.Value);
+
+        try
+        {
+            // NICHT die Kamera - Abschnitt 165. Camera.main.transform.forward
+            // hat y == 0 immer, weil die Kopfpose in der View-Matrix lebt und
+            // nicht auf diesem Knoten. Die erste Fassung dieser Sonde lief
+            // darum dauerhaft waagerecht und traf nie den Boden, auf den
+            // geschaut wurde. Das war in diesem Projekt schon zweimal
+            // dokumentiert und einmal gemessen.
+            //
+            // Gezielt wird mit der PISTOLE. Sie zeigt dorthin, wo die Hand
+            // hinzeigt, und das ist die Geste, die beim Waschen ohnehin
+            // eingeuebt ist.
+            if (!TeleportRay(true, out var origin, out var forward))
+            {
+                LoggerInstance.Msg("  shader probe: no washer ray yet");
+                return;
+            }
+
+            var mask = Physics.DefaultRaycastLayers;
+
+            if (!TeleportAim.TryHitDistance(origin, forward, 40f, mask, 14,
+                out var distance))
+            {
+                LoggerInstance.Msg("  shader probe: nothing ahead within 40 m");
+                return;
+            }
+
+            var point = origin + forward * distance;
+
+            LoggerInstance.Msg($"shader probe: {distance:0.00} m along the washer"
+                + $"   point ({point.x:0.0}, {point.y:0.0}, {point.z:0.0})");
+
+            // Derselbe Aufruf und dieselbe Begruendung wie in TeleportAim: ein
+            // Il2CppReferenceArray von Collider-Referenzen, keine Struktur.
+            //
+            // Das Literal statt TeleportAim.NoTriggers: die Konstante ist dort
+            // private, und fuer eine Sonde die Sichtbarkeit eines fremden Typs
+            // zu lockern waere der falsche Preis.
+            var found = Physics.OverlapSphere(point, 0.3f, mask,
+                QueryTriggerInteraction.Ignore);
+
+            if (found.Length == 0)
+            {
+                LoggerInstance.Msg("  nothing overlapping - the surface has no collider "
+                    + "at the hit point");
+                return;
+            }
+
+            // Gedeckelt: in einem Stapel Geometrie will ich die ersten paar
+            // sehen, nicht das Log fluten.
+            var shown = 0;
+
+            for (var index = 0; index < found.Length && shown < 5; index++)
+            {
+                var collider = found[index];
+
+                if (collider is null || collider == null)
+                    continue;
+
+                shown++;
+                ReportRenderersOn(collider.gameObject);
+            }
+
+            if (found.Length > shown)
+                LoggerInstance.Msg($"  ... and {found.Length - shown} more collider(s)");
+        }
+        catch (Exception exception)
+        {
+            LoggerInstance.Warning("  shader probe threw "
+                + exception.GetType().Name + "; nothing read");
+        }
+    }
+
+    // Der Renderer kann am Collider oder an einem Vorfahren haengen - beides
+    // kommt in diesem Spiel vor, siehe die Pistolenkette.
+    private void ReportRenderersOn(GameObject target)
+    {
+        try
+        {
+            var renderer = target.GetComponent<Renderer>();
+
+            if (renderer is null || renderer == null)
+                renderer = target.GetComponentInParent<Renderer>();
+
+            var path = target.name;
+            var parent = target.transform.parent;
+
+            for (var depth = 0; depth < 3 && parent is not null && parent != null; depth++)
+            {
+                path = parent.name + "/" + path;
+                parent = parent.parent;
+            }
+
+            if (renderer is null || renderer == null)
+            {
+                LoggerInstance.Msg($"  {path}   collider without a renderer");
+                return;
+            }
+
+            LoggerInstance.Msg($"  {path}"
+                + $"   {renderer.GetIl2CppType()?.Name ?? "?"}"
+                + $"   layer {target.layer}"
+                + $"   enabled {(renderer.enabled ? "YES" : "no")}");
+
+            var materials = renderer.sharedMaterials;
+
+            for (var index = 0; index < materials.Length; index++)
+            {
+                var material = materials[index];
+
+                if (material is null || material == null)
+                {
+                    LoggerInstance.Msg($"    material {index}: null");
+                    continue;
+                }
+
+                // material.shader.name ist ein String ueber die Grenze und
+                // kann werfen - dieselbe Vorsicht, die GunRender schon
+                // dokumentiert.
+                var shader = "threw";
+                var queue = -1;
+
+                try
+                {
+                    shader = material.shader?.name ?? "null";
+                    queue = material.renderQueue;
+                }
+                catch
+                {
+                    // Der Name ist die Auskunft, nicht der Absturz.
+                }
+
+                LoggerInstance.Msg($"    material {index}: {material.name}"
+                    + $"   shader {shader}   queue {queue}");
+
+                // DIE KEYWORDS sind der eigentliche Grund fuer diese Sonde.
+                // Ein Bodenshader, der etwas im Bildraum abtastet, traegt das
+                // in einem Keyword - und dann steht der Taeter hier im Klartext.
+                try
+                {
+                    var keywords = material.shaderKeywords;
+
+                    if (keywords.Length > 0)
+                    {
+                        var joined = string.Empty;
+
+                        for (var k = 0; k < keywords.Length && k < 12; k++)
+                            joined += (k == 0 ? "" : " ") + keywords[k];
+
+                        LoggerInstance.Msg($"      keywords: {joined}"
+                            + (keywords.Length > 12
+                                ? $" (+{keywords.Length - 12} more)" : string.Empty));
+                    }
+                }
+                catch
+                {
+                    // Keywords sind eine Zugabe, kein Grund zum Abbruch.
+                }
+            }
+        }
+        catch (Exception exception)
+        {
+            LoggerInstance.Warning("  shader probe: reading a renderer threw "
+                + exception.GetType().Name);
+        }
+    }
+
+    private void DriveRenderFeatures()
+    {
+        var disabled = disableRenderFeatures.Value ?? string.Empty;
+
+        if (!volumetricFog.Value)
+            disabled = Append(disabled, "ButoRenderFeature");
+
+        if (!lightScattering.Value)
+            disabled = Append(disabled, "LightScatteringRenderFeature");
+
+        renderFeatures.Apply(LoggerInstance, disabled, renderFeatureRescan.Value);
+        renderFeatures.ApplyFogTemporal(LoggerInstance, fogTemporal.Value);
+        renderFeatures.ApplyGrass(LoggerInstance, grassFins.Value,
+            grassShells.Value, renderFeatureRescan.Value);
+        renderFeatures.ApplyTerrainFoliage(LoggerInstance, terrainFoliage.Value,
+            terrainInstancing.Value);
+        renderFeatures.ApplyStereoSeparation(LoggerInstance,
+            stereoSeparationOverride.Value);
+        renderFeatures.ReportCameras(LoggerInstance, cameraInventory.Value,
+            renderFeatureRescan.Value);
+        renderFeatures.ApplyLightBeams(LoggerInstance, lightBeams.Value);
+        renderFeatures.ApplyPostProcessing(LoggerInstance, postProcessing.Value);
+        renderFeatures.ApplyVolumes(LoggerInstance,
+            disableVolumeComponents.Value ?? string.Empty,
+            renderFeatureRescan.Value);
+        renderFeatures.ApplyRenderersByShader(LoggerInstance,
+            disableRenderersByShader.Value ?? string.Empty,
+            renderFeatureRescan.Value);
+        renderFeatures.ReportMaterials(LoggerInstance, materialInventory.Value,
+            renderFeatureRescan.Value);
+        renderFeatures.ApplyKeywords(LoggerInstance,
+            disableKeywords.Value ?? string.Empty, renderFeatureRescan.Value);
+    }
+
+    private static string Append(string list, string entry)
+        => string.IsNullOrWhiteSpace(list) ? entry : list + "," + entry;
+
+    private void DriveVignette()
+    {
+        var demand = vignetteDemand;
+        vignetteDemand = 0f;
+
+        if (Time.unscaledTime < turnPulseUntil)
+            demand = 1f;
+
+        vignette.Tick(LoggerInstance, comfortVignette.Value, demand,
+            vignetteStrength.Value, vignetteInner.Value,
+            vignetteFadeIn.Value, vignetteFadeOut.Value, vignetteDistance.Value);
+    }
+
     private bool RunBlockedByStance(float magnitude)
     {
         try
         {
-            // Unity-null UND Muster-null: eine zerstoerte Komponente ist kein
-            // Nullzeiger, und "is null" sieht sie nicht.
-            if (characterController is null || characterController == null)
-            {
-                characterController = anchor is null || anchor == null
-                    ? null
-                    : anchor.GetComponentInParent<Il2CppFuturLab.PW2.BaseCharacterController>();
+            if (!ResolveCharacterController())
+                return false;
 
-                if (characterController is null || characterController == null)
-                {
-                    characterController = null;
-
-                    if (!loggedNoController)
-                    {
-                        loggedNoController = true;
-                        LoggerInstance.Msg("stance: no BaseCharacterController above"
-                            + " the anchor - run stays as it was.");
-                    }
-
-                    return false;
-                }
-
-                loggedNoController = false;
-            }
-
-            var stance = characterController.CharacterStance;
+            var stance = characterController!.CharacterStance;
 
             if (stance == Il2CppFuturLab.PW2.CharacterStance.Standing)
             {
@@ -10879,6 +13134,31 @@ public sealed class Pose : MelonMod
     {
         if (moveAction is null || playerInput is null)
             return;
+
+        // OHNE GEHEN KEIN RENNEN. Der volle Ausschlag bedeutet beim
+        // Komfort-Teleport "zielen" und nicht "sprinten", und ein gesetztes
+        // Sprint-Flag ohne Bewegung waere ein Rest, den niemand mehr findet.
+        //
+        // EINMAL geraeumt und nicht pro Frame geschrieben: derselbe Merker,
+        // denselben Grund, wie unten.
+        if (comfortTeleport.Value)
+        {
+            if (sprintHeld)
+            {
+                sprintHeld = false;
+
+                try
+                {
+                    playerInput.Sprint = false;
+                }
+                catch
+                {
+                    // Eine tote BaseInput meldet sich schon an anderer Stelle.
+                }
+            }
+
+            return;
+        }
 
         try
         {
@@ -11149,6 +13429,61 @@ public sealed class Pose : MelonMod
     // beim naechsten Druck gleich, war das Submit folgenlos.
     private string menuPressSignature = "";
     private bool menuPressUsedContext;
+
+    // Der EINE Ort, an dem der Immersion Mode umschaltet. Geste und F1 rufen
+    // hier, damit es keinen Weg gibt, den Zustand zu aendern, ohne ihn zu
+    // protokollieren - und die Rueckmeldung ist wichtiger als sie aussieht:
+    // die UI verschwindet, und ein Puls ist dann der einzige Kanal, der
+    // bestaetigt, dass die Mod die Geste verstanden hat und nicht etwas
+    // abgestuerzt ist.
+    private void ToggleImmersion(string why)
+    {
+        immersion = !immersion;
+
+        // Auf der FREIEN Hand, also der ohne Pistole: Buzz nimmt die Rolle und
+        // nicht die Seite, damit der Puls im Linkshaenderbetrieb nicht
+        // vertauscht ist - Abschnitt 110.
+        Buzz(!WasherHandRight, immersion ? "immersion on" : "immersion off");
+
+        LoggerInstance.Msg($"immersion: {(immersion ? "ON" : "off")} ({why})"
+            + $"   menuMode {(menuMode ? "ON" : "off")}"
+            + $"   hold {menuHoldSeconds.Value:0.##} s");
+    }
+
+    // DIE ZURUECK-TASTE, und sie ist NICHT PressMenuButton mit anderer
+    // Reihenfolge - sie ist eine andere Absicht.
+    //
+    // PressMenuButton soll ein Menue OEFFNEN, wenn keines offen ist; darum
+    // endet seine Kette in ToggleGameMenu. B soll SCHLIESSEN, und wenn nichts
+    // zu schliessen ist, nichts tun. Ein B, das im Menue ein weiteres Menue
+    // aufmacht, waere eine Ueberraschung.
+    //
+    // Cancel ZUERST, Kontextknopf danach: ICancelHandler ist das, was ESC
+    // ausloest, und die Popups, um die es geht, haengen genau daran. Der
+    // Kontextknopf ist die Rueckfallebene fuer Schirme, die keinen
+    // Cancel-Handler auf der Auswahl haben.
+    //
+    // Eine Zeile pro Druck, und sie nennt den Schritt, der gegriffen hat.
+    // Ein stummer Druck ist die Luecke, die Abschnitt 99 einen ganzen Lauf
+    // gekostet hat.
+    private void PressBackButton()
+    {
+        var before = InteractionText();
+        var selected = SelectedName();
+        var allows = AllowsMovementText();
+
+        var step = "nothing to close";
+
+        if (TryUiCancel())
+            step = "ui cancel";
+        else if (TrySubmitCloseButton())
+            step = "context button";
+
+        LoggerInstance.Msg($"back (B): {step}"
+            + $"   selected {selected}"
+            + $"   allowsMovement {allows} -> {AllowsMovementText()}"
+            + $"   state {before} -> {InteractionText()}");
+    }
 
     private void PressMenuButton(string branch)
     {
@@ -12857,7 +15192,6 @@ public sealed class Pose : MelonMod
     // last open performance item; a ninth built every frame would add to exactly
     // that. What this needs to say, it says on a throttle.
     private readonly WashLaser menuLaser = new();
-    private static readonly Color PointerColor = new(0.2f, 0.85f, 1f, 1f);
     private Vector3 pointerWrote;
     private bool pointerWroteValid;
     private float nextPointerLog;
@@ -13540,7 +15874,7 @@ public sealed class Pose : MelonMod
         // the surface being pointed at. A line that overshoots the panel reads as
         // if it missed.
         menuLaser.Draw(LoggerInstance, origin, forward, "menu", distance,
-            laserWidth.Value, PointerColor, laserAlwaysOnTop.Value);
+            laserWidth.Value, BeamTint(), laserAlwaysOnTop.Value);
 
         // SELECTION, and it deliberately does NOT come from the game's module.
         //
@@ -16074,9 +18408,24 @@ public sealed class Pose : MelonMod
         else
             direction = washProbe.WashDirection;
 
+        // DIE FARBE IST UNTER DevMode EINE MESSANZEIGE, sonst eine Auswahl.
+        //
+        // Der Kopf von WashLaser sagt es: "The colour carries which decoupling
+        // candidate is active. It has to, because the on-screen overlay sticks
+        // to the face in the headset and is unreadable." Diese Anzeige einfach
+        // zu ueberschreiben haette ein Messwerkzeug stumm gemacht, ohne dass es
+        // auffaellt.
+        //
+        // Also beides, je nach Lage: wer den Laser im Konfigurator einschaltet,
+        // spielt und bekommt seine Farbe; wer unter DevMode messt, behaelt die
+        // Skip-Farbe.
+        var laserColor = devMode.Value
+            ? SkipColors[SkipIndex()]
+            : BeamTint();
+
         laserStatus = washLaser.Draw(LoggerInstance, muzzle, direction,
             $"{mode}/{SkipIndex()}", laserLength.Value, laserWidth.Value,
-            SkipColors[SkipIndex()], laserAlwaysOnTop.Value);
+            laserColor, laserAlwaysOnTop.Value);
     }
 
     private string HeadPositionText()

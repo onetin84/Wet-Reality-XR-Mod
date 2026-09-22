@@ -435,8 +435,6 @@
                                                Style="{StaticResource ValueLabel}" />
                                 </Grid>
 
-                                <CheckBox x:Name="SnapTurnCheck" Margin="0,4,0,8"
-                                          Content="Snap turning instead of smooth" />
                                 <CheckBox x:Name="VrHandsCheck" Margin="0,4,0,8"
                                           Content="Show VR hands" />
 
@@ -496,112 +494,268 @@
                                                Style="{StaticResource ValueLabel}" />
                                 </Grid>
 
+                                <!-- EINE FARBE FUER ALLE ZEIGER: Teleportbogen,
+                                     Teleportziel, Menuezeiger und
+                                     Interaktionszeiger. Ein gesperrtes
+                                     Teleportziel bleibt ROT - keine der vier
+                                     Farben ist rot, also kann die Auswahl die
+                                     Absage nicht zweideutig machen. -->
+                                <Grid Margin="0,0,0,10">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="150" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Style="{StaticResource FieldLabel}"
+                                               Text="Pointer colour" />
+                                    <ComboBox x:Name="PointerColorBox" Grid.Column="1">
+                                        <ComboBoxItem Content="Neon pink" />
+                                        <ComboBoxItem Content="Fresh green" />
+                                        <ComboBoxItem Content="Azure blue" />
+                                        <ComboBoxItem Content="Sun yellow" />
+                                    </ComboBox>
+                                </Grid>
+
                                 <CheckBox x:Name="LaserCheck" Margin="0,4,0,8"
                                           Content="Show aiming laser" />
                                 <TextBlock Foreground="{StaticResource Muted}" FontSize="11"
                                            TextWrapping="Wrap"
                                            Text="The laser is a development measuring tool and is not needed for normal play." />
+
+                                <!-- HIER STANDEN DREI HAEKCHEN - Abschnitt 171.
+                                     Nebel, Lichtstreuung und Grasklingen waren
+                                     Kandidaten der Jagd aus 163 bis 170, und
+                                     zwei davon sind gemessen unschuldig,
+                                     waehrend der dritte in der Szene nicht
+                                     existiert. Schalter fuer erledigte Fragen
+                                     stellen dem Spieler eine Frage, deren
+                                     Antwort nichts aendert.
+
+                                     Die SCHLUESSEL bleiben in der cfg - der
+                                     Nebel ist tatsaechlich einaeugig, und wer
+                                     ihn wegschalten will, kann das weiter.
+
+                                     An ihrer Stelle ein Wert, den man sehen
+                                     will. -->
+                                <Grid Margin="0,4,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="150" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Style="{StaticResource FieldLabel}"
+                                               Text="Teleport target" />
+                                    <Slider x:Name="MarkerSizeSlider" Grid.Column="1"
+                                            Minimum="0.3" Maximum="1.2" />
+                                    <TextBlock x:Name="MarkerSizeValue" Grid.Column="2"
+                                               Style="{StaticResource ValueLabel}" />
+                                </Grid>
                             </StackPanel>
                         </Border>
                     </Grid>
 
-                    <!-- GRIFF -->
-                    <Border Style="{StaticResource PanelStyle}">
-                        <StackPanel>
-                            <TextBlock Style="{StaticResource SectionTitle}"
-                                       Text="GRIP FINE-TUNING" />
-                            <TextBlock Foreground="{StaticResource Muted}" FontSize="11"
-                                       TextWrapping="Wrap" Margin="0,0,0,14"
-                                       Text="Moves and turns the washer within its own frame so that it sits where your hand holds it. In game, hold left grip with X and Y, move your washer hand to where the washer should sit, and let go." />
+                    <!-- UNTERE REIHE: KOMFORT und GRIFF nebeneinander.
 
-                            <Grid Margin="0,0,0,8">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="150" />
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
-                                </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Style="{StaticResource FieldLabel}"
-                                           Text="Sideways" />
-                                <Slider x:Name="GripXSlider" Grid.Column="1"
-                                        Minimum="-0.25" Maximum="0.25" />
-                                <TextBlock x:Name="GripXValue" Grid.Column="2"
-                                           Style="{StaticResource ValueLabel}" />
-                            </Grid>
+                         GEMESSEN: untereinander kostete das Komfortfeld 184 px
+                         Scrollweg und holte damit das Scrollen zurueck, das
+                         Abschnitt 108 behoben hatte (9 px vorher, 193 px
+                         danach). Nebeneinander bestimmt die hoehere Spalte die
+                         Hoehe statt der Summe - dasselbe Muster wie bei
+                         STEUERUNG und ANZEIGE oben. -->
+                    <Grid Margin="0,0,0,16">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="16" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
 
-                            <Grid Margin="0,0,0,8">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="150" />
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
-                                </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Style="{StaticResource FieldLabel}"
-                                           Text="Height" />
-                                <Slider x:Name="GripYSlider" Grid.Column="1"
-                                        Minimum="-0.25" Maximum="0.25" />
-                                <TextBlock x:Name="GripYValue" Grid.Column="2"
-                                           Style="{StaticResource ValueLabel}" />
-                            </Grid>
+                        <!-- KOMFORT -->
+                        <!-- ALLE DREI STEHEN AUS. Ein Komfortschalter, der von
+                             selbst an ist, nimmt dem Spieler eine Entscheidung
+                             ab, die ihm gehoert - und kostet Bewegungsfreiheit,
+                             die er nicht abgegeben hat.
 
-                            <Grid Margin="0,0,0,12">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="150" />
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
-                                </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Style="{StaticResource FieldLabel}"
-                                           Text="Forward and back" />
-                                <Slider x:Name="GripZSlider" Grid.Column="1"
-                                        Minimum="-0.25" Maximum="0.25" />
-                                <TextBlock x:Name="GripZValue" Grid.Column="2"
-                                           Style="{StaticResource ValueLabel}" />
-                            </Grid>
+                             EINSPALTIG INNEN, und das ist gemessen: bei halber
+                             Fensterbreite bleiben je Innenspalte rund 184 px,
+                             darin 106 px Beschriftung und 44 px Wert - die
+                             Regler fielen auf 34 px Spur zusammen und der
+                             laengste Haekchentext wurde abgeschnitten. Die
+                             Hoehe kostet das nichts, weil GRIFF daneben mit
+                             sechs Reglern ohnehin das hoehere Feld ist.
 
-                            <Grid Margin="0,0,0,8">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="150" />
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
-                                </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Style="{StaticResource FieldLabel}"
-                                           Text="Tilt up and down" />
-                                <Slider x:Name="RotPitchSlider" Grid.Column="1"
-                                        Minimum="-180" Maximum="180" />
-                                <TextBlock x:Name="RotPitchValue" Grid.Column="2"
-                                           Style="{StaticResource ValueLabel}" />
-                            </Grid>
+                             Der Hinweis ist kein Beiwerk: ohne ihn sucht ein
+                             Spieler mit "Alle aus" den Teleport hier und
+                             schliesst, es gaebe keinen. Den Ziel-Teleport auf
+                             dem Stick der Pistolenhand hat er trotzdem. -->
+                        <Border Grid.Column="0" Style="{StaticResource PanelStyle}"
+                                VerticalAlignment="Stretch">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource SectionTitle}" Text="COMFORT" />
+                                <TextBlock Foreground="{StaticResource Muted}" FontSize="11"
+                                           TextWrapping="Wrap" Margin="0,0,0,14"
+                                           Text="All off by default. The teleport on the washer hand stick works regardless of these settings, and never reaches higher or further than the jump button would." />
 
-                            <Grid Margin="0,0,0,8">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="150" />
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
-                                </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Style="{StaticResource FieldLabel}"
-                                           Text="Turn left and right" />
-                                <Slider x:Name="RotYawSlider" Grid.Column="1"
-                                        Minimum="-180" Maximum="180" />
-                                <TextBlock x:Name="RotYawValue" Grid.Column="2"
-                                           Style="{StaticResource ValueLabel}" />
-                            </Grid>
+                                <Grid Margin="0,0,0,12">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="106" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Style="{StaticResource FieldLabel}"
+                                               Text="Preset" />
+                                    <ComboBox x:Name="ComfortPresetBox" Grid.Column="1">
+                                        <ComboBoxItem Content="All off" />
+                                        <ComboBoxItem Content="Gentle" />
+                                        <ComboBoxItem Content="Maximum" />
+                                        <ComboBoxItem Content="Custom" />
+                                    </ComboBox>
+                                </Grid>
 
-                            <Grid Margin="0,0,0,8">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="150" />
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
-                                </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Style="{StaticResource FieldLabel}"
-                                           Text="Twist sideways" />
-                                <Slider x:Name="RotRollSlider" Grid.Column="1"
-                                        Minimum="-180" Maximum="180" />
-                                <TextBlock x:Name="RotRollValue" Grid.Column="2"
-                                           Style="{StaticResource ValueLabel}" />
-                            </Grid>
+                                <CheckBox x:Name="TeleportCheck" Margin="0,2,0,6"
+                                          Content="Teleport instead of walking" />
+                                <CheckBox x:Name="SnapTurnCheck" Margin="0,2,0,6"
+                                          Content="Snap turning instead of smooth" />
+                                <CheckBox x:Name="VignetteCheck" Margin="0,2,0,12"
+                                          Content="Vignette while moving" />
 
-                            <Button x:Name="GripResetButton" Style="{StaticResource GhostButton}"
-                                    Content="Reset grip" HorizontalAlignment="Left" />
-                        </StackPanel>
-                    </Border>
+                                <!-- GERASTERT, nicht stufenlos: ein Snap-Winkel
+                                     von 37 Grad ist keine sinnvolle Groesse.
+                                     IsSnapToTickEnabled laesst den Regler nur
+                                     auf 15, 30, 45 und 60 stehen. -->
+                                <Grid Margin="0,0,0,12">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="106" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" MinWidth="42" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Style="{StaticResource FieldLabel}"
+                                               Text="Snap angle" />
+                                    <Slider x:Name="SnapAngleSlider" Grid.Column="1"
+                                            Minimum="15" Maximum="60"
+                                            TickFrequency="15" IsSnapToTickEnabled="True"
+                                            TickPlacement="BottomRight" />
+                                    <TextBlock x:Name="SnapAngleValue" Grid.Column="2"
+                                               Style="{StaticResource ValueLabel}" />
+                                </Grid>
+
+                                <!-- STUFENLOS, weil hier jeder Zwischenwert
+                                     sinnvoll ist. Bei 0 zeigt die Beschriftung
+                                     "keine" statt "0 %" - eine Null in Prozent
+                                     liest sich wie ein Messwert. -->
+                                <Grid Margin="0,0,0,4">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="106" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" MinWidth="42" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Style="{StaticResource FieldLabel}"
+                                               Text="Vignette strength" />
+                                    <Slider x:Name="VignetteStrengthSlider" Grid.Column="1"
+                                            Minimum="0" Maximum="1" />
+                                    <TextBlock x:Name="VignetteStrengthValue" Grid.Column="2"
+                                               Style="{StaticResource ValueLabel}" />
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- GRIFF -->
+                        <Border Grid.Column="2" Style="{StaticResource PanelStyle}"
+                                VerticalAlignment="Stretch">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource SectionTitle}"
+                                           Text="GRIP FINE-TUNING" />
+                                <TextBlock Foreground="{StaticResource Muted}" FontSize="11"
+                                           TextWrapping="Wrap" Margin="0,0,0,14"
+                                           Text="Moves and turns the washer within its own frame so that it sits where your hand holds it. In game, hold left grip with X and Y, move your washer hand to where the washer should sit, and let go." />
+
+                                <Grid Margin="0,0,0,8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="130" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Style="{StaticResource FieldLabel}"
+                                               Text="Sideways" />
+                                    <Slider x:Name="GripXSlider" Grid.Column="1"
+                                            Minimum="-0.25" Maximum="0.25" />
+                                    <TextBlock x:Name="GripXValue" Grid.Column="2"
+                                               Style="{StaticResource ValueLabel}" />
+                                </Grid>
+
+                                <Grid Margin="0,0,0,8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="130" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Style="{StaticResource FieldLabel}"
+                                               Text="Height" />
+                                    <Slider x:Name="GripYSlider" Grid.Column="1"
+                                            Minimum="-0.25" Maximum="0.25" />
+                                    <TextBlock x:Name="GripYValue" Grid.Column="2"
+                                               Style="{StaticResource ValueLabel}" />
+                                </Grid>
+
+                                <Grid Margin="0,0,0,12">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="130" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Style="{StaticResource FieldLabel}"
+                                               Text="Forward and back" />
+                                    <Slider x:Name="GripZSlider" Grid.Column="1"
+                                            Minimum="-0.25" Maximum="0.25" />
+                                    <TextBlock x:Name="GripZValue" Grid.Column="2"
+                                               Style="{StaticResource ValueLabel}" />
+                                </Grid>
+
+                                <Grid Margin="0,0,0,8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="130" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Style="{StaticResource FieldLabel}"
+                                               Text="Tilt up and down" />
+                                    <Slider x:Name="RotPitchSlider" Grid.Column="1"
+                                            Minimum="-180" Maximum="180" />
+                                    <TextBlock x:Name="RotPitchValue" Grid.Column="2"
+                                               Style="{StaticResource ValueLabel}" />
+                                </Grid>
+
+                                <Grid Margin="0,0,0,8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="130" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Style="{StaticResource FieldLabel}"
+                                               Text="Turn left and right" />
+                                    <Slider x:Name="RotYawSlider" Grid.Column="1"
+                                            Minimum="-180" Maximum="180" />
+                                    <TextBlock x:Name="RotYawValue" Grid.Column="2"
+                                               Style="{StaticResource ValueLabel}" />
+                                </Grid>
+
+                                <Grid Margin="0,0,0,8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="130" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Style="{StaticResource FieldLabel}"
+                                               Text="Twist sideways" />
+                                    <Slider x:Name="RotRollSlider" Grid.Column="1"
+                                            Minimum="-180" Maximum="180" />
+                                    <TextBlock x:Name="RotRollValue" Grid.Column="2"
+                                               Style="{StaticResource ValueLabel}" />
+                                </Grid>
+
+                                <Button x:Name="GripResetButton" Style="{StaticResource GhostButton}"
+                                        Content="Reset grip" HorizontalAlignment="Left" />
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+
                 </StackPanel>
             </ScrollViewer>
 

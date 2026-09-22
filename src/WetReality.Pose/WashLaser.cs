@@ -1,5 +1,6 @@
 using Il2CppInterop.Runtime;
 using MelonLoader;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace WetReality;
@@ -179,6 +180,72 @@ internal sealed class WashLaser
             // seconds in the first version.
             Drop(log);
             log.Warning($"  wash laser threw {exception.GetType().Name}: {exception.Message}");
+            return $"laser {mode}: failed";
+        }
+    }
+
+    // EIN ZUG AUS MEHREREN PUNKTEN, fuer den Teleport-Wurfbogen.
+    //
+    // Hier und nicht in einer eigenen Klasse: Material, Wiederholungslogik mit
+    // Rueckfall und die Freigabe stecken schon in dieser Datei, und ein Bogen
+    // unterscheidet sich von einer Linie nur in positionCount. Eine zweite
+    // Klasse waere eine zweite Stelle, an der BuildMaterial gepflegt werden
+    // muesste.
+    //
+    // Die anderen drei Aufrufer bleiben unberuehrt: positionCount wird bei
+    // jedem Zeichnen neu gesetzt, also ist der Wechsel zwischen zwei und
+    // vierzig Punkten folgenlos.
+    internal string DrawPath(MelonLogger.Instance log, List<Vector3> points,
+        string mode, float width, Color color, bool onTop)
+    {
+        alwaysOnTop = onTop;
+        label = mode;
+
+        // Ein Zug aus einem Punkt ist kein Zug. Zwei Punkte, die aufeinander
+        // liegen, waeren ein Punkt, der wie ein Fehler aussieht - dieselbe
+        // Sicherung, die Draw fuer den Nullvektor traegt.
+        if (points is null || points.Count < 2)
+            return Hide($"laser {mode}: fewer than two points");
+
+        if (width <= 0f)
+            return Hide($"laser {mode}: width is {width:0.###}");
+
+        if (!Ensure(log))
+            return $"laser {mode}: no renderer";
+
+        try
+        {
+            var renderer = line!;
+
+            renderer.positionCount = points.Count;
+
+            for (var index = 0; index < points.Count; index++)
+                renderer.SetPosition(index, points[index]);
+
+            renderer.startWidth = width;
+            renderer.endWidth = width;
+
+            if (color != applied)
+            {
+                applied = color;
+                Paint(renderer, material, color);
+            }
+
+            renderer.enabled = true;
+
+            if (!loggedFirstDraw)
+            {
+                loggedFirstDraw = true;
+                log.Msg($"  laser {mode} first draw   visible {renderer.isVisible}   "
+                    + $"{points.Count} point(s)");
+            }
+
+            return $"laser {mode} on  {points.Count} point(s)  [{materialSource}]";
+        }
+        catch (Exception exception)
+        {
+            Drop(log);
+            log.Warning($"  laser {mode} threw {exception.GetType().Name}: {exception.Message}");
             return $"laser {mode}: failed";
         }
     }

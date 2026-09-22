@@ -78,7 +78,32 @@ STEUERUNG UND EINSTELLUNGEN
   öffnen", dazu die Einstellungen: welche Hand die Pistole hält,
   Drehgeschwindigkeit, Menügröße und -abstand, die Ausrichtung der Pistole in
   deiner Hand, die Vibration beim Sprühen samt Stärke, ob die beiden VR-Hände
-  angezeigt werden, und ob der Ziellaser gezeichnet wird.
+  angezeigt werden, ob der Ziellaser gezeichnet wird, die Farbe der
+  Zeigestrahlen und die Größe des Teleport-Ziels.
+
+  KOMFORTOPTIONEN, alle standardmäßig AUS:
+
+    - Teleport statt Gehen. Der Stick der freien Hand nach vorn teleportiert
+      dann, statt zu laufen. Der Sprung mit A ist in diesem Modus
+      abgeschaltet.
+    - Sprungdrehung statt gleitend, mit wählbarem Winkel: 15, 30, 45 oder 60
+      Grad.
+    - Vignette bei Bewegung, Stärke stufenlos.
+
+  Eine Vorlage stellt alle drei auf einmal: Aus, Sanft oder Maximal.
+
+  UNABHAENGIG DAVON gibt es den Ziel-Teleport für jeden: Stick der
+  Pistolenhand nach oben, gezielt wird mit der freien Hand. Er reicht nie
+  höher als ein Sprung, nach unten ohne Grenze, und auf Treppen und
+  Vorsprünge kommst du, wenn ein gehbarer Weg hinaufführt. Die Weite ist die
+  im Spiel gemessene Sprungweite mit Sprint.
+
+  IMMERSION MODE: die Menü-Taste halten und loslassen schaltet die Spiel-UI
+  aus und wieder ein. Ein geöffnetes Menü bleibt sichtbar, du sperrst dich
+  also nicht aus. Halten statt Doppelklick, weil Virtual Desktop den
+  Doppelklick belegt.
+
+  B ist in Popups der Ersatz für Esc - Levelauswertung, Zeitungsartikel.
 
   Der Knopf unten startet das Spiel über Steam, das Fenster kann also daneben
   offen bleiben. Er ist grau, solange keine Installation gefunden wurde.
@@ -137,6 +162,16 @@ WAS INSTALLIERT WIRD, UND WOHER
 
 
 BEKANNTE GRENZEN
+
+  - Auf dem Boden erscheinen auf EINEM Auge Helligkeitsunterschiede, die den
+    Schlagschatten überdecken - am deutlichsten auf Rasen. Ursache unbekannt.
+    Gemessen ausgeschlossen sind: volumetrischer Nebel, Lichtstreuung, alle
+    zehn Renderer-Features der Grafikpipeline, das Gras in beiden Bauformen,
+    Terrain-Instanzierung, Kantenglättung, die gesamte Nachbearbeitung,
+    Schatten, der Konturen-Pass und eine einseitig gebundene Kamera. Der
+    Effekt ist kosmetisch; Nebel und Lichtstreuung lassen sich in
+    MelonPreferences.cfg über VolumetricFog und LightScattering abschalten,
+    falls sie einzeln stören.
 
   - Die Arme und Hände des Spiels bleiben ausgeblendet, und zwar unbedingt.
     Das First-Person-Mesh ist EIN Objekt mit BEIDEN Händen - aus ihm nur die

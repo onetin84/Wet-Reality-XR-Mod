@@ -68,6 +68,33 @@ PLAY
 
 CONTROLS AND SETTINGS
 
+  COMFORT OPTIONS, all OFF by default:
+
+    - Teleport instead of walking. Pushing the free hand's stick forward then
+      teleports rather than walking, and the jump on A is switched off in
+      that mode.
+    - Snap turn instead of smooth, with a selectable angle: 15, 30, 45 or 60
+      degrees.
+    - Vignette while moving, strength continuously adjustable.
+
+  A preset sets all three at once: Off, Gentle or Maximum.
+
+  INDEPENDENTLY of those there is a target teleport for everyone: washer-hand
+  stick up, aimed with the free hand. It never reaches higher than a jump, has
+  no limit downwards, and gets you onto stairs and ledges whenever a walkable
+  path leads up there. The range is the sprinting jump distance as measured in
+  the game.
+
+  IMMERSION MODE: hold the Menu button and release it to switch the game UI
+  off and on again. An open menu stays visible, so you cannot lock yourself
+  out. Hold rather than double-click, because Virtual Desktop already uses the
+  double-click.
+
+  B stands in for Esc inside popups - level summary, newspaper articles.
+
+  The configuration tool also sets the colour of the pointer beams and the
+  size of the teleport target.
+
   Double-click  Configurator.cmd
 
   It has the full control layout under "Open quick guide", and settings for
@@ -127,6 +154,15 @@ WHAT GETS INSTALLED, AND FROM WHERE
 
 
 KNOWN LIMITATIONS
+
+  - On the ground, ONE eye shows brightness differences that cover the cast
+    shadow - most visible on grass. Cause unknown. Measured and ruled out:
+    volumetric fog, light scattering, all ten renderer features of the
+    graphics pipeline, grass in both of its forms, terrain instancing,
+    anti-aliasing, the entire post-processing layer, shadows, the outline pass
+    and a camera bound to a single eye. The effect is cosmetic; fog and light
+    scattering can be switched off individually in MelonPreferences.cfg via
+    VolumetricFog and LightScattering if they bother you on their own.
 
   - The game's own arms and hands stay hidden, and now unconditionally. Its
     first-person mesh is one object holding BOTH hands, so showing only the

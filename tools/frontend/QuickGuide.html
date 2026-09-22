@@ -259,14 +259,14 @@ footer .spacer { flex: 1; }
 <div class="pad">
   <img src="assets/controller.png" alt="Meta Quest 3 controllers with the mod's mapping">
 
-  <b class="l" style="left:20.8%; top:16.1%;"><i>Walk<em>push fully to sprint</em></i></b>
+  <b class="l" style="left:20.8%; top:16.1%;"><i>Walk<em>push fully to sprint &middot; with comfort teleport: forward = teleport</em></i></b>
   <b class="r" style="left:31.9%; top:20.0%;"><i>Task list<em>Y &middot; hold for inventory</em></i></b>
   <b class="r" style="left:29.9%; top:25.9%;"><i>Pick up / put down<em>X</em></i></b>
-  <b class="l" style="left:25.7%; top:30.3%;"><i>Pause menu<em>Menu</em></i></b>
+  <b class="l" style="left:25.7%; top:30.3%;"><i>Pause menu<em>Menu &middot; hold and release: UI off</em></i></b>
   <b class="r" style="left:31.3%; top:44.4%;"><i>Rotate nozzle<em>trigger &middot; refills detergent</em></i></b>
   <b class="r" style="left:34.2%; top:59.6%;"><i>Highlight dirt<em>grip &middot; hold to rotate a carried object</em></i></b>
-  <b class="r" style="left:78.5%; top:15.1%;"><i>Turn<em>up / down: change nozzle &middot; click: category</em></i></b>
-  <b class="l" style="left:68.0%; top:20.0%;"><i>Crouch<em>B</em></i></b>
+  <b class="r" style="left:78.5%; top:15.1%;"><i>Turn<em>up: teleport target &middot; down: nozzle</em></i></b>
+  <b class="l" style="left:68.0%; top:20.0%;"><i>Crouch<em>B &middot; in popups: close</em></i></b>
   <b class="l" style="left:69.7%; top:25.9%;"><i>Jump<em>A &middot; confirms in menus</em></i></b>
   <b class="l" style="left:68.7%; top:44.4%;"><i>Spray<em>trigger &middot; confirms in menus</em></i></b>
   <b class="l" style="left:65.8%; top:59.6%;"><i>Spray on / off<em>grip &middot; no need to hold</em></i></b>
@@ -282,11 +282,12 @@ footer .spacer { flex: 1; }
   <tr><th>Move the controller</th><td>The washer follows your hand in position and direction</td></tr>
   <tr><th>Trigger</th><td>Spray, while held</td></tr>
   <tr><th>Grip</th><td>Continuous spray on or off — no need to hold the trigger. While it is running, the grip switches it off instead of changing a tool, and opening the pause menu switches it off too, so a running jet can always be stopped.</td></tr>
-  <tr><th><kbd>A</kbd></th><td>Jump</td></tr>
-  <tr><th><kbd>B</kbd> tap</th><td>Crouch</td></tr>
+  <tr><th><kbd>A</kbd></th><td>Jump. <b>With comfort teleport the jump is switched off</b> — otherwise jump plus teleport would reach higher than intended</td></tr>
+  <tr><th><kbd>B</kbd> tap</th><td>Crouch. Inside a popup — level summary, newspaper article — <kbd>B</kbd> closes it instead. This is the stand-in for <kbd>Esc</kbd></td></tr>
   <tr><th><kbd>B</kbd> hold</th><td>Crouch, long press</td></tr>
-  <tr><th>Stick left / right</th><td>Turn</td></tr>
-  <tr><th>Stick up / down</th><td>Next or previous nozzle in the current category. It wants a deliberate flick, held for a moment — turning left or right no longer changes the nozzle by accident</td></tr>
+  <tr><th>Stick left / right</th><td>Turn. With the <i>snap turn</i> comfort option it turns in fixed steps</td></tr>
+  <tr><th>Stick up</th><td><b>Teleport target.</b> Aim with the free hand, let the stick return to centre to commit. Always available, independent of the comfort options</td></tr>
+  <tr><th>Stick down</th><td>Next nozzle in the current category. It wants a deliberate flick, held for a moment — turning left or right no longer changes the nozzle by accident</td></tr>
   <tr><th><kbd>R3</kbd> click</th><td>Switch nozzle category — standard or soap</td></tr>
   <tr><th><kbd>R3</kbd> hold</th><td>Switch washer, which is how you reach the turbo</td></tr>
 </table>
@@ -294,15 +295,57 @@ footer .spacer { flex: 1; }
 <h2>Left controller</h2>
 
 <table>
-  <tr><th>Stick</th><td>Walk</td></tr>
+  <tr><th>Stick</th><td>Walk. With the <i>teleport instead of walking</i> comfort option, pushing the stick forward teleports instead</td></tr>
   <tr><th>Stick pushed all the way</th><td>Sprint</td></tr>
   <tr><th>Trigger</th><td>Open or close an animated interactable when your hand is on it — otherwise rotate the nozzle and refill detergent</td></tr>
   <tr><th>Grip</th><td>Highlight remaining dirt</td></tr>
   <tr><th><kbd>X</kbd></th><td>Pick up and put down objects, and work switches such as a lift's up and down. Point with the left hand: a green line appears as soon as something is within reach, and only then — no line means nothing is there. A switch that has to be held stays pressed while you hold <kbd>X</kbd></td></tr>
   <tr><th><kbd>Y</kbd> tap</th><td>Task list</td></tr>
   <tr><th><kbd>Y</kbd> hold</th><td>Furniture inventory</td></tr>
-  <tr><th><kbd>Menu</kbd></th><td>Pause menu</td></tr>
+  <tr><th><kbd>Menu</kbd> tap</th><td>Pause menu</td></tr>
+  <tr><th><kbd>Menu</kbd> hold and release</th><td><b>Immersion Mode</b> — the game UI off and on again. An open menu stays visible, so you cannot lock yourself out. Hold rather than double-click, because Virtual Desktop already uses the double-click</td></tr>
   <tr><th><kbd>L3</kbd> click</th><td>Switch extension</td></tr>
+</table>
+
+<h2>Teleport</h2>
+
+<p class="hint">
+  There are two, and they are independent. Both are aimed with the <b>free
+  hand</b> — the stick says "go", the hand says "where".
+</p>
+
+<table>
+  <tr><th>Target teleport</th><td>Washer-hand stick <b>up</b>. There for every player, with or without comfort options — for placing yourself somewhere deliberately</td></tr>
+  <tr><th>Comfort teleport</th><td>Off-hand stick <b>forward</b>, <i>if</i> the comfort option is on. It then replaces walking</td></tr>
+</table>
+
+<p class="hint">
+  The arc flies like a thrown stone, and that is deliberate: there is an optimal
+  angle for maximum distance, and you cannot overshoot it. The range is the
+  <b>measured</b> sprinting jump — 7.74 m on level ground. Downwards there is no
+  limit; upwards never higher than the jump. For greater heights use ladders,
+  scissor lifts and stairs.
+</p>
+
+<table>
+  <tr><th>Stairs and ledges</th><td>Walking, not jumping: if a walkable path leads up there, the target is allowed even above jump height. A wall stays a wall</td></tr>
+  <tr><th>Ladders</th><td>Teleporting onto a leaning ladder puts you at its top</td></tr>
+  <tr><th>In mid-air</th><td>No teleport while jumping or falling — only with solid ground under your feet again</td></tr>
+  <tr><th>Red instead of coloured</th><td>The target is refused: too high, no room, or no ground hit</td></tr>
+</table>
+
+<h2>Comfort options</h2>
+
+<p class="hint">
+  All <b>off by default</b>, set in the configuration tool. The target teleport
+  above works independently and is always there.
+</p>
+
+<table>
+  <tr><th>Teleport instead of walking</th><td>The off-hand stick teleports instead of walking. The jump on <kbd>A</kbd> is switched off then</td></tr>
+  <tr><th>Snap turn</th><td>Turning in fixed steps instead of smoothly. The angle is selectable: 15°, 30°, 45° or 60°</td></tr>
+  <tr><th>Vignette while moving</th><td>Darkens the edge of the image while you move. The strength is continuously adjustable</td></tr>
+  <tr><th>Preset</th><td><i>Off</i>, <i>Gentle</i> (snap turn and vignette), <i>Maximum</i> (everything). Ticking a box by hand sets the preset to <i>Custom</i></td></tr>
 </table>
 
 <h2>Grab gestures</h2>

@@ -31,9 +31,9 @@
          the game would drag in the Il2Cpp interop types and fail.
 
          Two places hold the number, so they are bumped together. -->
-    <Version>1.63.0</Version>
-    <AssemblyVersion>1.63.0</AssemblyVersion>
-    <FileVersion>1.63.0</FileVersion>
+    <Version>1.86.0</Version>
+    <AssemblyVersion>1.86.0</AssemblyVersion>
+    <FileVersion>1.86.0</FileVersion>
   </PropertyGroup>
   <ItemGroup>
     <!-- The splash plate, compiled INTO the assembly.
@@ -88,6 +88,21 @@
          BaseEquipmentTypeData live in Core. No hard-coded nozzle list is needed
          because the game's own cyclers and its IsOwned filter do the work. -->
     <Reference Include="Il2CppFuturLab.PW2.GameContent" HintPath="$(GamePath)/MelonLoader/Il2CppAssemblies/Il2CppFuturLab.PW2.GameContent.dll" Private="false" />
+    <!-- URP und Buto, fuer die Ein-Augen-Effekte aus Abschnitt 161.
+         ScriptableRendererFeature.SetActive/isActive sind bool, und
+         ClampedFloatParameter.value ist float - keine Struktur ueberquert die
+         Interop-Grenze. -->
+    <Reference Include="Unity.RenderPipelines.Universal.Runtime" HintPath="$(GamePath)/MelonLoader/Il2CppAssemblies/Unity.RenderPipelines.Universal.Runtime.dll" Private="false" />
+    <Reference Include="Unity.RenderPipelines.Core.Runtime" HintPath="$(GamePath)/MelonLoader/Il2CppAssemblies/Unity.RenderPipelines.Core.Runtime.dll" Private="false" />
+    <!-- PW2.GFX und TerrainModule, fuer die zwei Grasklingen-Kandidaten aus
+         Abschnitt 162. DrawFins, DrawShells und drawTreesAndFoliage sind bool -
+         keine Struktur ueberquert die Interop-Grenze. -->
+    <!-- VLB, fuer die Lichtstrahlen aus Abschnitt 170. Nur MonoBehaviour
+         .enabled wird angefasst - ein bool. -->
+    <Reference Include="Il2CppVLB" HintPath="$(GamePath)/MelonLoader/Il2CppAssemblies/Il2CppVLB.dll" Private="false" />
+    <Reference Include="Il2CppFuturLab.PW2.GFX" HintPath="$(GamePath)/MelonLoader/Il2CppAssemblies/Il2CppFuturLab.PW2.GFX.dll" Private="false" />
+    <Reference Include="UnityEngine.TerrainModule" HintPath="$(GamePath)/MelonLoader/Il2CppAssemblies/UnityEngine.TerrainModule.dll" Private="false" />
+    <Reference Include="Il2CppOccaSoftware.Buto.Runtime" HintPath="$(GamePath)/MelonLoader/Il2CppAssemblies/Il2CppOccaSoftware.Buto.Runtime.dll" Private="false" />
     <Reference Include="Il2CppFuturLab.PW2.Core" HintPath="$(GamePath)/MelonLoader/Il2CppAssemblies/Il2CppFuturLab.PW2.Core.dll" Private="false" />
     <!-- SettingUIElement and its four subtypes - SettingButton, SettingDropdown,
          SettingSlider, SettingToggle - which are what the settings screen is

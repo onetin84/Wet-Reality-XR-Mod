@@ -59,3 +59,10 @@ desktop.ini
 # geloeschte Zeilen - sie tragen keine lokalen Pfade.
 Wet Reality Handbuch.md
 Wet Reality Offene Punkte.md
+
+# Gesicherte Spiellogs - MelonLoader rotiert nach Namen, darum werden sie
+# lokal gesichert. Sie gehoeren nicht ins Repo (11 MB und schnell mehr).
+logs-archive/
+
+# Python-Bytecode der Einwegskripte aus tools/.
+__pycache__/

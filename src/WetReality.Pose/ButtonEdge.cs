@@ -55,6 +55,17 @@ internal sealed class ButtonEdge
     // holdSeconds of zero disables the hold half entirely, which is what a
     // button wants when it has only one job - then Tap fires on press rather
     // than on release, because there is nothing to wait for.
+    //
+    // MIT holdSeconds UEBER NULL feuert Hold AN DER SCHWELLE, waehrend der
+    // Finger noch unten ist, und Tap erst beim Loslassen. Genau diese
+    // Aufteilung traegt seit Abschnitt 149 die Immersion-Geste auf der
+    // Menue-Taste: lang gedrueckt schaltet die UI, kurz gedrueckt oeffnet das
+    // Menue.
+    //
+    // Ein Doppelklick-Fenster stand hier auch einmal. Es ist wieder heraus:
+    // Virtual Desktop belegt den Doppelklick der Menue-Taste selbst, und das
+    // Fenster kostete 0,3 s Verzoegerung auf JEDEN Menuedruck - ein Halten
+    // braucht keines.
     internal void Poll(bool pressed, float holdSeconds)
     {
         Pressed = false;

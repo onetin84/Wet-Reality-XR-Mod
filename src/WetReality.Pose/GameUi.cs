@@ -179,8 +179,26 @@ internal sealed class GameUi
     // ScreenManagerViewportBase overrides OnDisable and owns the cached-screen
     // list, so deactivating the tree risks unloading screens and re-running
     // initialisation on the way back.
-    internal void ToggleHidden(MelonLogger.Instance log)
+    // EIN GEWUENSCHTER STAND, NICHT DAS GEGENTEIL VON JETZT.
+    //
+    // Der Immersion Mode gleicht pro Frame ab (Pose ruft mit
+    // immersion && !menuMode), und ein Toggle kann das nicht bedienen: er
+    // wuesste bei jedem Aufruf nur, dass er umschalten soll. Darum haelt Pose
+    // den WUNSCH und diese Klasse den ZUSTAND, und genau eine Stelle
+    // vergleicht die beiden.
+    //
+    // IDEMPOTENT UND DARUM PRO FRAME BEZAHLBAR: stimmt der Stand schon,
+    // passiert nichts - kein Schreibvorgang auf die CanvasGroup, keine
+    // Logzeile. Geloggt wird nur der Wechsel.
+    //
+    // Resolve() steht bewusst HINTER dem Kurzschluss. Der Normalfall ist
+    // "nicht versteckt und soll nicht versteckt sein", und dafuer muss keine
+    // szeneweite Suche nach dem Wurzel-Canvas laufen.
+    internal void ApplyHidden(MelonLogger.Instance log, bool wanted)
     {
+        if (wanted == hidden)
+            return;
+
         if (!Resolve(log))
             return;
 
@@ -189,14 +207,14 @@ internal sealed class GameUi
             if (group is null)
             {
                 // Second choice, and only because the first is absent.
-                root!.enabled = hidden;
-                hidden = !hidden;
+                root!.enabled = !wanted;
+                hidden = wanted;
                 Status = hidden ? "ui hidden (canvas)" : "ui shown (canvas)";
                 log.Msg($"  {Status}");
                 return;
             }
 
-            hidden = !hidden;
+            hidden = wanted;
             group.alpha = hidden ? 0f : 1f;
             group.blocksRaycasts = !hidden;
             Status = hidden ? "ui hidden" : "ui shown";

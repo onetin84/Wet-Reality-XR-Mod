@@ -58,6 +58,20 @@ $script:CfgPath = $null
 $script:GameFolder = $null
 $script:Loading = $true
 
+# Abschnitt 147. Beide Merker verhindern, dass sich das Preset selbst
+# ueberschreibt:
+#
+#   ApplyingPreset   laeuft, waehrend das Preset Haekchen und Regler setzt.
+#                    Slider.ValueChanged unterscheidet Hand und Skript nicht.
+#   SuppressPreset   laeuft, waehrend das Skript die Auswahlbox selbst setzt -
+#                    sonst wendet deren SelectionChanged das Preset gleich
+#                    wieder an.
+#
+# Deklariert statt bei Bedarf gesetzt: unter Set-StrictMode -Version Latest ist
+# das LESEN einer nicht gesetzten Variablen ein Fehler.
+$script:ApplyingPreset = $false
+$script:SuppressPreset = $false
+
 # ------------------------------------------------------------- text file IO
 #
 # Explicit UTF-8, because Get-Content without -Encoding reads a file that has no
@@ -77,10 +91,45 @@ function Write-Utf8 {
         [Parameter(Mandatory)] [AllowEmptyString()] $Content
     )
 
-    if ($Content -is [array]) { $Content = ($Content -join [Environment]::NewLine) }
+    # DIE FORM DER VORHANDENEN DATEI BLEIBT - Zeilenenden und BOM.
+    #
+    # GEMESSEN, nicht vermutet: MelonPreferences.cfg liegt als LF OHNE BOM, und
+    # diese Funktion schrieb [Environment]::NewLine (auf Windows CRLF) samt
+    # BOM. Damit wurde bei jedem Speichern die GANZE Datei umgeschrieben - 478
+    # Zeilen statt der drei, die sich wirklich aendern.
+    #
+    # Der schwerere Grund ist der BOM: ein UTF-8-BOM ueber dem ersten
+    # Abschnittskopf steht in den Projektnotizen als schon einmal zerschossene
+    # cfg. MelonLoader vertraegt ihn heute und normalisiert beim Beenden
+    # zurueck - deshalb war es nie aufgefallen. Auf eine Toleranz, die einmal
+    # gefehlt hat, sollte sich nichts verlassen.
+    #
+    # Die Vorgabe CRLF MIT BOM gilt weiter fuer eine Datei, die es noch nicht
+    # gibt: dort stimmt die alte Begruendung, dass PowerShell 5.1 und Notepad
+    # eine BOM-lose Datei als ANSI lesen. Sie stimmt nur nicht gegen eine
+    # vorhandene Datei, die ihre eigene Form schon mitbringt.
+    $newline = [Environment]::NewLine
+    $withBom = $true
+
+    if (Test-Path -LiteralPath $Path) {
+        $raw = [System.IO.File]::ReadAllBytes($Path)
+
+        $withBom = ($raw.Length -ge 3 -and $raw[0] -eq 0xEF -and $raw[1] -eq 0xBB `
+            -and $raw[2] -eq 0xBF)
+
+        $existing = [System.Text.Encoding]::UTF8.GetString($raw)
+
+        # Nur wenn die Datei EINDEUTIG LF benutzt. Eine gemischte Datei
+        # bekommt CRLF, also die Windows-Vorgabe - raten wird hier nichts.
+        if ($existing -notmatch "`r`n" -and $existing -match "`n") {
+            $newline = "`n"
+        }
+    }
+
+    if ($Content -is [array]) { $Content = ($Content -join $newline) }
 
     [System.IO.File]::WriteAllText($Path, [string] $Content,
-        (New-Object System.Text.UTF8Encoding($true)))
+        (New-Object System.Text.UTF8Encoding($withBom)))
 }
 
 # ---------------------------------------------------------------- Installation
@@ -183,6 +232,16 @@ function Read-CfgValue {
     return $Fallback
 }
 
+# Die Reihenfolge der Auswahlliste, EINMAL. Index null ist die Vorgabe der Mod,
+# und ein unbekannter Wert in der cfg landet dort - dieselbe Regel, die die Mod
+# selbst anwendet, statt eine zweite Wahrheit aufzustellen.
+$script:PointerColors = @('pink', 'green', 'blue', 'yellow')
+
+# Jeder Schluessel, den dieses Werkzeug schreibt, gehoert der Mod-Kategorie
+# WetRealityPose. Das ist eine Zusicherung und keine Beobachtung: wer hier einen
+# XRBoot- oder Discovery-Schluessel eintraegt, muss diese Konstante mitziehen.
+$script:PoseSection = 'WetRealityPose'
+
 function Write-CfgValues {
     param([hashtable] $Values)
 
@@ -198,23 +257,91 @@ function Write-CfgValues {
     $lines = (Read-Utf8 -Path $script:CfgPath) -split "`r?`n"
     $written = @{}
 
+    # ABSCHNITTSTREU, und das ist der zweite behobene Mangel.
+    #
+    # Die frühere Fassung ersetzte jede passende Zeile in der GANZEN Datei.
+    # DevHotkeys und DevMode stehen in [WetRealityXRBoot] UND in
+    # [WetRealityPose] - ein solcher Schlüssel wäre doppelt überschrieben
+    # worden. Heute schreibt dieses Werkzeug keinen davon, also war es noch
+    # kein Defekt; eine Falle war es trotzdem.
+    $section = ''
+    $sectionStart = -1
+    $sectionEnd = -1
+
     for ($index = 0; $index -lt $lines.Count; $index++) {
+        $line = $lines[$index]
+
+        if ($line -match '^\s*\[(.+)\]\s*$') {
+            if ($section -eq $script:PoseSection) { $sectionEnd = $index }
+            $section = $matches[1].Trim()
+            if ($section -eq $script:PoseSection) { $sectionStart = $index }
+            continue
+        }
+
+        if ($section -ne $script:PoseSection) { continue }
+
         foreach ($key in $Values.Keys) {
-            if ($lines[$index] -match "^\s*$([regex]::Escape($key))\s*=") {
+            if ($line -match "^\s*$([regex]::Escape($key))\s*=") {
                 $lines[$index] = "$key = $($Values[$key])"
                 $written[$key] = $true
             }
         }
     }
 
+    # Der Abschnitt ist der letzte in der Datei, wenn kein weiterer Kopf folgt.
+    if ($sectionStart -ge 0 -and $sectionEnd -lt 0) { $sectionEnd = $lines.Count }
+
     $missing = @($Values.Keys | Where-Object { -not $written.ContainsKey($_) })
+    $appended = @()
+
+    # ANGEHAENGT STATT BLOSS GEMELDET.
+    #
+    # Ein Schlüssel, den die Mod noch nie angelegt hat, ist der Normalfall nach
+    # jedem Update - und ein "Speichern", das für ihn stillschweigend nichts tut,
+    # kostet einen Testlauf. Genau das ist passiert: drei Komfortschlüssel
+    # fehlten, das Häkchen stand, geschrieben wurde nichts.
+    #
+    # MelonPreferences liest die Datei beim Start und übernimmt einen
+    # vorhandenen Wert, statt den Quell-Default zu nehmen - ein vorgeschriebener
+    # Schlüssel wirkt also sofort, ohne dass die Mod ihn erst anlegen muss.
+    if ($sectionStart -ge 0 -and $missing.Count -gt 0) {
+        # Hinter die letzte nicht-leere Zeile des Abschnitts, damit die
+        # Leerzeile zum nächsten Kopf erhalten bleibt.
+        $at = $sectionEnd
+
+        while ($at -gt ($sectionStart + 1) -and -not $lines[$at - 1].Trim()) {
+            $at--
+        }
+
+        foreach ($key in ($missing | Sort-Object)) {
+            $appended += "$key = $($Values[$key])"
+        }
+
+        # Über Array-Teile statt über eine List[string]: Write-Utf8 prüft
+        # `-is [array]`, und eine List ist keines - sie wäre als Typname in die
+        # Datei geschrieben worden.
+        $head = @()
+        if ($at -gt 0) { $head = $lines[0..($at - 1)] }
+
+        $tail = @()
+        if ($at -lt $lines.Count) { $tail = $lines[$at..($lines.Count - 1)] }
+
+        $lines = @($head) + @($appended) + @($tail)
+    }
 
     # Explicit UTF-8 in and out. A user whose Windows account carries an umlaut
     # has it in the UnityExplorer paths inside this file, and an ANSI round trip
     # would corrupt their config on every save.
     Write-Utf8 -Path $script:CfgPath -Content $lines
 
-    return $missing
+    # Zwei Listen, weil sie zwei verschiedene Meldungen verdienen: angelegt ist
+    # ein Erfolg, nicht gefunden ein Problem. Beide in @() gewickelt - eine leere
+    # PowerShell-Rueckgabe kollabiert sonst zu $null und .Count wirft unter
+    # StrictMode.
+    return [pscustomobject]@{
+        Appended = @($appended)
+        Missing  = @(if ($sectionStart -lt 0) { $missing } else { @() })
+    }
 }
 
 function Format-Bool {
@@ -484,6 +611,29 @@ function Load-Settings {
     (Ctl 'VrHandsCheck').IsChecked = (Read-CfgValue -Key 'ShowVrHands' -Fallback 'true') -eq 'true'
     (Ctl 'LaserCheck').IsChecked = (Read-CfgValue -Key 'ShowWashLaser' -Fallback 'false') -eq 'true'
 
+    # DIE ZIELGROESSE - Abschnitt 171, an der Stelle der drei entfernten
+    # Haekchen. Fallback 0.45, dieselbe Vorgabe wie in Pose.cs.
+    (Ctl 'MarkerSizeSlider').Value =
+        [double](Read-CfgValue -Key 'TeleportMarkerSize' -Fallback '0.45')
+
+    # --------------------------------------------------- Komfort, Abschnitt 147
+    #
+    # Die Rueckfallwerte sind die Quell-Defaults der Mod. Sie gelten nur, wenn
+    # der Schluessel in der cfg fehlt - also bei einer Installation, die noch
+    # nie mit dieser Fassung gelaufen ist.
+    $colour = (Read-CfgValue -Key 'PointerColor' -Fallback 'pink').ToLowerInvariant()
+    $colourIndex = [Array]::IndexOf($script:PointerColors, $colour)
+    if ($colourIndex -lt 0) { $colourIndex = 0 }
+    (Ctl 'PointerColorBox').SelectedIndex = $colourIndex
+
+    (Ctl 'TeleportCheck').IsChecked = (Read-CfgValue -Key 'ComfortTeleport' -Fallback 'false') -eq 'true'
+    (Ctl 'VignetteCheck').IsChecked = (Read-CfgValue -Key 'ComfortVignette' -Fallback 'false') -eq 'true'
+    (Ctl 'SnapAngleSlider').Value = [double](Read-CfgValue -Key 'SnapAngle' -Fallback '45')
+    (Ctl 'VignetteStrengthSlider').Value = [double](Read-CfgValue -Key 'VignetteStrength' -Fallback '0.7')
+
+    Update-ComfortEnabled
+    Sync-ComfortPreset
+
     $script:Loading = $false
     Update-Labels
     (Ctl 'SaveHint').Text = ''
@@ -495,6 +645,9 @@ function Update-Labels {
     (Ctl 'HapticIntensityValue').Text = "$([int]((Ctl 'HapticIntensitySlider').Value * 100)) %"
     (Ctl 'UiScaleValue').Text = "$([int]((Ctl 'UiScaleSlider').Value * 100)) %"
     (Ctl 'UiDistanceValue').Text = "$((Format-Float (Ctl 'UiDistanceSlider').Value)) m"
+    # In Zentimetern: "45 cm" sagt mehr als "0,45 m", und es ist ein
+    # Durchmesser am Boden, keine Bildschirmgroesse.
+    (Ctl 'MarkerSizeValue').Text = "$([int]((Ctl 'MarkerSizeSlider').Value * 100)) cm"
     (Ctl 'GripXValue').Text = "$([int]((Ctl 'GripXSlider').Value * 100)) cm"
     (Ctl 'GripYValue').Text = "$([int]((Ctl 'GripYSlider').Value * 100)) cm"
     (Ctl 'GripZValue').Text = "$([int]((Ctl 'GripZSlider').Value * 100)) cm"
@@ -502,6 +655,110 @@ function Update-Labels {
     (Ctl 'RotPitchValue').Text = "$([int](Ctl 'RotPitchSlider').Value)$deg"
     (Ctl 'RotYawValue').Text = "$([int](Ctl 'RotYawSlider').Value)$deg"
     (Ctl 'RotRollValue').Text = "$([int](Ctl 'RotRollSlider').Value)$deg"
+
+    # $deg ist hier noch im Gueltigkeitsbereich, darum stehen die beiden
+    # Komfortzeilen am Ende und nicht oben.
+    (Ctl 'SnapAngleValue').Text = "$([int](Ctl 'SnapAngleSlider').Value)$deg"
+
+    # "keine" statt "0 %": eine Null in Prozent liest sich wie ein Messwert,
+    # das Wort sagt, dass die Vignette aus ist.
+    $strength = [int]((Ctl 'VignetteStrengthSlider').Value * 100)
+
+    if ($strength -le 0) {
+        (Ctl 'VignetteStrengthValue').Text = T 'none'
+    }
+    else {
+        (Ctl 'VignetteStrengthValue').Text = "$strength %"
+    }
+}
+
+# Ein Regler, der nichts bewirkt, soll auch nicht bedienbar aussehen. Der WERT
+# bleibt dabei erhalten und wird weiter gespeichert - ausgegraut heisst
+# "wirkungslos", nicht "geloescht".
+function Update-ComfortEnabled {
+    (Ctl 'SnapAngleSlider').IsEnabled = [bool](Ctl 'SnapTurnCheck').IsChecked
+    (Ctl 'VignetteStrengthSlider').IsEnabled = [bool](Ctl 'VignetteCheck').IsChecked
+}
+
+# Die drei gebraeuchlichen Kombinationen. Index 3 ist "Eigene" und setzt
+# nichts - es ist die Anzeige fuer einen Stand, der zu keinem Preset passt.
+function Set-ComfortPreset {
+    param([int] $Index)
+
+    $teleport = $false
+    $snap = $false
+    $vignette = $false
+
+    switch ($Index) {
+        0 { }
+        1 { $snap = $true; $vignette = $true }
+        2 { $teleport = $true; $snap = $true; $vignette = $true }
+        default { return }
+    }
+
+    $script:ApplyingPreset = $true
+
+    try {
+        (Ctl 'TeleportCheck').IsChecked = $teleport
+        (Ctl 'SnapTurnCheck').IsChecked = $snap
+        (Ctl 'VignetteCheck').IsChecked = $vignette
+
+        # Die Regler nur dort setzen, wo die Option auch an ist: ein Preset,
+        # das einen ausgegrauten Wert mitverstellt, aendert still etwas, das
+        # der Spieler nicht sieht.
+        if ($snap) { (Ctl 'SnapAngleSlider').Value = 45 }
+        if ($vignette) { (Ctl 'VignetteStrengthSlider').Value = 0.7 }
+    }
+    finally {
+        $script:ApplyingPreset = $false
+    }
+
+    Update-ComfortEnabled
+    Update-Labels
+    Mark-Dirty
+}
+
+# Welches Preset beschreibt den aktuellen Stand? Die REGLER ZAEHLEN MIT, und
+# das ist der Unterschied zwischen einer Anzeige und einer Behauptung: nur die
+# Haekchen zu vergleichen haette "Sanft" gemeldet, waehrend der Snap-Winkel auf
+# 30 stand.
+#
+# Bei "Alle aus" spielen die Regler keine Rolle - beide Optionen sind aus, ihre
+# Werte wirken nicht.
+function Sync-ComfortPreset {
+    $teleport = [bool](Ctl 'TeleportCheck').IsChecked
+    $snap = [bool](Ctl 'SnapTurnCheck').IsChecked
+    $vignette = [bool](Ctl 'VignetteCheck').IsChecked
+
+    $angleStock = [Math]::Abs((Ctl 'SnapAngleSlider').Value - 45) -lt 0.01
+    $strengthStock = [Math]::Abs((Ctl 'VignetteStrengthSlider').Value - 0.7) -lt 0.01
+    $slidersStock = $angleStock -and $strengthStock
+
+    $index = 3
+
+    if (-not $teleport -and -not $snap -and -not $vignette) { $index = 0 }
+    elseif (-not $teleport -and $snap -and $vignette -and $slidersStock) { $index = 1 }
+    elseif ($teleport -and $snap -and $vignette -and $slidersStock) { $index = 2 }
+
+    $script:SuppressPreset = $true
+
+    try {
+        (Ctl 'ComfortPresetBox').SelectedIndex = $index
+    }
+    finally {
+        $script:SuppressPreset = $false
+    }
+}
+
+# Eine Komfortoption wurde VON HAND geaendert. Die Auswahlbox folgt dem Stand,
+# statt ihn zu behaupten.
+function Mark-ComfortChanged {
+    if ($script:Loading) { return }
+    if ($script:ApplyingPreset) { return }
+
+    Update-ComfortEnabled
+    Sync-ComfortPreset
+    Mark-Dirty
 }
 
 function Mark-Dirty {
@@ -513,18 +770,41 @@ function Mark-Dirty {
 # --------------------------------------------------------------------- events
 
 foreach ($name in @('TurnSpeedSlider', 'HapticIntensitySlider',
-                    'UiScaleSlider', 'UiDistanceSlider',
+                    'UiScaleSlider', 'UiDistanceSlider', 'MarkerSizeSlider',
                     'GripXSlider', 'GripYSlider', 'GripZSlider',
                     'RotPitchSlider', 'RotYawSlider', 'RotRollSlider')) {
     (Ctl $name).Add_ValueChanged({ Update-Labels; Mark-Dirty })
 }
 
-foreach ($name in @('SnapTurnCheck', 'VrHandsCheck', 'LaserCheck',
-                    'SprayHapticsCheck')) {
+foreach ($name in @('VrHandsCheck', 'LaserCheck', 'SprayHapticsCheck')) {
     (Ctl $name).Add_Click({ Mark-Dirty })
 }
 
+# ------------------------------------------------- Komfort, Abschnitt 147
+#
+# Add_Click und NICHT Add_Checked: ein programmatisch gesetztes IsChecked loest
+# Click nicht aus. Mit Checked wuerde Set-ComfortPreset seine eigenen Haekchen
+# als Benutzeraenderung lesen und die Auswahlbox sofort auf "Eigene" stellen.
+foreach ($name in @('TeleportCheck', 'SnapTurnCheck', 'VignetteCheck')) {
+    (Ctl $name).Add_Click({ Mark-ComfortChanged })
+}
+
+# Die Regler feuern auch beim Setzen aus dem Skript - Slider.ValueChanged kennt
+# den Unterschied nicht. Mark-ComfortChanged steigt darum bei ApplyingPreset
+# aus.
+foreach ($name in @('SnapAngleSlider', 'VignetteStrengthSlider')) {
+    (Ctl $name).Add_ValueChanged({ Update-Labels; Mark-ComfortChanged })
+}
+
+(Ctl 'ComfortPresetBox').Add_SelectionChanged({
+    if ($script:Loading) { return }
+    if ($script:SuppressPreset) { return }
+
+    Set-ComfortPreset -Index (Ctl 'ComfortPresetBox').SelectedIndex
+})
+
 (Ctl 'HandBox').Add_SelectionChanged({ Mark-Dirty })
+(Ctl 'PointerColorBox').Add_SelectionChanged({ Mark-Dirty })
 
 (Ctl 'GripResetButton').Add_Click({
     (Ctl 'GripXSlider').Value = 0
@@ -627,6 +907,19 @@ foreach ($name in @('SnapTurnCheck', 'VrHandsCheck', 'LaserCheck',
             'SnapTurn'      = Format-Bool ([bool](Ctl 'SnapTurnCheck').IsChecked)
             'ShowVrHands'   = Format-Bool ([bool](Ctl 'VrHandsCheck').IsChecked)
             'ShowWashLaser' = Format-Bool ([bool](Ctl 'LaserCheck').IsChecked)
+            'TeleportMarkerSize' = Format-Float (Ctl 'MarkerSizeSlider').Value
+
+            # Als Name und in Anfuehrungszeichen, wie Hand: die cfg soll lesbar
+            # bleiben, und MelonPreferences fuehrt den Eintrag als string.
+            'PointerColor'  = "`"$($script:PointerColors[[Math]::Max(0, (Ctl 'PointerColorBox').SelectedIndex)])`""
+
+            # Komfort, Abschnitt 147. Die Regler werden AUCH geschrieben, wenn
+            # ihre Option aus ist: der Wert soll beim naechsten Einschalten
+            # noch da sein.
+            'ComfortTeleport'  = Format-Bool ([bool](Ctl 'TeleportCheck').IsChecked)
+            'ComfortVignette'  = Format-Bool ([bool](Ctl 'VignetteCheck').IsChecked)
+            'SnapAngle'        = Format-Float (Ctl 'SnapAngleSlider').Value
+            'VignetteStrength' = Format-Float (Ctl 'VignetteStrengthSlider').Value
         }
 
         # @() around the call, and that is not cosmetic. A PowerShell function
@@ -638,14 +931,22 @@ foreach ($name in @('SnapTurnCheck', 'VrHandsCheck', 'LaserCheck',
         # all ten keys, which is the normal case for a correct installation.
         # Only two or more missing keys ever returned a real array, which is
         # why this survived testing here: the dev cfg was missing several keys.
-        $missing = @(Write-CfgValues -Values $values)
+        $result = Write-CfgValues -Values $values
         $script:Dirty = $false
 
+        $missing = @($result.Missing)
+        $appended = @($result.Appended)
+
         if ($missing.Count -gt 0) {
-            # Reported rather than appended. A key that is absent means the mod
-            # has not created it yet, and inventing it here could write it into
-            # the wrong section.
+            # Nur noch der eine Fall, in dem nichts angelegt werden konnte: die
+            # Kategorie [WetRealityPose] steht nicht in der Datei. Dann ist die
+            # cfg nicht die einer installierten Mod, und etwas zu erfinden waere
+            # geraten.
             (Ctl 'SaveHint').Text = (T 'Saved. Keys not found: {0}') -f ($missing -join ', ')
+        }
+        elseif ($appended.Count -gt 0) {
+            (Ctl 'SaveHint').Text = (T 'Saved at {0}. {1} new setting(s) added. Backup written as .bak.') `
+                -f (Get-Date -Format 'HH:mm:ss'), $appended.Count
         }
         else {
             (Ctl 'SaveHint').Text = (T 'Saved at {0}. Backup written as .bak.') -f (Get-Date -Format 'HH:mm:ss')

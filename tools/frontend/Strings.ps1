@@ -44,8 +44,29 @@ $script:German = @{
     'Menu size' = 'Menügröße'
     'Menu distance' = 'Menüabstand'
     'Show aiming laser' = 'Ziellaser anzeigen'
+    'Teleport target' = 'Teleport-Ziel'
+    'Pointer colour' = 'Zeigerfarbe'
+    'Neon pink' = 'Neonpink'
+    'Fresh green' = 'Frisches Grün'
+    'Azure blue' = 'Azurblau'
+    'Sun yellow' = 'Sonnengelb'
     'The laser is a development measuring tool and is not needed for normal play.' =
         'Der Laser ist ein Messwerkzeug aus der Entwicklung und für das normale Spiel nicht nötig.'
+
+    # ------------------------------------------------------------- Komfort
+    'COMFORT' = 'KOMFORT'
+    'All off by default. The teleport on the washer hand stick works regardless of these settings, and never reaches higher or further than the jump button would.' =
+        'Alle standardmäßig aus. Der Teleport am Stick der Pistolenhand wirkt unabhängig davon und reicht nie höher oder weiter als die Sprungtaste.'
+    'Preset' = 'Vorlage'
+    'All off' = 'Alle aus'
+    'Gentle' = 'Sanft'
+    'Maximum' = 'Maximal'
+    'Custom' = 'Eigene'
+    'Teleport instead of walking' = 'Teleport statt Gehen'
+    'Vignette while moving' = 'Vignette bei Bewegung'
+    'Snap angle' = 'Sprungwinkel'
+    'Vignette strength' = 'Vignettenstärke'
+    'none' = 'keine'
 
     # ---------------------------------------------------------------- grip
     'GRIP FINE-TUNING' = 'GRIFF-FEINJUSTIERUNG'

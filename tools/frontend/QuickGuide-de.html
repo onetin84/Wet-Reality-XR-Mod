@@ -258,14 +258,14 @@ footer .spacer { flex: 1; }
 <div class="pad">
   <img src="assets/controller.png" alt="Meta-Quest-3-Controller mit der Belegung der Mod">
 
-  <b class="l" style="left:20.8%; top:16.1%;"><i>Laufen<em>ganz drücken: Sprinten</em></i></b>
+  <b class="l" style="left:20.8%; top:16.1%;"><i>Laufen<em>ganz drücken: Sprinten &middot; mit Komfort-Teleport: vorn = Teleport</em></i></b>
   <b class="r" style="left:31.9%; top:20.0%;"><i>Aufgabenliste<em>Y &middot; halten: Inventar</em></i></b>
   <b class="r" style="left:29.9%; top:25.9%;"><i>Aufnehmen / ablegen<em>X</em></i></b>
-  <b class="l" style="left:25.7%; top:30.3%;"><i>Pausenmenü<em>Menü</em></i></b>
+  <b class="l" style="left:25.7%; top:30.3%;"><i>Pausenmenü<em>Menü &middot; halten und loslassen: UI aus</em></i></b>
   <b class="r" style="left:31.3%; top:44.4%;"><i>Düse drehen<em>Trigger &middot; füllt Reiniger nach</em></i></b>
   <b class="r" style="left:34.2%; top:59.6%;"><i>Schmutz anzeigen<em>Grip &middot; halten: getragenes Objekt drehen</em></i></b>
-  <b class="r" style="left:78.5%; top:15.1%;"><i>Drehen<em>oben / unten: Düse &middot; Klick: Kategorie</em></i></b>
-  <b class="l" style="left:68.0%; top:20.0%;"><i>Ducken<em>B</em></i></b>
+  <b class="r" style="left:78.5%; top:15.1%;"><i>Drehen<em>oben: Teleport-Ziel &middot; unten: Düse</em></i></b>
+  <b class="l" style="left:68.0%; top:20.0%;"><i>Ducken<em>B &middot; in Popups: schließen</em></i></b>
   <b class="l" style="left:69.7%; top:25.9%;"><i>Springen<em>A &middot; wählt im Menü</em></i></b>
   <b class="l" style="left:68.7%; top:44.4%;"><i>Sprühen<em>Trigger &middot; wählt im Menü</em></i></b>
   <b class="l" style="left:65.8%; top:59.6%;"><i>Dauersprühen<em>Grip &middot; kein Halten nötig</em></i></b>
@@ -281,11 +281,12 @@ footer .spacer { flex: 1; }
   <tr><th>Controller bewegen</th><td>Die Pistole folgt deiner Hand in Position und Richtung</td></tr>
   <tr><th>Trigger</th><td>Sprühen, solange gedrückt</td></tr>
   <tr><th>Grip</th><td>Dauersprühen ein und aus — kein Halten des Triggers nötig. Läuft er, schaltet der Griff ihn ab, statt ein Werkzeug zu wechseln, und das Öffnen des Pausenmenüs schaltet ihn ebenfalls ab — ein laufender Strahl lässt sich also immer stoppen.</td></tr>
-  <tr><th><kbd>A</kbd></th><td>Springen. Im Menü: auswählen</td></tr>
-  <tr><th><kbd>B</kbd> tippen</th><td>Ducken</td></tr>
+  <tr><th><kbd>A</kbd></th><td>Springen. Im Menü: auswählen. <b>Mit Komfort-Teleport ist der Sprung abgeschaltet</b> — sonst käme man über Sprung plus Teleport höher als vorgesehen</td></tr>
+  <tr><th><kbd>B</kbd> tippen</th><td>Ducken. In einem Popup — Levelauswertung, Zeitungsartikel — schließt <kbd>B</kbd> es stattdessen. Das ist der Ersatz für <kbd>Esc</kbd></td></tr>
   <tr><th><kbd>B</kbd> halten</th><td>Ducken, langer Druck</td></tr>
-  <tr><th>Stick links / rechts</th><td>Drehen</td></tr>
-  <tr><th>Stick oben / unten</th><td>Nächste oder vorige Düse in der Kategorie. Es braucht einen bewussten Schubs, kurz gehalten — das Drehen nach links oder rechts wechselt die Düse nicht mehr aus Versehen</td></tr>
+  <tr><th>Stick links / rechts</th><td>Drehen. Mit der Komfortoption <i>Sprungdrehung</i> dreht es in festen Schritten</td></tr>
+  <tr><th>Stick nach oben</th><td><b>Teleport-Ziel.</b> Zielen mit der freien Hand, Stick zurück in die Mitte löst aus. Immer verfügbar, unabhängig von den Komfortoptionen</td></tr>
+  <tr><th>Stick nach unten</th><td>Nächste Düse in der Kategorie. Es braucht einen bewussten Schubs, kurz gehalten — das Drehen nach links oder rechts wechselt die Düse nicht mehr aus Versehen</td></tr>
   <tr><th><kbd>R3</kbd> klicken</th><td>Düsenkategorie wechseln — Standard oder Seife</td></tr>
   <tr><th><kbd>R3</kbd> halten</th><td>Gerät wechseln, so kommst du an die Turbodüse</td></tr>
 </table>
@@ -293,15 +294,57 @@ footer .spacer { flex: 1; }
 <h2>Linker Controller</h2>
 
 <table>
-  <tr><th>Stick</th><td>Laufen</td></tr>
+  <tr><th>Stick</th><td>Laufen. Ist die Komfortoption <i>Teleport statt Gehen</i> an, wird der Stick nach vorn stattdessen zum Teleport</td></tr>
   <tr><th>Stick ganz durchdrücken</th><td>Sprinten</td></tr>
   <tr><th>Trigger</th><td>Animiertes Objekt öffnen oder schließen, wenn die Hand daran liegt — sonst Düse drehen und Reiniger nachfüllen</td></tr>
   <tr><th>Grip</th><td>Restlichen Schmutz hervorheben</td></tr>
   <tr><th><kbd>X</kbd></th><td>Objekte aufnehmen und ablegen, und Schalter bedienen — etwa Heben und Senken am Lift. Gezielt wird mit der linken Hand: eine grüne Linie erscheint, sobald etwas in Reichweite ist, und nur dann — keine Linie heißt, da ist nichts. Ein Schalter, der gehalten werden muss, bleibt gedrückt, solange du <kbd>X</kbd> hältst</td></tr>
   <tr><th><kbd>Y</kbd> tippen</th><td>Aufgabenliste</td></tr>
   <tr><th><kbd>Y</kbd> halten</th><td>Möbel-Inventar</td></tr>
-  <tr><th><kbd>Menü</kbd></th><td>Pausenmenü</td></tr>
+  <tr><th><kbd>Menü</kbd> tippen</th><td>Pausenmenü</td></tr>
+  <tr><th><kbd>Menü</kbd> halten und loslassen</th><td><b>Immersion Mode</b> — die Spiel-UI aus und wieder ein. Ein geöffnetes Menü bleibt sichtbar, du sperrst dich also nicht aus. Halten statt Doppelklick, weil Virtual Desktop den Doppelklick belegt</td></tr>
   <tr><th><kbd>L3</kbd> klicken</th><td>Verlängerung wechseln</td></tr>
+</table>
+
+<h2>Teleport</h2>
+
+<p class="hint">
+  Es gibt zwei, und sie sind unabhängig voneinander. Gezielt wird bei beiden mit
+  der <b>freien Hand</b> — der Stick sagt „los", die Hand sagt „wohin".
+</p>
+
+<table>
+  <tr><th>Ziel-Teleport</th><td>Stick der Pistolenhand nach <b>oben</b>. Für jeden Spieler da, auch ohne Komfortoptionen — um sich gezielt irgendwohin zu setzen</td></tr>
+  <tr><th>Komfort-Teleport</th><td>Off-Hand-Stick nach <b>vorn</b>, <i>wenn</i> die Komfortoption an ist. Ersetzt dann das Gehen</td></tr>
+</table>
+
+<p class="hint">
+  Der Bogen fliegt wie ein Steinwurf, und das ist Absicht: es gibt einen
+  optimalen Winkel für die größte Weite, und darüber hinaus kommt man nicht.
+  Die Reichweite ist die <b>gemessene</b> Sprungweite mit Sprint — 7,74 m auf
+  ebenem Boden. Nach unten gibt es keine Grenze, nach oben nie höher als der
+  Sprung; für größere Höhen sind Leitern, Hebebühnen und Treppen da.
+</p>
+
+<table>
+  <tr><th>Treppen und Vorsprünge</th><td>Gehen statt springen: führt ein gehbarer Weg hinauf, ist das Ziel erlaubt, auch wenn es über der Sprunghöhe liegt. Eine Wand bleibt eine Wand</td></tr>
+  <tr><th>Leitern</th><td>Eine angelehnte Leiter anteleportieren setzt dich an ihr oberes Ende</td></tr>
+  <tr><th>In der Luft</th><td>Kein Teleport, solange du springst oder fällst — erst wieder mit festem Boden unter den Füßen</td></tr>
+  <tr><th>Rot statt farbig</th><td>Das Ziel ist gesperrt: zu hoch, kein Platz, oder kein Boden getroffen</td></tr>
+</table>
+
+<h2>Komfortoptionen</h2>
+
+<p class="hint">
+  Alle <b>standardmäßig aus</b>, einzustellen im Konfigurationswerkzeug. Der
+  Ziel-Teleport oben wirkt unabhängig davon und ist immer da.
+</p>
+
+<table>
+  <tr><th>Teleport statt Gehen</th><td>Der Off-Hand-Stick teleportiert, statt zu laufen. Der Sprung mit <kbd>A</kbd> ist dann abgeschaltet</td></tr>
+  <tr><th>Sprungdrehung</th><td>Drehen in festen Schritten statt gleitend. Der Winkel ist wählbar: 15°, 30°, 45° oder 60°</td></tr>
+  <tr><th>Vignette bei Bewegung</th><td>Dunkelt den Bildrand ab, solange du dich bewegst. Die Stärke ist stufenlos einstellbar</td></tr>
+  <tr><th>Vorlage</th><td><i>Aus</i>, <i>Sanft</i> (Sprungdrehung und Vignette), <i>Maximal</i> (alles). Ein Häkchen von Hand stellt die Vorlage auf <i>Eigene</i></td></tr>
 </table>
 
 <h2>Greifgesten</h2>
