@@ -5,7 +5,7 @@ using UnityEngine.InputSystem;
 using UnityEngine.SubsystemsImplementation;
 using UnityEngine.XR;
 
-[assembly: MelonInfo(typeof(WetReality.Pose), "Wet Reality Pose", "1.100.0", "Wet Reality")]
+[assembly: MelonInfo(typeof(WetReality.Pose), "Wet Reality Pose", "1.101.0", "Wet Reality")]
 [assembly: MelonGame("FuturLab", "PowerWash Simulator 2")]
 
 namespace WetReality;
@@ -371,6 +371,7 @@ public sealed class Pose : MelonMod
     private MelonPreferences_Entry<int> terrainMergeInto = null!;
     private MelonPreferences_Entry<bool> clearGameSprayToggle = null!;
     private MelonPreferences_Entry<bool> clearGameFire = null!;
+    private MelonPreferences_Entry<int> settingsVersion = null!;
     private MelonPreferences_Entry<string> disableVolumeComponents = null!;
     private MelonPreferences_Entry<bool> shaderProbe = null!;
     private MelonPreferences_Entry<float> shaderProbeSeconds = null!;
@@ -3286,6 +3287,15 @@ public sealed class Pose : MelonMod
             description: "Measurement only: dump every active camera and canvas once, three "
                 + "seconds after the driver starts. For the nested title image on the monitor; "
                 + "turn it off once that is understood.");
+
+        // ALTE VORGABEN NACHZIEHEN - Abschnitt 195. NACH allen CreateEntry,
+        // weil jeder Schluessel der Liste schon existieren muss, und VOR dem
+        // Save, damit das Ergebnis sofort in der Datei steht. Vorgabe 0: auch
+        // eine frische cfg laeuft hindurch, aendert dort aber nichts, weil
+        // jeder Wert schon auf heutiger Vorgabe steht.
+        settingsVersion = settings.CreateEntry("SettingsVersion", 0,
+            description: "Internal. Which set of default updates this cfg has received. Do not edit.");
+        SettingsMigration.Apply(LoggerInstance, settings, settingsVersion);
 
         // EINMAL SCHREIBEN, damit neue Schluessel in der Datei landen.
         //
