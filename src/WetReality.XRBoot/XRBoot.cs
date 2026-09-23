@@ -11,7 +11,7 @@ using UnityEngine;
 using UnityEngine.SubsystemsImplementation;
 using UnityEngine.XR;
 
-[assembly: MelonInfo(typeof(WetReality.XRBoot), "Wet Reality XR Boot", "0.23.1", "Wet Reality")]
+[assembly: MelonInfo(typeof(WetReality.XRBoot), "Wet Reality XR Boot", "0.24.0", "Wet Reality")]
 [assembly: MelonGame("FuturLab", "PowerWash Simulator 2")]
 
 namespace WetReality;
@@ -118,6 +118,7 @@ public sealed class XRBoot : MelonMod
     private MelonPreferences_Entry<bool> forceBackendFromStart = null!;
     private MelonPreferences_Entry<bool> forceConditionalFromStart = null!;
     private MelonPreferences_Entry<bool> pauseOnShutdown = null!;
+    private MelonPreferences_Entry<bool> swapEyes = null!;
 
     private Phase phase = Phase.Idle;
 
@@ -234,6 +235,14 @@ public sealed class XRBoot : MelonMod
         desktopMirrorEye = settings.CreateEntry("DesktopMirrorEye", "left",
             description: "Which eye the monitor shows: left, right or both. Only read while "
                 + "DesktopMirror is on.");
+
+        // Abschnitt 179. Ein Diagnoseweg fuer genau einen Lauf, darum aus
+        // ausgeliefert und nicht unter DevMode: er wirkt nur beim Start und
+        // ist ohne Schalter nicht zu erreichen.
+        swapEyes = settings.CreateEntry("SwapEyes", false,
+            description: "DIAGNOSTIC. Exchanges the left and right eye views at xrLocateViews, so "
+                + "the left display shows what was drawn from the right eye. Depth looks inverted - "
+                + "close one eye at a time. Read at boot only. Leave off.");
 
         loaderName = settings.CreateEntry("LoaderName", "openxr_loader",
             description: "Loader library passed to main_LoadOpenXRLibrary. Set to the mock runtime path to test without a headset.");
@@ -797,7 +806,11 @@ public sealed class XRBoot : MelonMod
             return;
         }
 
-        Step("NativeConfig_SetProcAddressPtrAndLoadStage1", () => Native.SetProcAddressPtrAndLoadStage1(procAddress));
+        // Abschnitt 179: mit SwapEyes steht hier die eigene Huelle, sonst der
+        // unveraenderte Zeiger - der Normalfall bleibt Byte fuer Byte derselbe.
+        var handed = swapEyes.Value ? EyeSwap.Wrap(LoggerInstance, procAddress) : procAddress;
+
+        Step("NativeConfig_SetProcAddressPtrAndLoadStage1", () => Native.SetProcAddressPtrAndLoadStage1(handed));
 
         // Requested twice on purpose, before and after InitializeSession.
         //

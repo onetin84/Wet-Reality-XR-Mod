@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Il2CppInterop.Runtime;
+using Il2CppInterop.Runtime.InteropTypes.Arrays;
 using Il2CppFuturLab.PW2;
 using Il2CppVLB;
 using Il2CppOccaSoftware.Buto.Runtime;
@@ -128,6 +129,25 @@ internal sealed class RenderFeatures
     private float nextVolumeScan;
     private readonly Dictionary<string, bool> volumeApplied = new();
     private int wantedPost = -1;
+
+    // Abschnitt 181: Bit 1 Tiefenkopie, Bit 2 Farbkopie, -1 nie angefasst.
+    private int wantedCameraTextures = -1;
+    private float nextCameraTextureScan;
+
+    // Abschnitt 184. NaN als "nie angewendet", damit der erste Wunsch immer
+    // als Wechsel zaehlt - auch -1, das ein gueltiges "unangetastet" ist.
+    private float wantedBasemap = float.NaN;
+    private float wantedPixelError = float.NaN;
+    private float nextTerrainLodScan;
+    private bool terrainLodTouched;
+    private int wantedDrawInstanced = int.MinValue;
+
+    // Abschnitt 186.
+    private int wantedLayerLimit = int.MinValue;
+    private float nextLayerLimitScan;
+    private readonly Dictionary<IntPtr, Il2CppInterop.Runtime.InteropTypes.Arrays
+        .Il2CppReferenceArray<TerrainLayer>> terrainLayerBackup = new();
+    private readonly Dictionary<IntPtr, (float basemap, float error, bool instanced)> terrainOriginals = new();
 
     // Renderer nach SHADERNAME abschalten - Abschnitt 164. Der grobe, aber
     // entscheidende Gegentest zur Sonde.
@@ -625,6 +645,457 @@ internal sealed class RenderFeatures
     }
 
     // ====================================================================
+    // DIE ZERLEGUNG DES TERRAINS - Abschnitt 184.
+    //
+    // Gemessen ist: der Effekt sitzt im ZWEITEN MultiPass-Durchgang (180),
+    // und sein Traeger ist sehr wahrscheinlich das Terrain (183). Das Terrain
+    // entscheidet pro Kamera und Frame, wie fein es sich zerlegt
+    // (heightmapPixelError) und ab welcher Entfernung es statt der Schichten
+    // eine vorgemischte Grundtextur zeichnet (basemapDistance). Beides sind
+    // schlichte float-Eigenschaften.
+    //
+    // basemapDistance 0 zeichnet das GANZE Terrain ueber die Grundtextur,
+    // also ohne den Schichtenmix, der Rasen, Mulch und Uebergaenge mischt.
+    // Verschwindet der Effekt dabei, sitzt er im Schichtenpfad.
+    //
+    // Negativ heisst unangetastet. Die Ausgangswerte stehen einmal je Terrain
+    // im Log - auch das ist eine Messung, und sie kostet nichts.
+    //
+    // Erneut angewendet alle rescanSeconds, solange etwas gesetzt ist: ein
+    // Levelwechsel bringt ein neues Terrain mit seinen eigenen Werten.
+    //
+    // INSTANZIERUNG DAZU - Abschnitt 185. Das Spiel liefert drawInstanced
+    // FALSE aus (gemessen, 184); der Test in 166 hat also nur den ohnehin
+    // abgeschalteten Zustand geschrieben. drawInstanced: -1 unangetastet,
+    // 0 aus, 1 an.
+    internal void ApplyTerrainLod(MelonLogger.Instance log, float basemapDistance,
+        float pixelError, int drawInstanced, float rescanSeconds)
+    {
+        var active = basemapDistance >= 0f || pixelError >= 0f || drawInstanced >= 0;
+
+        if (!active && !terrainLodTouched)
+            return;
+
+        if (Time.unscaledTime < nextTerrainLodScan
+            && basemapDistance == wantedBasemap && pixelError == wantedPixelError
+            && drawInstanced == wantedDrawInstanced)
+            return;
+
+        var changed = basemapDistance != wantedBasemap || pixelError != wantedPixelError
+            || drawInstanced != wantedDrawInstanced;
+        nextTerrainLodScan = Time.unscaledTime + Mathf.Max(1f, rescanSeconds);
+
+        try
+        {
+            var all = Resources.FindObjectsOfTypeAll(Il2CppType.Of<Terrain>());
+
+            var found = 0;
+            var wrote = 0;
+            var summary = new System.Text.StringBuilder();
+
+            for (var index = 0; index < all.Length; index++)
+            {
+                var terrain = all[index]?.TryCast<Terrain>();
+
+                if (terrain is null || terrain == null)
+                    continue;
+
+                found++;
+
+                var key = terrain.Pointer;
+
+                if (!terrainOriginals.ContainsKey(key))
+                {
+                    var material = terrain.materialTemplate;
+                    var shader = material is null || material == null || material.shader is null
+                        ? "none"
+                        : material.shader.name;
+
+                    terrainOriginals[key] = (terrain.basemapDistance, terrain.heightmapPixelError,
+                        terrain.drawInstanced);
+
+                    log.Msg($"  terrain lod: \"{terrain.name}\" as found   basemapDistance "
+                        + $"{terrain.basemapDistance:0.#}   heightmapPixelError "
+                        + $"{terrain.heightmapPixelError:0.#}   drawInstanced {terrain.drawInstanced}"
+                        + $"   material \"{(material is null || material == null ? "none" : material.name)}\""
+                        + $"   shader \"{shader}\"");
+
+                    // DIE SCHICHTEN, und warum ihre ZAHL zaehlt: ueber vier
+                    // zeichnet Unity weitere, additiv ueberblendete Durchgaenge
+                    // - "heller, ueber den Schatten" hat genau diese Form.
+                    // Gelesen, nicht vermutet.
+                    try
+                    {
+                        var data = terrain.terrainData;
+                        var layers = data?.terrainLayers;
+                        var names = new System.Text.StringBuilder();
+
+                        for (var layer = 0; layers is not null && layer < layers.Length && layer < 12; layer++)
+                            names.Append(layer == 0 ? "" : ", ").Append(layers[layer]?.name ?? "null");
+
+                        log.Msg($"  terrain lod: \"{terrain.name}\" layers {layers?.Length ?? -1}"
+                            + $"   alphamapLayers {data?.alphamapLayers ?? -1}   [{names}]"
+                            + $"   keywords [{(material is null || material == null ? "" : string.Join(" ", material.shaderKeywords))}]");
+                    }
+                    catch (Exception exception)
+                    {
+                        log.Msg($"  terrain lod: layer read threw {exception.GetType().Name}");
+                    }
+                }
+
+                // Ohne Wunsch: auf den gefundenen Wert zurueck, damit ein
+                // abgeschalteter Test das Terrain so hinterlaesst, wie er es
+                // fand.
+                var original = terrainOriginals[key];
+                var wantBase = basemapDistance >= 0f ? basemapDistance : original.basemap;
+                var wantError = pixelError >= 0f ? pixelError : original.error;
+
+                if (!Mathf.Approximately(terrain.basemapDistance, wantBase))
+                {
+                    terrain.basemapDistance = wantBase;
+                    wrote++;
+                }
+
+                if (!Mathf.Approximately(terrain.heightmapPixelError, wantError))
+                {
+                    terrain.heightmapPixelError = wantError;
+                    wrote++;
+                }
+
+                var wantInstanced = drawInstanced >= 0 ? drawInstanced == 1 : original.instanced;
+
+                if (terrain.drawInstanced != wantInstanced)
+                {
+                    terrain.drawInstanced = wantInstanced;
+                    wrote++;
+                }
+
+                // ZURUECKGELESEN.
+                summary.Append($"   \"{terrain.name}\" basemap {terrain.basemapDistance:0.#}"
+                    + $" error {terrain.heightmapPixelError:0.#} instanced {terrain.drawInstanced}");
+            }
+
+            wantedBasemap = basemapDistance;
+            wantedPixelError = pixelError;
+            wantedDrawInstanced = drawInstanced;
+            terrainLodTouched = active;
+
+            if (changed || wrote > 0)
+                log.Msg(found == 0
+                    ? "  terrain lod: NO Terrain IN THIS SCENE - nothing to set"
+                    : $"  terrain lod: {found} terrain(s)   {wrote} value(s) written{summary}");
+        }
+        catch (Exception exception)
+        {
+            log.Warning("  terrain lod threw " + exception.GetType().Name + ": "
+                + exception.Message + "; leaving the terrain alone");
+            wantedBasemap = basemapDistance;
+            wantedPixelError = pixelError;
+            wantedDrawInstanced = drawInstanced;
+            nextTerrainLodScan = float.MaxValue;
+        }
+    }
+
+    // ====================================================================
+    // DIE FUENFTE SCHICHT - Abschnitt 186.
+    //
+    // Das Terrain hat fuenf Schichten (gemessen, 185). URPs Terrain/Lit mischt
+    // vier je Durchgang; ab der fuenften zeichnet Unity einen weiteren,
+    // ADDITIV ueberblendeten Durchgang darueber. Die fuenfte heisst
+    // GrassCutBright - die hellen Maehstreifen. "Heller, ueber den Schatten,
+    // nur im zweiten Augendurchgang, weg mit Grundtextur" hat genau diese Form.
+    //
+    // Der Test kuerzt die Schichtliste auf limit. Damit entfaellt der
+    // Zusatzdurchgang. Wo die abgeschnittene Schicht Gewicht hatte, fehlt es -
+    // die Stellen sehen anders aus, das ist erwartet.
+    //
+    // NUR IM SPEICHER, und das nicht rueckholbar: terrainData ist ein geladenes
+    // Asset, und Unity darf beim Kuerzen die Gewichte der entfernten Schicht
+    // verwerfen. Zurueck auf -1 setzt die alte Liste wieder ein, verspricht
+    // aber nicht das alte Bild. Ein Spielneustart stellt alles her; auf der
+    // Platte aendert sich nichts.
+    //
+    // DAS EINRECHNEN - Abschnitt 187. Der Test in 186 hat den Zusatzpass als
+    // Ursache BEWIESEN: gekuerzt zeichnen beide Augen gleich, nur sind die
+    // Stellen der abgeschnittenen Schicht schwarz, weil ihr Gewicht fehlt.
+    // mergeInto >= 0 addiert das Gewicht jeder abgeschnittenen Schicht auf
+    // diese Schicht, bevor gekuerzt wird - kein Loch, kein Zusatzpass.
+    //
+    // Ueber die Steuertexturen, weil TerrainData.GetAlphamaps ein float[,,]
+    // nimmt und in der Interop-Schicht fehlt (gemessen: kein
+    // NativeMethodInfoPtr). Die Gewichte liegen dort als RGBA, vier Schichten
+    // je Textur: Schicht i in Textur i/4, Kanal i%4.
+    internal void ApplyTerrainLayerLimit(MelonLogger.Instance log, int limit, int mergeInto,
+        float rescanSeconds)
+    {
+        if (limit < 0 && terrainLayerBackup.Count == 0)
+            return;
+
+        if (limit == wantedLayerLimit && Time.unscaledTime < nextLayerLimitScan)
+            return;
+
+        var changed = limit != wantedLayerLimit;
+        wantedLayerLimit = limit;
+        nextLayerLimitScan = Time.unscaledTime + Mathf.Max(1f, rescanSeconds);
+
+        try
+        {
+            var all = Resources.FindObjectsOfTypeAll(Il2CppType.Of<Terrain>());
+            var found = 0;
+            var cut = 0;
+            var restored = 0;
+            var summary = new System.Text.StringBuilder();
+
+            for (var index = 0; index < all.Length; index++)
+            {
+                var terrain = all[index]?.TryCast<Terrain>();
+                var data = terrain?.terrainData;
+
+                if (terrain is null || terrain == null || data is null || data == null)
+                    continue;
+
+                found++;
+
+                var layers = data.terrainLayers;
+                var key = data.Pointer;
+
+                if (limit >= 1 && layers is not null && layers.Length > limit)
+                {
+                    if (!terrainLayerBackup.ContainsKey(key))
+                        terrainLayerBackup[key] = layers;
+
+                    // VOR dem Kuerzen gelesen: danach darf Unity die
+                    // Steuertexturen der abgeschnittenen Schichten verwerfen.
+                    var merged = (mergeInto >= 0 && mergeInto < limit) || mergeInto == MergeAuto
+                        ? MergeWeights(log, terrain.name, data, layers, limit, mergeInto)
+                        : null;
+
+                    var shorter = new Il2CppInterop.Runtime.InteropTypes.Arrays
+                        .Il2CppReferenceArray<TerrainLayer>(limit);
+
+                    for (var layer = 0; layer < limit; layer++)
+                        shorter[layer] = layers[layer];
+
+                    data.terrainLayers = shorter;
+                    cut++;
+
+                    // NACH dem Kuerzen geschrieben, in die Textur, die das
+                    // Terrain JETZT zeichnet - sie kann neu angelegt worden sein.
+                    if (merged is not null)
+                        WriteMerged(log, terrain.name, data, merged.Value.pixels, merged.Value.target);
+                }
+                else if (limit < 0 && terrainLayerBackup.TryGetValue(key, out var backup))
+                {
+                    data.terrainLayers = backup;
+                    terrainLayerBackup.Remove(key);
+                    restored++;
+                }
+
+                // ZURUECKGELESEN, und mit dem Namen der letzten Schicht: steht
+                // dort nach dem Kuerzen nicht mehr GrassCutBright, ist die
+                // richtige gefallen.
+                var now = data.terrainLayers;
+                var last = now is null || now.Length == 0 ? "none" : now[now.Length - 1]?.name ?? "null";
+                summary.Append($"   \"{terrain.name}\" layers {now?.Length ?? -1} (last {last})");
+            }
+
+            if (changed || cut > 0 || restored > 0)
+                log.Msg(found == 0
+                    ? "  terrain layers: NO Terrain IN THIS SCENE - nothing to cut"
+                    : $"  terrain layers: limit {limit}   cut {cut}, restored {restored} of {found}{summary}");
+        }
+        catch (Exception exception)
+        {
+            log.Warning("  terrain layers threw " + exception.GetType().Name + ": "
+                + exception.Message + "; leaving the terrain alone");
+            nextLayerLimitScan = float.MaxValue;
+        }
+    }
+
+    private static float Channel(Color color, int channel) => channel switch
+    {
+        0 => color.r,
+        1 => color.g,
+        2 => color.b,
+        _ => color.a,
+    };
+
+    private static Color WithChannel(Color color, int channel, float value)
+    {
+        switch (channel)
+        {
+            case 0: color.r = value; break;
+            case 1: color.g = value; break;
+            case 2: color.b = value; break;
+            default: color.a = value; break;
+        }
+
+        return color;
+    }
+
+    // Liest alle Steuertexturen, meldet den Flaechenanteil JEDER Schicht und
+    // gibt die Pixel der Zieltextur mit eingerechnetem Gewicht zurueck.
+    // Die Anteile sind die Zahl, an der sich entscheidet, wie sichtbar das
+    // Einrechnen ist - eine Schicht mit 2 Prozent Flaeche ist eine andere
+    // Frage als eine mit 30.
+    //
+    // MergeAuto - Abschnitt 188: das Ziel wird GEMESSEN, nicht am Namen
+    // erkannt. Gewaehlt wird die verbleibende Schicht, die dort, wo die
+    // abgeschnittenen Schichten gemalt sind, am staerksten mitliegt - an
+    // Maehstreifen der geschnittene Rasen daneben. Liegt nirgends etwas mit
+    // (harte Kanten), gewinnt die groesste verbleibende Schicht. Wahl und
+    // Punktzahlen stehen im Log.
+    internal const int MergeAuto = -2;
+
+    private static (Il2CppStructArray<Color> pixels, int target)? MergeWeights(MelonLogger.Instance log,
+        string name, TerrainData data,
+        Il2CppInterop.Runtime.InteropTypes.Arrays.Il2CppReferenceArray<TerrainLayer> layers,
+        int limit, int mergeInto)
+    {
+        try
+        {
+            var textures = data.alphamapTextures;
+            var needed = (layers.Length + 3) / 4;
+
+            if (textures is null || textures.Length < needed)
+            {
+                log.Warning($"  terrain layers: \"{name}\" has {textures?.Length ?? 0} control "
+                    + $"texture(s) for {layers.Length} layers - not merging");
+                return null;
+            }
+
+            var pixels = new Il2CppStructArray<Color>[needed];
+
+            for (var texture = 0; texture < needed; texture++)
+                pixels[texture] = textures[texture].GetPixels();
+
+            var count = pixels[0].Length;
+            var sums = new double[layers.Length];
+            var together = new double[limit];
+
+            for (var index = 0; index < count; index++)
+            {
+                var cutHere = 0f;
+
+                for (var layer = 0; layer < layers.Length; layer++)
+                {
+                    var weight = Channel(pixels[layer / 4][index], layer % 4);
+                    sums[layer] += weight;
+
+                    if (layer >= limit)
+                        cutHere += weight;
+                }
+
+                if (cutHere <= 0f)
+                    continue;
+
+                for (var layer = 0; layer < limit; layer++)
+                    together[layer] += cutHere * Channel(pixels[layer / 4][index], layer % 4);
+            }
+
+            if (mergeInto == MergeAuto)
+            {
+                var best = 0;
+
+                for (var layer = 1; layer < limit; layer++)
+                    if (together[layer] > together[best])
+                        best = layer;
+
+                if (together[best] <= 0d)
+                {
+                    best = 0;
+
+                    for (var layer = 1; layer < limit; layer++)
+                        if (sums[layer] > sums[best])
+                            best = layer;
+                }
+
+                var scores = new System.Text.StringBuilder();
+                for (var layer = 0; layer < limit; layer++)
+                    scores.Append(layer == 0 ? "" : ", ").Append($"{layer} {together[layer]:0}");
+
+                log.Msg($"  terrain layers: \"{name}\" auto target {best} "
+                    + $"({layers[best]?.name ?? "null"})   together [{scores}]"
+                    + $"{(together[best] <= 0d ? "   nothing lies together - largest layer taken" : "")}");
+
+                mergeInto = best;
+            }
+
+            var total = 0d;
+            foreach (var sum in sums)
+                total += sum;
+
+            var shares = new System.Text.StringBuilder();
+            for (var layer = 0; layer < layers.Length; layer++)
+                shares.Append(layer == 0 ? "" : ", ")
+                    .Append($"{layers[layer]?.name ?? "null"} {100d * sums[layer] / Math.Max(total, 1e-9):0.0}%");
+
+            log.Msg($"  terrain layers: \"{name}\" control {textures[0].width}x{textures[0].height}"
+                + $"   readable {textures[0].isReadable}   shares [{shares}]");
+
+            var target = pixels[mergeInto / 4];
+            var channel = mergeInto % 4;
+
+            for (var index = 0; index < count; index++)
+            {
+                var add = 0f;
+                for (var layer = limit; layer < layers.Length; layer++)
+                    add += Channel(pixels[layer / 4][index], layer % 4);
+
+                if (add <= 0f)
+                    continue;
+
+                var color = target[index];
+                target[index] = WithChannel(color, channel, Mathf.Min(1f, Channel(color, channel) + add));
+            }
+
+            return (target, mergeInto);
+        }
+        catch (Exception exception)
+        {
+            log.Warning($"  terrain layers: merge read threw {exception.GetType().Name}: "
+                + exception.Message + " - cutting without merge");
+            return null;
+        }
+    }
+
+    private static void WriteMerged(MelonLogger.Instance log, string name, TerrainData data,
+        Il2CppStructArray<Color> merged, int mergeInto)
+    {
+        try
+        {
+            var texture = data.alphamapTextures[mergeInto / 4];
+
+            if (texture.width * texture.height != merged.Length)
+            {
+                log.Warning($"  terrain layers: \"{name}\" control texture changed size after the "
+                    + $"cut ({texture.width}x{texture.height}) - merge not written");
+                return;
+            }
+
+            texture.SetPixels(merged);
+            texture.Apply(false);
+
+            // ZURUECKGELESEN: der Anteil der Zielschicht in der Textur, die
+            // gezeichnet wird. Steigt er nicht, ist das Schreiben nicht
+            // angekommen.
+            var back = texture.GetPixels();
+            var channel = mergeInto % 4;
+            var sum = 0d;
+            for (var index = 0; index < back.Length; index++)
+                sum += Channel(back[index], channel);
+
+            log.Msg($"  terrain layers: \"{name}\" merged into layer {mergeInto}   "
+                + $"its mean weight now {sum / Math.Max(back.Length, 1):0.000}");
+        }
+        catch (Exception exception)
+        {
+            log.Warning($"  terrain layers: merge write threw {exception.GetType().Name}: "
+                + exception.Message);
+        }
+    }
+
+    // ====================================================================
     // DIE GANZE EBENE ABSCHALTEN - Abschnitt 163.
     //
     // Beantwortet "ist es ueberhaupt die Nachbearbeitung?" in EINEM Lauf,
@@ -679,6 +1150,100 @@ internal sealed class RenderFeatures
         {
             log.Warning("  post processing threw "
                 + exception.GetType().Name + "; leaving it alone");
+        }
+    }
+
+    // ====================================================================
+    // DIE KOPIEN PRO KAMERA - Abschnitt 181.
+    //
+    // Abschnitt 180 hat die Klasse gemessen: der Effekt haengt am ZWEITEN
+    // MultiPass-Durchgang. URP legt pro Kamera eine Tiefen- und eine
+    // Farbkopie an; liest der Boden-Shader eine davon und steht sie im
+    // zweiten Durchgang veraltet da, entsteht genau dieses Bild.
+    //
+    // DIE GRENZE OFFEN BENANNT: zurueckgelesen wird das FLAG, nicht die
+    // Wirkung. URP verodert es mit dem, was Renderer-Features anfordern -
+    // darum gehoert zu diesem Test DisableRenderFeatures mit allen zehn.
+    // Deren Abschalten allein hat den Effekt nicht beruehrt (Abschnitt 170),
+    // die Kombination ist also trennscharf.
+    //
+    // Erneut angewendet alle rescanSeconds, solange etwas abgeschaltet ist:
+    // Kameras, die nach dem Levelwechsel entstehen, bringen ihre eigenen
+    // Flags mit.
+    internal void ApplyCameraTextures(MelonLogger.Instance log, bool depth, bool opaque,
+        float rescanSeconds)
+    {
+        var want = (depth ? 1 : 0) | (opaque ? 2 : 0);
+
+        if (want == wantedCameraTextures && (want == 3 || Time.unscaledTime < nextCameraTextureScan))
+            return;
+
+        // Im Auslieferungszustand nie suchen.
+        if (want == 3 && wantedCameraTextures < 0)
+        {
+            wantedCameraTextures = want;
+            return;
+        }
+
+        var changed = want != wantedCameraTextures;
+        nextCameraTextureScan = Time.unscaledTime + Mathf.Max(1f, rescanSeconds);
+
+        try
+        {
+            var all = Resources.FindObjectsOfTypeAll(
+                Il2CppType.Of<UniversalAdditionalCameraData>());
+
+            var found = 0;
+            var depthOff = 0;
+            var opaqueOff = 0;
+            var wrote = 0;
+
+            for (var index = 0; index < all.Length; index++)
+            {
+                var data = all[index]?.TryCast<UniversalAdditionalCameraData>();
+
+                if (data is null || data == null)
+                    continue;
+
+                found++;
+
+                if (data.requiresDepthTexture != depth)
+                {
+                    data.requiresDepthTexture = depth;
+                    wrote++;
+                }
+
+                if (data.requiresColorTexture != opaque)
+                {
+                    data.requiresColorTexture = opaque;
+                    wrote++;
+                }
+
+                // ZURUECKGELESEN.
+                if (!data.requiresDepthTexture)
+                    depthOff++;
+
+                if (!data.requiresColorTexture)
+                    opaqueOff++;
+            }
+
+            wantedCameraTextures = want;
+
+            // Eine Zeile beim Umschalten, danach nur, wenn der Nachlauf
+            // wirklich etwas schreiben musste - sonst waere es eine Zeile
+            // alle fuenf Sekunden ohne Neuigkeit.
+            if (changed || wrote > 0)
+                log.Msg(found == 0
+                    ? "  camera textures: NO UniversalAdditionalCameraData FOUND"
+                    : $"  camera textures: depth off on {depthOff}, opaque off on {opaqueOff} "
+                        + $"of {found} camera(s)   {wrote} flag(s) written");
+        }
+        catch (Exception exception)
+        {
+            log.Warning("  camera textures threw "
+                + exception.GetType().Name + ": " + exception.Message + "; leaving them alone");
+            wantedCameraTextures = want;
+            nextCameraTextureScan = float.MaxValue;
         }
     }
 
@@ -1473,6 +2038,17 @@ internal sealed class RenderFeatures
         volumesReported = false;
         nextVolumeScan = 0f;
         wantedPost = -1;
+        wantedCameraTextures = -1;
+        nextCameraTextureScan = 0f;
+        wantedBasemap = float.NaN;
+        wantedPixelError = float.NaN;
+        nextTerrainLodScan = 0f;
+        terrainLodTouched = false;
+        wantedDrawInstanced = int.MinValue;
+        terrainOriginals.Clear();
+        wantedLayerLimit = int.MinValue;
+        nextLayerLimitScan = 0f;
+        terrainLayerBackup.Clear();
 
         shaderHidden.Clear();
         shaderWanted = string.Empty;

@@ -5,7 +5,7 @@ using UnityEngine.InputSystem;
 using UnityEngine.SubsystemsImplementation;
 using UnityEngine.XR;
 
-[assembly: MelonInfo(typeof(WetReality.Pose), "Wet Reality Pose", "1.90.0", "Wet Reality")]
+[assembly: MelonInfo(typeof(WetReality.Pose), "Wet Reality Pose", "1.96.0", "Wet Reality")]
 [assembly: MelonGame("FuturLab", "PowerWash Simulator 2")]
 
 namespace WetReality;
@@ -362,6 +362,13 @@ public sealed class Pose : MelonMod
     private MelonPreferences_Entry<int> renderDocFrames = null!;
     private MelonPreferences_Entry<bool> lightBeams = null!;
     private MelonPreferences_Entry<bool> postProcessing = null!;
+    private MelonPreferences_Entry<bool> cameraDepthTexture = null!;
+    private MelonPreferences_Entry<bool> cameraOpaqueTexture = null!;
+    private MelonPreferences_Entry<float> terrainBasemapDistance = null!;
+    private MelonPreferences_Entry<float> terrainPixelError = null!;
+    private MelonPreferences_Entry<int> terrainDrawInstanced = null!;
+    private MelonPreferences_Entry<int> terrainLayerLimit = null!;
+    private MelonPreferences_Entry<int> terrainMergeInto = null!;
     private MelonPreferences_Entry<string> disableVolumeComponents = null!;
     private MelonPreferences_Entry<bool> shaderProbe = null!;
     private MelonPreferences_Entry<float> shaderProbeSeconds = null!;
@@ -1813,6 +1820,49 @@ public sealed class Pose : MelonMod
                 + "all, in ONE run, instead of guessing six components one at a time. "
                 + "It also removes tonemapping and colour grading, so the picture will "
                 + "look flat - that is expected for the test.");
+
+        // Abschnitt 181, der erste Kandidat aus der GEMESSENEN Klasse (180).
+        cameraDepthTexture = settings.CreateEntry("CameraDepthTexture", true,
+            description: "DIAGNOSTIC. Off stops URP copying the depth buffer per camera "
+                + "(UniversalAdditionalCameraData.requiresDepthTexture). Pair with "
+                + "DisableRenderFeatures listing all ten features, which can request the copy "
+                + "on their own. Water and fog may look wrong meanwhile.");
+        cameraOpaqueTexture = settings.CreateEntry("CameraOpaqueTexture", true,
+            description: "DIAGNOSTIC. Off stops URP copying the opaque colour per camera "
+                + "(requiresColorTexture). Same pairing as CameraDepthTexture.");
+
+        // Abschnitt 184: der Traeger ist das Terrain (183), die Klasse der
+        // zweite Durchgang (180).
+        terrainBasemapDistance = settings.CreateEntry("TerrainBasemapDistance", -1f,
+            description: "DIAGNOSTIC. Metres beyond which the terrain draws its pre-mixed base "
+                + "texture instead of its layers. 0 draws the whole terrain that way, which looks "
+                + "blurry - expected for the test. -1 leaves the game's value alone.");
+        terrainPixelError = settings.CreateEntry("TerrainPixelError", -1f,
+            description: "DIAGNOSTIC. Terrain mesh detail per camera (heightmapPixelError, 1 finest, "
+                + "200 coarsest). -1 leaves the game's value alone.");
+
+        // Abschnitt 185. Das Spiel liefert false aus - gemessen in 184.
+        terrainDrawInstanced = settings.CreateEntry("TerrainDrawInstanced", -1,
+            description: "DIAGNOSTIC. Terrain.drawInstanced: -1 leaves the game's value (false) "
+                + "alone, 0 off, 1 on.");
+
+        // DIE KORREKTUR DES EINAEUGIGEN BODENEFFEKTS - Abschnitte 186 bis 188.
+        //
+        // Ueber vier Schichten zeichnet Unity die weiteren in einem additiven
+        // Zusatzpass, und unter MultiPass landet der im zweiten Auge falsch:
+        // helle Streifen ueber beschattetem Rasen, nur rechts. Bewiesen in
+        // 187. Vorgabe 4 mit gemessenem Ziel, seit 188 an.
+        terrainLayerLimit = settings.CreateEntry("TerrainLayerLimit", 4,
+            description: "Fixes bright stripes on grass in the right eye only. Terrains with more "
+                + "than this many layers get their extra layers merged into one of the first "
+                + "ones, which removes the extra additive pass Unity draws for them and that "
+                + "renders wrongly in the second eye. -1 leaves terrains alone. Only in memory; "
+                + "nothing on disk changes.");
+
+        terrainMergeInto = settings.CreateEntry("TerrainMergeInto", RenderFeatures.MergeAuto,
+            description: "Which layer (0-based) takes over the weight of the cut layers. -2 picks "
+                + "the layer lying most together with them, measured per terrain. -1 cuts "
+                + "without merging, which leaves black holes - diagnostic only.");
 
         // UND DAS EINZELNE TEIL, als Typnamen-Liste. Dasselbe Muster wie
         // DisableRenderFeatures, und aus demselben Grund: es hat sich gerade
@@ -13174,6 +13224,12 @@ public sealed class Pose : MelonMod
             renderFeatureRescan.Value);
         renderFeatures.ApplyLightBeams(LoggerInstance, lightBeams.Value);
         renderFeatures.ApplyPostProcessing(LoggerInstance, postProcessing.Value);
+        renderFeatures.ApplyCameraTextures(LoggerInstance, cameraDepthTexture.Value,
+            cameraOpaqueTexture.Value, renderFeatureRescan.Value);
+        renderFeatures.ApplyTerrainLod(LoggerInstance, terrainBasemapDistance.Value,
+            terrainPixelError.Value, terrainDrawInstanced.Value, renderFeatureRescan.Value);
+        renderFeatures.ApplyTerrainLayerLimit(LoggerInstance, terrainLayerLimit.Value,
+            terrainMergeInto.Value, renderFeatureRescan.Value);
         renderFeatures.ApplyVolumes(LoggerInstance,
             disableVolumeComponents.Value ?? string.Empty,
             renderFeatureRescan.Value);
