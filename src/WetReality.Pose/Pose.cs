@@ -5,7 +5,7 @@ using UnityEngine.InputSystem;
 using UnityEngine.SubsystemsImplementation;
 using UnityEngine.XR;
 
-[assembly: MelonInfo(typeof(WetReality.Pose), "Wet Reality Pose", "1.86.0", "Wet Reality")]
+[assembly: MelonInfo(typeof(WetReality.Pose), "Wet Reality Pose", "1.90.0", "Wet Reality")]
 [assembly: MelonGame("FuturLab", "PowerWash Simulator 2")]
 
 namespace WetReality;
@@ -356,6 +356,10 @@ public sealed class Pose : MelonMod
     private MelonPreferences_Entry<bool> terrainInstancing = null!;
     private MelonPreferences_Entry<float> stereoSeparationOverride = null!;
     private MelonPreferences_Entry<bool> cameraInventory = null!;
+    private MelonPreferences_Entry<int> renderDocCaptures = null!;
+    private MelonPreferences_Entry<float> renderDocInterval = null!;
+    private MelonPreferences_Entry<float> renderDocSettle = null!;
+    private MelonPreferences_Entry<int> renderDocFrames = null!;
     private MelonPreferences_Entry<bool> lightBeams = null!;
     private MelonPreferences_Entry<bool> postProcessing = null!;
     private MelonPreferences_Entry<string> disableVolumeComponents = null!;
@@ -658,6 +662,7 @@ public sealed class Pose : MelonMod
     // DIE EIN-AUGEN-EFFEKTE - Abschnitt 161. Haelt keine eigenen Unity-Objekte,
     // nur Referenzen auf Assets des Spiels.
     private readonly RenderFeatures renderFeatures = new();
+    private readonly RenderDocCapture renderDoc = new();
     private readonly TeleportAim teleportAim = new();
 
     // DER ZIELSTRAHL DES TELEPORTS, und er fehlte ganz.
@@ -1731,6 +1736,21 @@ public sealed class Pose : MelonMod
                 + "changes. A camera bound to ONE eye draws into a single eye target, "
                 + "which is exactly the observed shape - and unlike eleven refuted "
                 + "candidates it needs no assumption about per-camera buffering.");
+
+        // NACHSEHEN STATT ERSCHLIESSEN - Abschnitt 176. Nicht unter DevMode:
+        // ohne eingespritztes renderdoc.dll tut der Weg nichts ausser einer
+        // Logzeile, und 0 liefert ihn aus.
+        renderDocCaptures = settings.CreateEntry("RenderDocCaptures", 0,
+            description: "Frame captures to take when the game was started FROM RenderDoc. "
+                + "0 is off. Stand in the world looking at the ground and wait; menus pause "
+                + "the count. Files land in UserData/RenderDoc.");
+        renderDocInterval = settings.CreateEntry("RenderDocInterval", 8f,
+            description: "Seconds between two RenderDoc captures - time to look elsewhere.");
+        renderDocSettle = settings.CreateEntry("RenderDocSettle", 5f,
+            description: "Seconds in the world, outside any menu, before the first capture.");
+        renderDocFrames = settings.CreateEntry("RenderDocFrames", 2,
+            description: "Unity frames bracketed by one capture. Two, because Unity renders "
+                + "on its own thread and one bracket could cut a frame in half.");
 
         // DIE KLASSE TRENNEN - Abschnitt 168.
         //
@@ -3557,6 +3577,11 @@ public sealed class Pose : MelonMod
         jumpSent = false;
         jumpProbeAirborne = false;
         stanceButton.Reset();
+        stanceHeldFromMenu = false;
+        jumpHeldFromMenu = false;
+        taskHeldFromMenu = false;
+        triggerHeldFromMenu = false;
+        loggedTriggerSwallow = false;
         sprayLatchButton.Reset();
         interactButton.Reset();
         holdLatched = false;
@@ -4104,6 +4129,12 @@ public sealed class Pose : MelonMod
         // sees the same answer in the same frame; MenuModeActive also logs its
         // transitions, and three callers would log three times.
         menuMode = uiNavigation.Value && MenuModeActive();
+
+        // Abschnitt 176. Hier, weil erst ab dieser Zeile feststeht, ob ein
+        // Menue offen ist, und weil die Klammer ueber LateUpdate das Rendern
+        // dieses Frames einschliesst.
+        renderDoc.Tick(LoggerInstance, renderDocCaptures.Value, renderDocInterval.Value,
+            renderDocSettle.Value, renderDocFrames.Value, menuMode);
 
         // EIN MENUE BRINGT NEUE GRAPHICS MIT, und die kennen den ZTest noch
         // nicht. Beide Flanken, nicht nur die steigende: beim Schliessen
@@ -6375,7 +6406,28 @@ public sealed class Pose : MelonMod
 
         try
         {
-            var held = triggerAction.IsPressed();
+            var raw = triggerAction.IsPressed();
+
+            // DER TRIGGER, DER IM MENUE BESTAETIGT, SPRUEHT NICHT - Abschnitt
+            // 174. Gemessen: Submit mit "trigger down", Menue 30 ms spaeter zu,
+            // "trigger up" erst nach 160 ms - dazwischen lief die Pistole. Im
+            // Menue selbst bleibt FireHeld wie bisher; gesperrt wird nur der
+            // Rest des Drucks nach dem Schliessen, bis zum Loslassen.
+            if (!raw)
+                triggerHeldFromMenu = false;
+            else if (menuMode)
+                triggerHeldFromMenu = true;
+
+            var held = raw && !(triggerHeldFromMenu && !menuMode);
+
+            if (raw && !held && !loggedTriggerSwallow)
+            {
+                loggedTriggerSwallow = true;
+                LoggerInstance.Msg("trigger: held over a menu close, spray waits for the release");
+            }
+
+            if (!raw)
+                loggedTriggerSwallow = false;
 
             if (held != GameInput.FireHeld)
                 LoggerInstance.Msg($"trigger {(held ? "down" : "up")}");
@@ -8708,10 +8760,27 @@ public sealed class Pose : MelonMod
                 // nichts zu tun, und ein Schliessen, das sofort landet, liest
                 // sich besser - dieselbe Begruendung, die taskButton zwei
                 // Zeilen weiter unten schon traegt.
+                //
+                // ABSCHNITT 175: die Zurueck-Taste ist jetzt Y, auf Wunsch -
+                // X oeffnet ein Popup, Y direkt darueber schliesst es. B hat
+                // im Menue damit wieder keine Aufgabe, wird aber weiter LIVE
+                // gepollt: nur so weiss der Merker darunter, ob B beim
+                // Schliessen gehalten war.
                 stanceButton.Poll(ButtonEdge.IsDown(rightSecondary), 0f);
 
-                if (stanceButton.Tap)
-                    PressBackButton();
+                // DER DRUCK, DER DAS MENUE SCHLIESST, GEHOERT DEM MENUE -
+                // Abschnitt 174. B schliesst beim Druecken, das Menue ist
+                // 20 ms spaeter zu, und das Loslassen landete im Weltzweig
+                // als Haltungs-Tap: gemessen "stance: pressed" 130 ms nach
+                // jedem Schliessen. Gemerkt wird jeder gehaltene Druck, nicht
+                // nur der, der geschlossen hat.
+                stanceHeldFromMenu = stanceButton.Down;
+
+                // A bestaetigt im Menue (DriveMenuNavigation) und springt in
+                // der Welt. jumpButton steht hier auf false, also waere ein
+                // gehaltenes A im ersten Weltframe ein NEUER Druck - gemessen
+                // als Sprung eine Sekunde nach "menu submit". Abschnitt 175.
+                jumpHeldFromMenu = ButtonEdge.IsDown(rightPrimary);
                 // X USED TO CONFIRM HERE and was therefore polled live. Accept
                 // moved to A, so X has no menu role left and is suppressed like
                 // the rest: a press meant for a menu must not reach the world
@@ -8767,8 +8836,17 @@ public sealed class Pose : MelonMod
                 // close.
                 taskButton.Poll(ButtonEdge.IsDown(leftSecondary), 0f);
 
-                if (taskButton.Tap && !TrySubmitCloseButton())
+                // Y IST DIE ZURUECK-TASTE - Abschnitt 175, uebernommen von B
+                // samt ihrer Kette aus 150 und 173. Schliesst sie nichts,
+                // bleibt es beim Umschalten der Aufgabenliste: die Taste, die
+                // die Liste oeffnet, muss sie weiter schliessen koennen.
+                if (taskButton.Tap && !PressBackButton())
                     playerInput.InvokeToggleTaskList();
+
+                // Derselbe Merker wie bei B: Y schliesst beim Druecken, und
+                // das Loslassen im Weltzweig waere ein Tap auf die
+                // Aufgabenliste.
+                taskHeldFromMenu = taskButton.Down;
 
                 // DIE GESTE WIRKT AUCH IM MENUE. Wer ein Menue offen hat
                 // und die Sicht frei haben will, soll nicht erst schliessen
@@ -8798,7 +8876,19 @@ public sealed class Pose : MelonMod
 
             // Hold thresholds of zero mean "no hold half", so the tap fires on
             // press and feels instant. Jump and Interact must never wait.
-            jumpButton.Poll(ButtonEdge.IsDown(rightPrimary), 0f);
+            // Ein A, das im Menue bestaetigt hat, kommt erst nach dem
+            // Loslassen bei der Flanke an - Abschnitt 175. Anders als bei B
+            // und Y reicht es, die EINGABE zu sperren: jumpButton wurde im
+            // Menue mit false gepollt und steht deshalb nicht auf "unten".
+            var jumpDown = ButtonEdge.IsDown(rightPrimary);
+
+            if (jumpHeldFromMenu && !jumpDown)
+            {
+                jumpHeldFromMenu = false;
+                LoggerInstance.Msg("jump: release after a menu close swallowed");
+            }
+
+            jumpButton.Poll(jumpDown && !jumpHeldFromMenu, 0f);
             interactButton.Poll(ButtonEdge.IsDown(leftPrimary), 0f);
             menuButton.Poll(ButtonEdge.IsDown(leftMenu), menuHoldSeconds.Value);
             dirtButton.Poll(ButtonEdge.ReadAxis(leftSqueeze) > 0.6f, 0f);
@@ -8854,13 +8944,23 @@ public sealed class Pose : MelonMod
                 jumpSent = false;
             }
 
-            if (stanceButton.Tap)
+            // Der Rest eines Drucks, der im Menue begann, loest weder Tap noch
+            // Hold aus - Abschnitt 174. Frei erst nach dem Loslassen.
+            var stanceSwallowed = stanceHeldFromMenu;
+
+            if (stanceSwallowed && !stanceButton.Down)
+            {
+                stanceHeldFromMenu = false;
+                LoggerInstance.Msg("stance: release after a menu close swallowed");
+            }
+
+            if (stanceButton.Tap && !stanceSwallowed)
             {
                 playerInput.InvokeCrouchPressed();
                 LoggerInstance.Msg("stance: pressed");
             }
 
-            if (stanceButton.Hold)
+            if (stanceButton.Hold && !stanceSwallowed)
             {
                 playerInput.InvokeCrouchLongPressed();
                 LoggerInstance.Msg("stance: long pressed");
@@ -8941,7 +9041,17 @@ public sealed class Pose : MelonMod
             if (interactButton.Released)
                 ReleaseHold("released");
 
-            if (taskButton.Tap && !CalibrateSuppressed())
+            // Wie bei B: der Rest eines Y, das ein Menue geschlossen hat,
+            // loest weder Tap noch Hold aus. Abschnitt 175.
+            var taskSwallowed = taskHeldFromMenu;
+
+            if (taskSwallowed && !taskButton.Down)
+            {
+                taskHeldFromMenu = false;
+                LoggerInstance.Msg("task list: release after a menu close swallowed");
+            }
+
+            if (taskButton.Tap && !taskSwallowed && !CalibrateSuppressed())
             {
                 // Y CLOSES IT TOO, which is what the user asked for and the more
                 // understandable behaviour: the button that opened a thing should
@@ -8960,7 +9070,7 @@ public sealed class Pose : MelonMod
 
             }
 
-            if (taskButton.Hold && !CalibrateSuppressed())
+            if (taskButton.Hold && !taskSwallowed && !CalibrateSuppressed())
             {
                 playerInput.InvokeToggleFurnitureInventory();
                 LoggerInstance.Msg("furniture inventory toggled");
@@ -13466,23 +13576,41 @@ public sealed class Pose : MelonMod
     // Eine Zeile pro Druck, und sie nennt den Schritt, der gegriffen hat.
     // Ein stummer Druck ist die Luecke, die Abschnitt 99 einen ganzen Lauf
     // gekostet hat.
-    private void PressBackButton()
+    //
+    // DER DRITTE SCHRITT - Abschnitt 173. Das Journal-Popup (per X geoeffnet)
+    // hat weder das eine noch das andere: sein Knopf heisst "CloseButton",
+    // traegt keinen ICancelHandler, und der Kontextknopf-Filter verlangt
+    // "ContextButton". Gemessen in zwoelf Druecken, alle "nothing to close",
+    // einer davon mit "CloseButton" selbst in der Auswahl. Nur hier und nicht
+    // in TrySubmitCloseButton: Menue- und Y-Taste teilen jene Suche, und ihr
+    // Verhalten bleibt in diesem Lauf unangetastet.
+    //
+    // SEIT ABSCHNITT 175 AUF Y, nicht mehr auf B. Der Rueckgabewert sagt, ob
+    // eine Stufe gegriffen hat; ohne Treffer schaltet Y die Aufgabenliste um.
+    private bool PressBackButton()
     {
         var before = InteractionText();
         var selected = SelectedName();
         var allows = AllowsMovementText();
 
         var step = "nothing to close";
+        var closed = true;
 
         if (TryUiCancel())
             step = "ui cancel";
         else if (TrySubmitCloseButton())
             step = "context button";
+        else if (TrySubmitPopupCloseButton())
+            step = "popup close button";
+        else
+            closed = false;
 
-        LoggerInstance.Msg($"back (B): {step}"
+        LoggerInstance.Msg($"back (Y): {step}"
             + $"   selected {selected}"
             + $"   allowsMovement {allows} -> {AllowsMovementText()}"
             + $"   state {before} -> {InteractionText()}");
+
+        return closed;
     }
 
     private void PressMenuButton(string branch)
@@ -13629,6 +13757,69 @@ public sealed class Pose : MelonMod
         catch (Exception exception)
         {
             LoggerInstance.Warning($"  close button submit threw {exception.GetType().Name}: "
+                + exception.Message);
+            return false;
+        }
+    }
+
+    // Der Schliessen-Knopf eines Popups - Abschnitt 173. Dieselben Tore wie
+    // TrySubmitCloseButton (aktiv, bedienbar), aber der GANZE Name statt einer
+    // Teilzeichenkette: "CloseButton" als Teil wuerde auch Knoepfe treffen,
+    // die nur so heissen wie ein Schliessen.
+    //
+    // Mehr als ein Treffer heisst: die Wahl ist nicht eindeutig, und ein
+    // Schliessen auf dem falschen Schirm waere schlimmer als keines. Dann wird
+    // nichts gedrueckt und die Kandidaten stehen im Log. Ohne Treffer ebenso:
+    // die Zeile nennt, was an aktiven Knoepfen da war, damit der naechste
+    // Fehlschlag seinen Grund gleich mitbringt.
+    private bool TrySubmitPopupCloseButton()
+    {
+        try
+        {
+            var found = Resources.FindObjectsOfTypeAll(
+                Il2CppInterop.Runtime.Il2CppType.Of<Il2CppFuturLab.UIStateMonoBehaviour>());
+
+            Il2CppFuturLab.FuturButton? match = null;
+            var matches = 0;
+            var seen = new List<string>();
+
+            for (var index = 0; index < found.Length; index++)
+            {
+                var button = found[index]?.TryCast<Il2CppFuturLab.FuturButton>();
+
+                if (button is null || button == null)
+                    continue;
+
+                if (!button.gameObject.activeInHierarchy || !button.IsInteractable)
+                    continue;
+
+                if (seen.Count < 12)
+                    seen.Add(button.name);
+
+                if (!string.Equals(button.name, "CloseButton", StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                matches++;
+                match ??= button;
+            }
+
+            if (matches != 1 || match is null)
+            {
+                LoggerInstance.Msg($"popup close: {matches} active CloseButton(s), nothing pressed"
+                    + $"   active buttons [{string.Join(", ", seen)}]");
+                return false;
+            }
+
+            var caption = "?";
+            try { caption = match.HasCaption ? match.Caption : "(none)"; } catch { }
+
+            match.Submit();
+            LoggerInstance.Msg($"ui: submitted popup close button \"{caption}\" on {match.name}");
+            return true;
+        }
+        catch (Exception exception)
+        {
+            LoggerInstance.Warning($"  popup close submit threw {exception.GetType().Name}: "
                 + exception.Message);
             return false;
         }
@@ -13997,6 +14188,14 @@ public sealed class Pose : MelonMod
     private string menuModeState = "";
     private int loggedMenuCount = -1;
     private bool menuMode;
+
+    // Ein Druck, der im Menue begann und dessen Rest nach dem Schliessen
+    // nicht in die Welt darf - Abschnitt 174.
+    private bool stanceHeldFromMenu;
+    private bool jumpHeldFromMenu;
+    private bool taskHeldFromMenu;
+    private bool triggerHeldFromMenu;
+    private bool loggedTriggerSwallow;
 
     // The game's OWN idea of what the controller cursor is pointing at.
     //
