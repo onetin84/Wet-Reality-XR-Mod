@@ -103,7 +103,9 @@ STEUERUNG UND EINSTELLUNGEN
   also nicht aus. Halten statt Doppelklick, weil Virtual Desktop den
   Doppelklick belegt.
 
-  B ist in Popups der Ersatz für Esc - Levelauswertung, Zeitungsartikel.
+  Y ist in Popups der Ersatz für Esc - Journal, Levelauswertung,
+  Zeitungsartikel. X öffnet ein Popup, Y direkt darüber schließt es. Gibt
+  es nichts zu schließen, öffnet und schließt Y wie gewohnt die Aufgabenliste.
 
   Der Knopf unten startet das Spiel über Steam, das Fenster kann also daneben
   offen bleiben. Er ist grau, solange keine Installation gefunden wurde.
@@ -113,6 +115,13 @@ STEUERUNG UND EINSTELLUNGEN
   <Spiel>\UserData\MelonPreferences.cfg. Das Spiel vorher schließen: der
   Loader schreibt diese Datei beim Beenden neu und würde deine Änderung
   überschreiben.
+
+  WER VON EINER ÄLTEREN VERSION AKTUALISIERT, behält seine Einstellungen.
+  Werte, die du nie angefasst hast, die aber noch auf einer alten Vorgabe
+  stehen - Menügröße, Snap-Winkel, die Lage der Pistole in der Hand, ein
+  paar Diagnosen, die Bildrate kosten -, werden beim ersten Start einmalig
+  auf die heutige Vorgabe gesetzt. Was du selbst eingestellt hast, bleibt;
+  das Log nennt beides.
 
   Das Fenster stellt sich auf Deutsch, wenn Windows auf Deutsch läuft; oben
   rechts lässt sich die Sprache umschalten.
@@ -163,15 +172,15 @@ WAS INSTALLIERT WIRD, UND WOHER
 
 BEKANNTE GRENZEN
 
-  - Auf dem Boden erscheinen auf EINEM Auge Helligkeitsunterschiede, die den
-    Schlagschatten überdecken - am deutlichsten auf Rasen. Ursache unbekannt.
-    Gemessen ausgeschlossen sind: volumetrischer Nebel, Lichtstreuung, alle
-    zehn Renderer-Features der Grafikpipeline, das Gras in beiden Bauformen,
-    Terrain-Instanzierung, Kantenglättung, die gesamte Nachbearbeitung,
-    Schatten, der Konturen-Pass und eine einseitig gebundene Kamera. Der
-    Effekt ist kosmetisch; Nebel und Lichtstreuung lassen sich in
-    MelonPreferences.cfg über VolumetricFog und LightScattering abschalten,
-    falls sie einzeln stören.
+  - BEHOBEN: die hellen Streifen und Flecken auf dem Rasen, nur im rechten
+    Auge. Der Boden des Spiels besteht aus bis zu neun Oberflächen-Schichten,
+    und in VR wurden alle über der vierten im zweiten Auge falsch gezeichnet.
+    Die Mod behält jetzt die vier Schichten mit der größten Fläche und
+    rechnet jede seltenere in die farblich nächste ein. Beide Augen zeigen
+    dasselbe Bild; der Preis ist, dass ein paar seltene Bodenschichten wie
+    eine ähnliche aussehen - etwa sind die hellen Mähstreifen im Rasen der
+    Home Base jetzt normaler geschnittener Rasen. Abschalten mit
+    TerrainLayerLimit = -1 in MelonPreferences.cfg.
 
   - Die Arme und Hände des Spiels bleiben ausgeblendet, und zwar unbedingt.
     Das First-Person-Mesh ist EIN Objekt mit BEIDEN Händen - aus ihm nur die

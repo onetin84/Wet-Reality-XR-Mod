@@ -90,7 +90,9 @@ CONTROLS AND SETTINGS
   out. Hold rather than double-click, because Virtual Desktop already uses the
   double-click.
 
-  B stands in for Esc inside popups - level summary, newspaper articles.
+  Y stands in for Esc inside popups - journal, level summary, newspaper
+  articles. X opens a popup, Y right above it closes it. With nothing to
+  close, Y opens and closes the task list as before.
 
   The configuration tool also sets the colour of the pointer beams and the
   size of the teleport target.
@@ -111,6 +113,12 @@ CONTROLS AND SETTINGS
   <game>\UserData\MelonPreferences.cfg as plain text. Close the game before
   editing it: the loader rewrites that file on exit and would overwrite your
   change.
+
+  UPDATING FROM AN OLDER VERSION keeps your settings. Values you never
+  touched but that still sit on an old default - menu size, snap angle, the
+  washer's alignment in your hand, a few diagnostics that cost frame rate -
+  are moved to today's defaults on the first start, once. Anything you set
+  yourself stays as it is; the log lists both.
 
   The guide is also just a file you can open directly:
   configurator\QuickGuide.html
@@ -155,14 +163,15 @@ WHAT GETS INSTALLED, AND FROM WHERE
 
 KNOWN LIMITATIONS
 
-  - On the ground, ONE eye shows brightness differences that cover the cast
-    shadow - most visible on grass. Cause unknown. Measured and ruled out:
-    volumetric fog, light scattering, all ten renderer features of the
-    graphics pipeline, grass in both of its forms, terrain instancing,
-    anti-aliasing, the entire post-processing layer, shadows, the outline pass
-    and a camera bound to a single eye. The effect is cosmetic; fog and light
-    scattering can be switched off individually in MelonPreferences.cfg via
-    VolumetricFog and LightScattering if they bother you on their own.
+  - FIXED: the bright stripes and patches on grass in the right eye only.
+    The game's ground is built from up to nine surface layers, and in VR the
+    extra ones beyond four were drawn wrongly in the second eye. The mod now
+    keeps the four layers covering the most ground and blends each rarer one
+    into the one closest in colour. Both eyes show the same picture; the
+    price is that a few rare ground layers look like a similar one - for
+    example the bright mowing stripes in the Home Base lawn are now ordinary
+    cut grass. To switch it off, set TerrainLayerLimit = -1 in
+    MelonPreferences.cfg.
 
   - The game's own arms and hands stay hidden, and now unconditionally. Its
     first-person mesh is one object holding BOTH hands, so showing only the

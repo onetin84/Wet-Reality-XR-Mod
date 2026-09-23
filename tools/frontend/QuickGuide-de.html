@@ -259,13 +259,13 @@ footer .spacer { flex: 1; }
   <img src="assets/controller.png" alt="Meta-Quest-3-Controller mit der Belegung der Mod">
 
   <b class="l" style="left:20.8%; top:16.1%;"><i>Laufen<em>ganz drücken: Sprinten &middot; mit Komfort-Teleport: vorn = Teleport</em></i></b>
-  <b class="r" style="left:31.9%; top:20.0%;"><i>Aufgabenliste<em>Y &middot; halten: Inventar</em></i></b>
+  <b class="r" style="left:31.9%; top:20.0%;"><i>Aufgabenliste<em>Y &middot; schließt Popups &middot; halten: Inventar</em></i></b>
   <b class="r" style="left:29.9%; top:25.9%;"><i>Aufnehmen / ablegen<em>X</em></i></b>
   <b class="l" style="left:25.7%; top:30.3%;"><i>Pausenmenü<em>Menü &middot; halten und loslassen: UI aus</em></i></b>
   <b class="r" style="left:31.3%; top:44.4%;"><i>Düse drehen<em>Trigger &middot; füllt Reiniger nach</em></i></b>
   <b class="r" style="left:34.2%; top:59.6%;"><i>Schmutz anzeigen<em>Grip &middot; halten: getragenes Objekt drehen</em></i></b>
   <b class="r" style="left:78.5%; top:15.1%;"><i>Drehen<em>oben: Teleport-Ziel &middot; unten: Düse</em></i></b>
-  <b class="l" style="left:68.0%; top:20.0%;"><i>Ducken<em>B &middot; in Popups: schließen</em></i></b>
+  <b class="l" style="left:68.0%; top:20.0%;"><i>Ducken<em>B &middot; halten: hinlegen</em></i></b>
   <b class="l" style="left:69.7%; top:25.9%;"><i>Springen<em>A &middot; wählt im Menü</em></i></b>
   <b class="l" style="left:68.7%; top:44.4%;"><i>Sprühen<em>Trigger &middot; wählt im Menü</em></i></b>
   <b class="l" style="left:65.8%; top:59.6%;"><i>Dauersprühen<em>Grip &middot; kein Halten nötig</em></i></b>
@@ -282,7 +282,7 @@ footer .spacer { flex: 1; }
   <tr><th>Trigger</th><td>Sprühen, solange gedrückt</td></tr>
   <tr><th>Grip</th><td>Dauersprühen ein und aus — kein Halten des Triggers nötig. Läuft er, schaltet der Griff ihn ab, statt ein Werkzeug zu wechseln, und das Öffnen des Pausenmenüs schaltet ihn ebenfalls ab — ein laufender Strahl lässt sich also immer stoppen.</td></tr>
   <tr><th><kbd>A</kbd></th><td>Springen. Im Menü: auswählen. <b>Mit Komfort-Teleport ist der Sprung abgeschaltet</b> — sonst käme man über Sprung plus Teleport höher als vorgesehen</td></tr>
-  <tr><th><kbd>B</kbd> tippen</th><td>Ducken. In einem Popup — Levelauswertung, Zeitungsartikel — schließt <kbd>B</kbd> es stattdessen. Das ist der Ersatz für <kbd>Esc</kbd></td></tr>
+  <tr><th><kbd>B</kbd> tippen</th><td>Ducken</td></tr>
   <tr><th><kbd>B</kbd> halten</th><td>Ducken, langer Druck</td></tr>
   <tr><th>Stick links / rechts</th><td>Drehen. Mit der Komfortoption <i>Sprungdrehung</i> dreht es in festen Schritten</td></tr>
   <tr><th>Stick nach oben</th><td><b>Teleport-Ziel.</b> Zielen mit der freien Hand, Stick zurück in die Mitte löst aus. Immer verfügbar, unabhängig von den Komfortoptionen</td></tr>
@@ -299,7 +299,7 @@ footer .spacer { flex: 1; }
   <tr><th>Trigger</th><td>Animiertes Objekt öffnen oder schließen, wenn die Hand daran liegt — sonst Düse drehen und Reiniger nachfüllen</td></tr>
   <tr><th>Grip</th><td>Restlichen Schmutz hervorheben</td></tr>
   <tr><th><kbd>X</kbd></th><td>Objekte aufnehmen und ablegen, und Schalter bedienen — etwa Heben und Senken am Lift. Gezielt wird mit der linken Hand: eine grüne Linie erscheint, sobald etwas in Reichweite ist, und nur dann — keine Linie heißt, da ist nichts. Ein Schalter, der gehalten werden muss, bleibt gedrückt, solange du <kbd>X</kbd> hältst</td></tr>
-  <tr><th><kbd>Y</kbd> tippen</th><td>Aufgabenliste</td></tr>
+  <tr><th><kbd>Y</kbd> tippen</th><td>Aufgabenliste. In einem Popup — Journal, Levelauswertung, Zeitungsartikel — schließt <kbd>Y</kbd> es stattdessen. Das ist der Ersatz für <kbd>Esc</kbd>: <kbd>X</kbd> öffnet, <kbd>Y</kbd> direkt darüber schließt</td></tr>
   <tr><th><kbd>Y</kbd> halten</th><td>Möbel-Inventar</td></tr>
   <tr><th><kbd>Menü</kbd> tippen</th><td>Pausenmenü</td></tr>
   <tr><th><kbd>Menü</kbd> halten und loslassen</th><td><b>Immersion Mode</b> — die Spiel-UI aus und wieder ein. Ein geöffnetes Menü bleibt sichtbar, du sperrst dich also nicht aus. Halten statt Doppelklick, weil Virtual Desktop den Doppelklick belegt</td></tr>
@@ -414,7 +414,7 @@ footer .spacer { flex: 1; }
   <tr><th>Linker Stick</th><td>Auswahl bewegen, in alle vier Richtungen</td></tr>
   <tr><th><kbd>A</kbd> oder rechter Trigger</th><td>Auswählen</td></tr>
   <tr><th><kbd>Menü</kbd></th><td>Zurück, oder das Offene schließen</td></tr>
-  <tr><th><kbd>Y</kbd></th><td>Aufgabenliste schließen</td></tr>
+  <tr><th><kbd>Y</kbd></th><td>Popup oder Aufgabenliste schließen — der Ersatz für <kbd>Esc</kbd></td></tr>
   <tr><th><kbd>A</kbd> in einem Dialog</th><td>Bestätigt den Knopf, den das Spiel selbst vorgewählt hat — der Ausweg, wenn der Zeiger in einem Fenster nichts findet</td></tr>
   <tr><th>Linker Grip</th><td>Vorheriger Tab</td></tr>
   <tr><th>Rechter Grip</th><td>Nächster Tab</td></tr>
