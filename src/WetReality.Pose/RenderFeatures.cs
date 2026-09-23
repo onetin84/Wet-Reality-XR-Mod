@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Runtime.InteropServices;
 using Il2CppInterop.Runtime;
 using Il2CppInterop.Runtime.InteropTypes.Arrays;
 using Il2CppFuturLab.PW2;
@@ -864,6 +865,18 @@ internal sealed class RenderFeatures
                     if (!terrainLayerBackup.ContainsKey(key))
                         terrainLayerBackup[key] = layers;
 
+                    // ABSCHNITT 190: die kluge Auswahl. Gelingt sie, ist
+                    // dieses Terrain fertig; scheitert sie (Farben nicht
+                    // messbar, Texturen unpassend), bleibt der alte Weg aus
+                    // 188 als Rueckfall.
+                    if (mergeInto == MergeAuto && RebuildLayers(log, terrain.name, data, layers, limit))
+                    {
+                        cut++;
+                        var kept = data.terrainLayers;
+                        summary.Append($"   \"{terrain.name}\" layers {kept?.Length ?? -1} (kept by area)");
+                        continue;
+                    }
+
                     // VOR dem Kuerzen gelesen: danach darf Unity die
                     // Steuertexturen der abgeschnittenen Schichten verwerfen.
                     var merged = (mergeInto >= 0 && mergeInto < limit) || mergeInto == MergeAuto
@@ -1056,6 +1069,338 @@ internal sealed class RenderFeatures
             log.Warning($"  terrain layers: merge read threw {exception.GetType().Name}: "
                 + exception.Message + " - cutting without merge");
             return null;
+        }
+    }
+
+    // ====================================================================
+    // DIE KLUGE AUSWAHL - Abschnitt 190.
+    //
+    // 188 behielt die ERSTEN vier Schichten und schob alle anderen in EINE.
+    // Im Campsite-Level (TRN_PW2_NationalPark, neun Schichten) wurde so ein
+    // Viertel des Bodens zu Moos, und der Kiesweg sah aus wie Rasen -
+    // gemeldet mit Bildvergleich flach gegen VR.
+    //
+    // Jetzt: die vier Schichten mit der GROESSTEN FLAECHE bleiben, in ihrer
+    // alten Reihenfolge. Jede weitere geht in die behaltene Schicht mit der
+    // NAECHSTEN DURCHSCHNITTSFARBE - gemessen auf der Grafikkarte, nicht am
+    // Namen erkannt. Neu geschrieben wird die erste Steuertextur ganz, weil
+    // sich die Kanaele verschieben.
+    //
+    // Gibt false zurueck, wenn eine Farbe nicht messbar war oder die Texturen
+    // nicht passen; dann gilt der Weg aus 188.
+    private static bool RebuildLayers(MelonLogger.Instance log, string name, TerrainData data,
+        Il2CppReferenceArray<TerrainLayer> layers, int limit)
+    {
+        try
+        {
+            var clock = System.Diagnostics.Stopwatch.StartNew();
+            var textures = data.alphamapTextures;
+            var needed = (layers.Length + 3) / 4;
+
+            if (textures is null || textures.Length < needed)
+                return false;
+
+            // IN EINEM STUECK KOPIERT - Abschnitt 191. 1.97.0 las jeden Pixel
+            // einzeln ueber den Interop-Indexer und brauchte bei 4096x4096 und
+            // neun Schichten rund vierzehn Sekunden Ladezeit. GetPixels32
+            // statt GetPixels ist verlustfrei, weil die Steuertexturen 8 Bit je
+            // Kanal haben, und ein Viertel der Daten; Marshal.Copy ueber
+            // ArrayStartPointer ist ein memcpy. Gerechnet wird auf byte[].
+            var pixels = new byte[needed][];
+            var count = -1;
+
+            for (var texture = 0; texture < needed; texture++)
+            {
+                var native = textures[texture].GetPixels32();
+
+                if (count < 0)
+                    count = native.Length;
+                else if (native.Length != count)
+                    return false;
+
+                var copied = CopyChecked(native);
+
+                if (copied is null)
+                {
+                    log.Warning($"  terrain layers: \"{name}\" block copy of the control texture did "
+                        + "not match the indexer - falling back to the slow single-target merge");
+                    return false;
+                }
+
+                pixels[texture] = copied;
+            }
+
+            var sums = new double[layers.Length];
+            var layerCount = layers.Length;
+
+            for (var layer = 0; layer < layerCount; layer++)
+            {
+                var source = pixels[layer / 4];
+                var offset = layer % 4;
+                long sum = 0;
+
+                for (var index = offset; index < source.Length; index += 4)
+                    sum += source[index];
+
+                sums[layer] = sum / 255d;
+            }
+
+            var readMs = clock.ElapsedMilliseconds;
+
+            // Die groessten Flaechen, dann zurueck in die alte Reihenfolge -
+            // die Reihenfolge der behaltenen aendert am Bild nichts, sie haelt
+            // nur das Log lesbar.
+            var order = new List<int>();
+            for (var layer = 0; layer < layers.Length; layer++)
+                order.Add(layer);
+            order.Sort((a, b) => sums[b].CompareTo(sums[a]));
+            var kept = order.GetRange(0, limit);
+            kept.Sort();
+
+            var colors = new Color?[layers.Length];
+            for (var layer = 0; layer < layers.Length; layer++)
+                colors[layer] = AverageColor(layers[layer]);
+
+            var total = 0d;
+            foreach (var sum in sums)
+                total += sum;
+
+            // Jede abgeschnittene Schicht bekommt ihr eigenes Ziel.
+            var targetOf = new int[layers.Length];
+            var plan = new System.Text.StringBuilder();
+
+            for (var layer = 0; layer < layers.Length; layer++)
+            {
+                var slot = kept.IndexOf(layer);
+
+                if (slot >= 0)
+                {
+                    targetOf[layer] = slot;
+                    continue;
+                }
+
+                if (colors[layer] is null)
+                {
+                    log.Msg($"  terrain layers: \"{name}\" colour of {layers[layer]?.name ?? "null"} "
+                        + "not measurable - falling back to the single-target merge");
+                    return false;
+                }
+
+                var best = -1;
+                var bestDistance = float.MaxValue;
+
+                for (var candidate = 0; candidate < kept.Count; candidate++)
+                {
+                    var other = colors[kept[candidate]];
+                    if (other is null)
+                        continue;
+
+                    var distance = ColorDistance(colors[layer]!.Value, other.Value);
+                    if (distance < bestDistance)
+                    {
+                        bestDistance = distance;
+                        best = candidate;
+                    }
+                }
+
+                if (best < 0)
+                    return false;
+
+                targetOf[layer] = best;
+                plan.Append(plan.Length == 0 ? "" : ", ")
+                    .Append($"{layers[layer]?.name ?? "null"} {100d * sums[layer] / Math.Max(total, 1e-9):0.0}%"
+                        + $" -> {layers[kept[best]]?.name ?? "null"} (distance {bestDistance:0.000})");
+            }
+
+            var colorText = new System.Text.StringBuilder();
+            for (var layer = 0; layer < layers.Length; layer++)
+                colorText.Append(layer == 0 ? "" : ", ").Append($"{layers[layer]?.name ?? "null"} "
+                    + (colors[layer] is { } c ? $"({c.r:0.00} {c.g:0.00} {c.b:0.00})" : "(none)"));
+
+            log.Msg($"  terrain layers: \"{name}\" colours [{colorText}]");
+
+            // Die neuen Gewichte: Kanal k = behaltene Schicht k plus alles,
+            // was ihr zugeordnet ist. Ganzzahlig auf Bytes, gedeckelt bei 255.
+            var rebuiltBytes = new byte[count * 4];
+            var sumsPerPixel = new int[4];
+
+            for (var index = 0; index < count; index++)
+            {
+                var basis = index * 4;
+                sumsPerPixel[0] = 0;
+                sumsPerPixel[1] = 0;
+                sumsPerPixel[2] = 0;
+                sumsPerPixel[3] = 0;
+
+                for (var layer = 0; layer < layerCount; layer++)
+                    sumsPerPixel[targetOf[layer]] += pixels[layer >> 2][basis + (layer & 3)];
+
+                rebuiltBytes[basis] = (byte)Math.Min(255, sumsPerPixel[0]);
+                rebuiltBytes[basis + 1] = (byte)Math.Min(255, sumsPerPixel[1]);
+                rebuiltBytes[basis + 2] = (byte)Math.Min(255, sumsPerPixel[2]);
+                rebuiltBytes[basis + 3] = (byte)Math.Min(255, sumsPerPixel[3]);
+            }
+
+            var rebuilt = new Il2CppStructArray<Color32>(count);
+            Marshal.Copy(rebuiltBytes, 0, StartOf(rebuilt), rebuiltBytes.Length);
+
+            // Dieselbe Pruefung in der Gegenrichtung, VOR dem Schreiben in
+            // die Textur: ein falsch adressiertes Array darf nie gezeichnet
+            // werden.
+            var check = rebuilt[count / 2];
+            var at = (count / 2) * 4;
+            if (check.r != rebuiltBytes[at] || check.g != rebuiltBytes[at + 1]
+                || check.b != rebuiltBytes[at + 2] || check.a != rebuiltBytes[at + 3])
+            {
+                log.Warning($"  terrain layers: \"{name}\" block write did not read back - "
+                    + "falling back to the slow single-target merge");
+                return false;
+            }
+
+            var keptLayers = new Il2CppReferenceArray<TerrainLayer>(limit);
+            var keptNames = new System.Text.StringBuilder();
+
+            for (var slot = 0; slot < limit; slot++)
+            {
+                keptLayers[slot] = layers[kept[slot]];
+                keptNames.Append(slot == 0 ? "" : ", ").Append(layers[kept[slot]]?.name ?? "null");
+            }
+
+            data.terrainLayers = keptLayers;
+
+            var control = data.alphamapTextures[0];
+
+            if (control.width * control.height != count)
+            {
+                log.Warning($"  terrain layers: \"{name}\" control texture changed size after the "
+                    + $"cut ({control.width}x{control.height}) - weights NOT written");
+                return true;
+            }
+
+            control.SetPixels32(rebuilt);
+            control.Apply(false);
+
+            // ZURUECKGELESEN: die Summe aller vier Kanaele im Mittel. Nahe 1
+            // heisst: kein Loch. Deutlich darunter waere ein Gewicht verloren.
+            var back = control.GetPixels32();
+            var backBytes = CopyChecked(back) ?? Array.Empty<byte>();
+            long coverage = 0;
+            for (var index = 0; index < backBytes.Length; index++)
+                coverage += backBytes[index];
+
+            // Die Dauer steht mit im Log: sie ist genau die Zahl, an der 1.97.0
+            // gescheitert ist.
+            log.Msg($"  terrain layers: \"{name}\" kept by area [{keptNames}]   merged [{plan}]"
+                + $"   mean coverage now {coverage / 255d / Math.Max(back.Length, 1):0.000}"
+                + $"   took {clock.ElapsedMilliseconds} ms (read {readMs} ms)");
+            return true;
+        }
+        catch (Exception exception)
+        {
+            log.Warning($"  terrain layers: rebuild threw {exception.GetType().Name}: "
+                + exception.Message + " - falling back to the single-target merge");
+            return false;
+        }
+    }
+
+    // DER ANFANG DER NATIVEN DATEN - Abschnitt 191. Il2CppArrayBase fuehrt
+    // ArrayStartPointer, aber in dieser Fassung nicht oeffentlich (CS0122).
+    // Per Reflexion gelesen statt das Kopflayout eines Il2Cpp-Arrays zu
+    // raten: dann rechnet die Bibliothek, die es kennt.
+    private static System.Reflection.PropertyInfo? arrayStart;
+    private static bool arrayStartResolved;
+
+    private static IntPtr StartOf(Il2CppArrayBase array)
+    {
+        if (!arrayStartResolved)
+        {
+            arrayStartResolved = true;
+            arrayStart = typeof(Il2CppArrayBase).GetProperty("ArrayStartPointer",
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public
+                | System.Reflection.BindingFlags.NonPublic);
+        }
+
+        return arrayStart?.GetValue(array) is IntPtr pointer ? pointer : IntPtr.Zero;
+    }
+
+    // Kopiert ein Color32-Array in einem Stueck und PRUEFT die Kopie an
+    // drei Stellen gegen den Indexer. Stimmt eine nicht, gibt es null - dann
+    // ist die Annahme ueber den Speicher falsch, und niemand soll auf ihr
+    // rechnen.
+    private static byte[]? CopyChecked(Il2CppStructArray<Color32> native)
+    {
+        var start = StartOf(native);
+
+        if (start == IntPtr.Zero || native.Length == 0)
+            return null;
+
+        var bytes = new byte[native.Length * 4];
+        Marshal.Copy(start, bytes, 0, bytes.Length);
+
+        foreach (var probe in new[] { 0, native.Length / 2, native.Length - 1 })
+        {
+            var expected = native[probe];
+            var at = probe * 4;
+
+            if (bytes[at] != expected.r || bytes[at + 1] != expected.g
+                || bytes[at + 2] != expected.b || bytes[at + 3] != expected.a)
+                return null;
+        }
+
+        return bytes;
+    }
+
+    private static float ColorDistance(Color a, Color b)
+    {
+        var r = a.r - b.r;
+        var g = a.g - b.g;
+        var bl = a.b - b.b;
+        return Mathf.Sqrt(r * r + g * g + bl * bl);
+    }
+
+    // Die Durchschnittsfarbe einer Schicht, auf der Grafikkarte gemessen:
+    // ein Blit auf EIN Pixel waehlt ueber die Ableitungen die kleinste
+    // Mip-Stufe, und die IST der Mittelwert. Terrain-Texturen sind nicht
+    // CPU-lesbar, darum dieser Weg. Mit dem Tint der Schicht verrechnet,
+    // den der Shader ebenfalls anwendet.
+    private static Color? AverageColor(TerrainLayer? layer)
+    {
+        if (layer is null || layer == null)
+            return null;
+
+        var texture = layer.diffuseTexture;
+
+        if (texture is null || texture == null)
+            return null;
+
+        var target = RenderTexture.GetTemporary(1, 1, 0, RenderTextureFormat.ARGB32);
+        var previous = RenderTexture.active;
+        Texture2D? read = null;
+
+        try
+        {
+            Graphics.Blit(texture, target);
+            RenderTexture.active = target;
+
+            read = new Texture2D(1, 1, TextureFormat.RGBA32, false);
+            read.ReadPixels(new Rect(0f, 0f, 1f, 1f), 0, 0);
+            read.Apply(false);
+
+            var color = read.GetPixel(0, 0);
+            var remap = layer.diffuseRemapMax;
+            return new Color(color.r * remap.x, color.g * remap.y, color.b * remap.z, 1f);
+        }
+        catch
+        {
+            return null;
+        }
+        finally
+        {
+            RenderTexture.active = previous;
+            RenderTexture.ReleaseTemporary(target);
+
+            if (read is not null && read != null)
+                UnityEngine.Object.Destroy(read);
         }
     }
 

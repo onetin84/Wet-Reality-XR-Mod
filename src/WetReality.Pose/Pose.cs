@@ -5,7 +5,7 @@ using UnityEngine.InputSystem;
 using UnityEngine.SubsystemsImplementation;
 using UnityEngine.XR;
 
-[assembly: MelonInfo(typeof(WetReality.Pose), "Wet Reality Pose", "1.96.0", "Wet Reality")]
+[assembly: MelonInfo(typeof(WetReality.Pose), "Wet Reality Pose", "1.100.0", "Wet Reality")]
 [assembly: MelonGame("FuturLab", "PowerWash Simulator 2")]
 
 namespace WetReality;
@@ -369,6 +369,8 @@ public sealed class Pose : MelonMod
     private MelonPreferences_Entry<int> terrainDrawInstanced = null!;
     private MelonPreferences_Entry<int> terrainLayerLimit = null!;
     private MelonPreferences_Entry<int> terrainMergeInto = null!;
+    private MelonPreferences_Entry<bool> clearGameSprayToggle = null!;
+    private MelonPreferences_Entry<bool> clearGameFire = null!;
     private MelonPreferences_Entry<string> disableVolumeComponents = null!;
     private MelonPreferences_Entry<bool> shaderProbe = null!;
     private MelonPreferences_Entry<float> shaderProbeSeconds = null!;
@@ -1860,9 +1862,22 @@ public sealed class Pose : MelonMod
                 + "nothing on disk changes.");
 
         terrainMergeInto = settings.CreateEntry("TerrainMergeInto", RenderFeatures.MergeAuto,
-            description: "Which layer (0-based) takes over the weight of the cut layers. -2 picks "
-                + "the layer lying most together with them, measured per terrain. -1 cuts "
-                + "without merging, which leaves black holes - diagnostic only.");
+            description: "How the extra layers are folded in. -2 keeps the layers covering the "
+                + "most ground and merges each other one into the kept layer closest in colour, "
+                + "measured per terrain. 0-3 keeps the first layers and merges everything into "
+                + "that one. -1 cuts without merging, which leaves black holes - diagnostic only.");
+
+        // Abschnitt 192.
+        clearGameSprayToggle = settings.CreateEntry("ClearGameSprayToggle", true,
+            description: "In VR the continuous spray belongs to the mod (right grip). If the game's "
+                + "own continuous-spray toggle turns on anyway, it is switched off again, so a spray "
+                + "that cannot be stopped does not happen. Logged every time.");
+
+        // Abschnitt 193.
+        clearGameFire = settings.CreateEntry("ClearGameFire", true,
+            description: "In VR the mod decides whether the washer sprays. If the game's own fire "
+                + "flag stays on while neither the trigger nor the continuous spray asks for it - a "
+                + "spray that cannot be stopped - it is switched off again. Logged every time.");
 
         // UND DAS EINZELNE TEIL, als Typnamen-Liste. Dasselbe Muster wie
         // DisableRenderFeatures, und aus demselben Grund: es hat sich gerade
@@ -4216,6 +4231,9 @@ public sealed class Pose : MelonMod
         // it runs.
         DriveBodyZones();
         DriveButtons();
+        // NACH DriveButtons: erst dort steht fest, was der Mod mit dem Griff
+        // gemacht hat. Abschnitt 192.
+        WatchGameSpray();
         DriveNozzleScheme();
         ReportHeldItem();
         // AFTER ReportHeldItem, because that method owns the search for the
@@ -8768,6 +8786,116 @@ public sealed class Pose : MelonMod
         catch
         {
             return false;
+        }
+    }
+
+    // DER DAUERSTRAHL DES SPIELS - Abschnitt 192.
+    //
+    // Gemeldet, "schon mal gefixt schien": der Strahl laesst sich manchmal
+    // nicht mehr abschalten. Das Log des Laufs (26-9-24_0-43-24) zeigt den
+    // Mod-Dauerstrahl sechsmal an und sechsmal aus - der Mod hat jedes Mal
+    // abgeschaltet. Lief der Strahl trotzdem, hielt ihn nicht FireLatched,
+    // sondern ein Zustand des SPIELS, den bisher niemand las:
+    // PwsPlayerInput.m_toggleFire, der eigene "Use Washer (Continuous)" des
+    // Flat-Spiels, dazu StaticWashing und FireOverride.
+    //
+    // Der Verdacht, ausdruecklich als Verdacht: das Spiel schaltet seinen
+    // eigenen Dauerstrahl ebenfalls ueber den Griff um. Dann laufen die zwei
+    // Schalter auseinander, sobald einer einen Druck nicht mitbekommt - etwa
+    // wenn eine Koerpergeste den Griff nimmt und der Mod sein Umschalten
+    // ueberspringt. Ab dann ist bei jedem Druck einer der beiden an.
+    //
+    // Darum zwei Dinge: jede Aenderung dieses Zustands steht im Log, samt
+    // Mod-Dauerstrahl und Trigger. Und mit ClearGameSprayToggle wird
+    // m_toggleFire zurueckgesetzt - in VR gehoert der Dauerstrahl dem Mod.
+    // Ist der Verdacht falsch, steht das Feld nie auf true, und die
+    // Sicherung tut nichts.
+    private string gameSpraySignature = "";
+    private bool gameSprayWatchDead;
+    private long gameToggleCleared;
+    private long gameFireCleared;
+
+    private void WatchGameSpray()
+    {
+        if (gameSprayWatchDead || playerInput is null || playerInput == null)
+            return;
+
+        try
+        {
+            var pws = playerInput.TryCast<Il2CppFuturLab.PW2.PwsPlayerInput>();
+
+            if (pws is null)
+            {
+                gameSprayWatchDead = true;
+                LoggerInstance.Msg("game spray: input is not PwsPlayerInput - not watched");
+                return;
+            }
+
+            var toggle = pws.m_toggleFire;
+            var pressed = pws.m_toggleFirePressed;
+            var still = pws.StaticWashing;
+            var overridden = pws.FireOverride;
+
+            // DER SPEICHER VON Fire - Abschnitt 193. Der Lauf 00:54 hat den
+            // Verdacht aus 192 WIDERLEGT: toggleFire und die drei anderen
+            // standen die ganze Sitzung auf False, waehrend die Sonde
+            // "washing True" meldete, bei losgelassenem Trigger und
+            // ausgeschaltetem Mod-Dauerstrahl. Fire ist eine Auto-Property;
+            // der Patch auf get_Fire kann nur ein true HINZUFUEGEN, ein vom
+            // Spiel gesetztes true im Speicherfeld raeumt er nie weg.
+            var gameFire = playerInput._Fire_k__BackingField;
+            var fireEnabled = playerInput.m_fireEnabled;
+            var blockOverride = playerInput.m_blockFireOverride;
+            var modWants = GameInput.FireHeld || GameInput.FireLatched;
+
+            var signature = $"{toggle}|{pressed}|{still}|{overridden}|{gameFire}|{fireEnabled}|{blockOverride}";
+
+            if (!string.Equals(signature, gameSpraySignature, StringComparison.Ordinal))
+            {
+                gameSpraySignature = signature;
+                LoggerInstance.Msg($"game spray: fire (game's own) {gameFire}   fireEnabled {fireEnabled}"
+                    + $"   blockFireOverride {blockOverride}   toggleFire {toggle}"
+                    + $"   toggleFirePressed {pressed}   staticWashing {still}   fireOverride {overridden}"
+                    + $"   mod latch {GameInput.FireLatched}   trigger {GameInput.FireHeld}"
+                    + $"   menuMode {(menuMode ? "ON" : "off")}");
+            }
+
+            // IN VR ENTSCHEIDET DER MOD, OB GESPRUEHT WIRD. Steht das Feld
+            // des Spiels auf true, ohne dass Trigger oder Mod-Dauerstrahl es
+            // verlangen, ist es ein Rest - genau der Zustand, der sich nicht
+            // abschalten liess. Nur ausserhalb von Menues: dort gehoert die
+            // Eingabe dem Menue, und das Spiel sprueht ohnehin nicht.
+            if (gameFire && !modWants && !menuMode && clearGameFire.Value)
+            {
+                playerInput._Fire_k__BackingField = false;
+                gameFireCleared++;
+
+                if (gameFireCleared <= 5 || gameFireCleared % 100 == 0)
+                    LoggerInstance.Msg($"game spray: the game's own fire was stuck ON - cleared"
+                        + $" (#{gameFireCleared})   reads back {playerInput._Fire_k__BackingField}"
+                        + $"   trigger {GameInput.FireHeld}   mod latch {GameInput.FireLatched}");
+            }
+
+            if (toggle && clearGameSprayToggle.Value)
+            {
+                pws.m_toggleFire = false;
+                gameToggleCleared++;
+
+                // ZURUECKGELESEN: setzt das Spiel das Feld sofort wieder, ist
+                // dieser Hebel der falsche, und das soll dastehen. Gedeckelt:
+                // setzt das Spiel es jedes Frame, waere es sonst eine Zeile je
+                // Frame - und genau dieses Muster waere dann der Befund.
+                if (gameToggleCleared <= 5 || gameToggleCleared % 100 == 0)
+                    LoggerInstance.Msg($"game spray: the game's own continuous toggle was ON - cleared"
+                        + $" (#{gameToggleCleared})   reads back {pws.m_toggleFire}"
+                        + $"   mod latch {GameInput.FireLatched}");
+            }
+        }
+        catch (Exception exception)
+        {
+            gameSprayWatchDead = true;
+            LoggerInstance.Warning($"  game spray watch threw {exception.GetType().Name}: "
+                + exception.Message + " - switched off for this session");
         }
     }
 
