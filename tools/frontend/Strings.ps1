@@ -34,6 +34,7 @@ $script:German = @{
     'Turn speed' = 'Drehgeschwindigkeit'
     'Snap turning instead of smooth' = 'Sprungdrehung statt gleitend'
     'Show VR hands' = 'VR-Hände anzeigen'
+    'Orange gloves, like the game' = 'Orange Handschuhe wie im Spiel'
     'Vibration while spraying' = 'Vibration beim Sprühen'
     'Vibration strength' = 'Vibrationsstärke'
     'Strength follows the nozzle and the washer. The finer values are in MelonPreferences.cfg.' =

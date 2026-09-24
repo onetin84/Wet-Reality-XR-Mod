@@ -11,7 +11,7 @@ using UnityEngine;
 using UnityEngine.SubsystemsImplementation;
 using UnityEngine.XR;
 
-[assembly: MelonInfo(typeof(WetReality.XRBoot), "Wet Reality XR Boot", "0.24.0", "Wet Reality")]
+[assembly: MelonInfo(typeof(WetReality.XRBoot), "Wet Reality XR Boot", "0.25.0", "Wet Reality")]
 [assembly: MelonGame("FuturLab", "PowerWash Simulator 2")]
 
 namespace WetReality;
@@ -151,6 +151,14 @@ public sealed class XRBoot : MelonMod
     private XRInputSubsystem? input;
     private float gateReportDue = -1f;
     private float stateReportDue = -1f;
+
+    // DER AUGENPUFFER NACH DEM ERSTEN FRAME - Abschnitt 91 A. Am Meilenstein
+    // "OpenXR is running" liest XRSettings.eyeTexture 0x0, weil Unity die
+    // Augentexturen erst beim ersten gezeichneten Frame anlegt; die Zeile dort
+    // stand darum in jedem Testerlog als 0x0. Nachgefragt wird einmal pro
+    // Sekunde, bis ein Wert da ist, dann nie wieder - kein Posten pro Frame.
+    private float eyeBufferReportDue = -1f;
+    private float eyeBufferGiveUpAt = -1f;
 
     public override void OnInitializeMelon()
     {
@@ -682,6 +690,9 @@ public sealed class XRBoot : MelonMod
                 gateReportDue = -1f;
                 ReportGateOutcome();
             }
+
+            if (eyeBufferReportDue >= 0f && Time.realtimeSinceStartup >= eyeBufferReportDue)
+                ReportEyeBuffer();
         }
         catch (Exception exception)
         {
@@ -856,6 +867,49 @@ public sealed class XRBoot : MelonMod
         phase = Phase.Initialized;
         status = "Initialized. Pumping the message loop, waiting for XrReady.";
         LoggerInstance.Msg("Initialize finished. Waiting for the runtime to report XrReady.");
+    }
+
+    // Die Renderlast in VR ist Aufloesung mal Bildrate mal zwei Augen, und
+    // beide Faktoren legt die Laufzeit fest, nicht das Spiel - dessen
+    // Bildratengrenze greift unter XR nicht. Diese eine Zeile beantwortet
+    // "warum laeuft die Grafikkarte voll" ohne Rueckfrage beim Tester.
+    private void ReportEyeBuffer()
+    {
+        var now = Time.realtimeSinceStartup;
+        int width = XRSettings.eyeTextureWidth;
+        int height = XRSettings.eyeTextureHeight;
+
+        if ((width <= 0 || height <= 0) && now < eyeBufferGiveUpAt)
+        {
+            eyeBufferReportDue = now + 1f;
+            return;
+        }
+
+        eyeBufferReportDue = -1f;
+
+        var rate = "unknown";
+        try
+        {
+            if (display is not null && display.TryGetDisplayRefreshRate(out var hz) && hz > 0f)
+                rate = $"{hz:0.#} Hz";
+        }
+        catch (Exception exception)
+        {
+            rate = $"unreadable ({exception.GetType().Name})";
+        }
+
+        var megapixels = 2.0 * width * height * XRSettings.renderViewportScale
+            * XRSettings.renderViewportScale / 1_000_000.0;
+
+        LoggerInstance.Msg((width <= 0 || height <= 0
+                ? "eye buffer: still 0x0 after 60 s"
+                : "eye buffer after the first frames")
+            + $"   {width}x{height} per eye"
+            + $"   renderViewportScale {XRSettings.renderViewportScale:0.##}"
+            + $"   eyeTextureResolutionScale {XRSettings.eyeTextureResolutionScale:0.##}"
+            + $"   stereo {XRSettings.stereoRenderingMode}"
+            + $"   display {rate}"
+            + $"   {megapixels:0.0} MP per frame, both eyes");
     }
 
     // ~~~~~~~~~~~~ Message loop and start ~~~~~~~~~~~~
@@ -1063,6 +1117,8 @@ public sealed class XRBoot : MelonMod
         // early is the mistake that reported NONE for the interaction profile
         // twice, and IsEnabled false in section 41.
         stateReportDue = Time.realtimeSinceStartup + 5f;
+        eyeBufferReportDue = Time.realtimeSinceStartup + 1f;
+        eyeBufferGiveUpAt = Time.realtimeSinceStartup + 60f;
 
         // The point of the whole exercise, from design document section 40, risk
         // R2: does the game's own gate notice? XRBackend.IsEnabled is computed
@@ -1117,6 +1173,7 @@ public sealed class XRBoot : MelonMod
         // seconds after a teardown those reach a plugin whose instance is gone.
         stateReportDue = -1f;
         gateReportDue = -1f;
+        eyeBufferReportDue = -1f;
 
         // Input first, display second: Unity's order in its own Stop, and the
         // mirror of the start order, where the display has to come up first so

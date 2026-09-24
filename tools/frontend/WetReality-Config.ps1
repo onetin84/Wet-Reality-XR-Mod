@@ -609,6 +609,7 @@ function Load-Settings {
     (Ctl 'SnapTurnCheck').IsChecked = (Read-CfgValue -Key 'SnapTurn' -Fallback 'false') -eq 'true'
     (Ctl 'SprayHapticsCheck').IsChecked = (Read-CfgValue -Key 'SprayHaptics' -Fallback 'true') -eq 'true'
     (Ctl 'VrHandsCheck').IsChecked = (Read-CfgValue -Key 'ShowVrHands' -Fallback 'true') -eq 'true'
+    (Ctl 'OrangeHandsCheck').IsChecked = (Read-CfgValue -Key 'OrangeHands' -Fallback 'true') -eq 'true'
     (Ctl 'LaserCheck').IsChecked = (Read-CfgValue -Key 'ShowWashLaser' -Fallback 'false') -eq 'true'
 
     # DIE ZIELGROESSE - Abschnitt 171, an der Stelle der drei entfernten
@@ -776,7 +777,7 @@ foreach ($name in @('TurnSpeedSlider', 'HapticIntensitySlider',
     (Ctl $name).Add_ValueChanged({ Update-Labels; Mark-Dirty })
 }
 
-foreach ($name in @('VrHandsCheck', 'LaserCheck', 'SprayHapticsCheck')) {
+foreach ($name in @('VrHandsCheck', 'OrangeHandsCheck', 'LaserCheck', 'SprayHapticsCheck')) {
     (Ctl $name).Add_Click({ Mark-Dirty })
 }
 
@@ -906,6 +907,7 @@ foreach ($name in @('SnapAngleSlider', 'VignetteStrengthSlider')) {
             'RotationOffsetRoll'  = Format-Float (Ctl 'RotRollSlider').Value
             'SnapTurn'      = Format-Bool ([bool](Ctl 'SnapTurnCheck').IsChecked)
             'ShowVrHands'   = Format-Bool ([bool](Ctl 'VrHandsCheck').IsChecked)
+            'OrangeHands'   = Format-Bool ([bool](Ctl 'OrangeHandsCheck').IsChecked)
             'ShowWashLaser' = Format-Bool ([bool](Ctl 'LaserCheck').IsChecked)
             'TeleportMarkerSize' = Format-Float (Ctl 'MarkerSizeSlider').Value
 

@@ -143,6 +143,24 @@ internal sealed class VrHands
     private int culledWasherId;
     private int culledOffId;
     private readonly List<Material> ownMaterials = new();
+
+    // DIE HANDSCHUHFARBE DES SPIELS - Nutzerwunsch vom 24.09.2026.
+    //
+    // Flach traegt der Spieler orangene Handschuhe; die VR-Haende aus dem
+    // Oculus-Rig haben ein eigenes "Lit"-Material. Getoent wird _BaseColor
+    // auf derselben EIGENEN Instanz, die auch die Cull-Richtung traegt - das
+    // geteilte Material gehoert dem Spiel, und die debug_hand haengt daran.
+    //
+    // _BaseColor MULTIPLIZIERT die Grundtextur. Ob es eine gibt, sagt die
+    // Logzeile; mit einer hautfarbenen Textur wird das Orange dunkler, und
+    // dann ist der Farbwert nachzustellen, nicht der Weg.
+    //
+    // Der Ausgangswert wird je Material einmal gemerkt, damit Abschalten
+    // zurueckfuehrt statt auf Weiss zu setzen.
+    private int tintedWasherId;
+    private int tintedOffId;
+    private string tintedWith = "";
+    private readonly Dictionary<IntPtr, Color> untinted = new();
     private readonly List<Mesh> ownMeshes = new();
 
     // DIE MESHKORREKTUR, auf einer EIGENEN KOPIE - und sie fasst NUR die
@@ -255,7 +273,7 @@ internal sealed class VrHands
                 var before = material.GetFloat("_Cull");
 
                 material.SetFloat("_Cull", wanted);
-                ownMaterials.Add(material);
+                Own(material);
 
                 log.Msg($"  vr hands: {label} cull {before:0.#} -> {wanted:0.#}"
                     + $"   ({(mirrored ? "mirrored rig" : "not mirrored")}, mode \"{mode}\")");
@@ -688,6 +706,136 @@ internal sealed class VrHands
     }
 
 
+    // Pro Frame zwei Ganzzahl- und ein Referenzvergleich; geschrieben wird nur
+    // bei einer neuen Hand oder einem geaenderten Wunsch.
+    internal void ApplyTint(MelonLogger.Instance log, bool enable, string colour)
+    {
+        var washerId = washerHand is null || washerHand == null
+            ? 0
+            : washerHand.GetInstanceID();
+        var offId = offHand is null || offHand == null ? 0 : offHand.GetInstanceID();
+        var wanted = enable ? colour : "";
+
+        if (washerId == tintedWasherId && offId == tintedOffId
+            && string.Equals(wanted, tintedWith, StringComparison.Ordinal))
+            return;
+
+        tintedWasherId = washerId;
+        tintedOffId = offId;
+        tintedWith = wanted;
+
+        Color? tint = null;
+
+        if (enable)
+        {
+            if (!TryParseColour(colour, out var parsed))
+            {
+                log.Warning($"  vr hands: HandTintColor \"{colour}\" is not #RRGGBB, "
+                    + "hands stay untinted");
+                return;
+            }
+
+            tint = parsed;
+        }
+
+        Tint(log, washerHand, lastWasherIsRight ? "R" : "L", tint);
+        Tint(log, offHand, lastWasherIsRight ? "L" : "R", tint);
+    }
+
+    private void Tint(MelonLogger.Instance log, GameObject? hand, string label,
+        Color? tint)
+    {
+        if (hand is null || hand == null)
+            return;
+
+        try
+        {
+            var renderers = hand.GetComponentsInChildren<Renderer>(true);
+
+            if (renderers is null)
+                return;
+
+            for (var index = 0; index < renderers.Length; index++)
+            {
+                var renderer = renderers[index];
+
+                if (renderer is null || renderer == null)
+                    continue;
+
+                // BEIM ABSCHALTEN KEINE NEUE INSTANZ: sharedMaterial ist nach
+                // einem renderer.material schon die eigene, und eine Hand, die
+                // nie getoent wurde, hat nichts zurueckzufuehren.
+                var material = tint is null ? renderer.sharedMaterial : renderer.material;
+
+                if (material is null || material == null)
+                    continue;
+
+                var key = material.Pointer;
+                var before = material.GetColor("_BaseColor");
+
+                if (tint is null && !untinted.ContainsKey(key))
+                    continue;
+
+                if (!untinted.ContainsKey(key))
+                    untinted[key] = before;
+
+                if (tint is not null)
+                    Own(material);
+
+                var after = tint ?? untinted[key];
+                material.SetColor("_BaseColor", after);
+
+                var map = material.GetTexture("_BaseMap");
+
+                log.Msg($"  vr hands: {label} tint {Rgb(before)} -> {Rgb(after)}"
+                    + $"   base map {(map is null || map == null ? "none" : "\"" + map.name + "\"")}"
+                    + $"{(tint is null ? "   (restored)" : "")}");
+            }
+        }
+        catch (Exception exception)
+        {
+            log.Warning($"  vr hands: tinting the {label} hand threw "
+                + $"{exception.GetType().Name}: {exception.Message}");
+        }
+    }
+
+    // ApplyCull und ApplyTint schreiben auf DIESELBE Instanz - sie darf nur
+    // einmal in der Freigabeliste stehen.
+    private void Own(Material material)
+    {
+        for (var index = 0; index < ownMaterials.Count; index++)
+        {
+            var known = ownMaterials[index];
+
+            if (known is not null && known != null && known.Pointer == material.Pointer)
+                return;
+        }
+
+        ownMaterials.Add(material);
+    }
+
+    // #RRGGBB, wie es im Farbwaehler steht. SetColor nimmt den Wert als sRGB
+    // und rechnet ihn im linearen Projekt selbst um.
+    private static bool TryParseColour(string text, out Color colour)
+    {
+        colour = Color.white;
+        var hex = (text ?? "").Trim().TrimStart('#');
+
+        if (hex.Length != 6 || !int.TryParse(hex,
+            System.Globalization.NumberStyles.HexNumber,
+            System.Globalization.CultureInfo.InvariantCulture, out var value))
+            return false;
+
+        colour = new Color(((value >> 16) & 255) / 255f, ((value >> 8) & 255) / 255f,
+            (value & 255) / 255f, 1f);
+        return true;
+    }
+
+    private static string Rgb(Color colour) =>
+        $"#{Mathf.RoundToInt(Mathf.Clamp01(colour.r) * 255f):X2}"
+        + $"{Mathf.RoundToInt(Mathf.Clamp01(colour.g) * 255f):X2}"
+        + $"{Mathf.RoundToInt(Mathf.Clamp01(colour.b) * 255f):X2}";
+
     internal void Reset()
     {
         // DIE EIGENEN MESHKOPIEN FREIGEBEN. Sie haengen an keinem GameObject,
@@ -720,6 +868,10 @@ internal sealed class VrHands
         }
 
         ownMaterials.Clear();
+        untinted.Clear();
+        tintedWasherId = 0;
+        tintedOffId = 0;
+        tintedWith = "";
         loggedLayer = -1;
         shadowState = -1;
         shadowWasherId = 0;

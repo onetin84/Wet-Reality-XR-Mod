@@ -435,8 +435,14 @@
                                                Style="{StaticResource ValueLabel}" />
                                 </Grid>
 
-                                <CheckBox x:Name="VrHandsCheck" Margin="0,4,0,8"
-                                          Content="Show VR hands" />
+                                <!-- Nebeneinander, nicht untereinander: das Fenster ist
+                                     auf 1080p schon an der Arbeitsflaeche. -->
+                                <StackPanel Orientation="Horizontal" Margin="0,4,0,8">
+                                    <CheckBox x:Name="VrHandsCheck"
+                                              Content="Show VR hands" />
+                                    <CheckBox x:Name="OrangeHandsCheck" Margin="24,0,0,0"
+                                              Content="Orange gloves, like the game" />
+                                </StackPanel>
 
                                 <CheckBox x:Name="SprayHapticsCheck" Margin="0,4,0,8"
                                           Content="Vibration while spraying" />

@@ -78,7 +78,8 @@ STEUERUNG UND EINSTELLUNGEN
   öffnen", dazu die Einstellungen: welche Hand die Pistole hält,
   Drehgeschwindigkeit, Menügröße und -abstand, die Ausrichtung der Pistole in
   deiner Hand, die Vibration beim Sprühen samt Stärke, ob die beiden VR-Hände
-  angezeigt werden, ob der Ziellaser gezeichnet wird, die Farbe der
+  angezeigt werden und die orangen Handschuhe des Spiels tragen, ob der
+  Ziellaser gezeichnet wird, die Farbe der
   Zeigestrahlen und die Größe des Teleport-Ziels.
 
   KOMFORTOPTIONEN, alle standardmäßig AUS:
@@ -191,7 +192,9 @@ BEKANNTE GRENZEN
     frei zum Greifen -, und die sind es, was du siehst. Das Häkchen
     "VR-Hände anzeigen" schaltet sie ab, für Leute, denen sie nicht gefallen;
     das Armrig des Spiels kommt so oder so nicht zurück, denn es ist ein Mesh
-    über beide Arme und in VR unbrauchbar.
+    über beide Arme und in VR unbrauchbar. Die Hände tragen die orangen
+    Handschuhe aus dem flachen Spiel; "Orange Handschuhe wie im Spiel" schaltet
+    zurück auf die schlichten Handmodelle.
 
     Das Ausblenden gilt auch für DLC-Outfits und DLC-Pistolen. Die Geometrie wird daran
     erkannt, WO sie in der Szene hängt, nicht an ihrem Namen - ein DLC, das

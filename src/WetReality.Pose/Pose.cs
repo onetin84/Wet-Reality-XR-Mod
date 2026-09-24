@@ -5,7 +5,7 @@ using UnityEngine.InputSystem;
 using UnityEngine.SubsystemsImplementation;
 using UnityEngine.XR;
 
-[assembly: MelonInfo(typeof(WetReality.Pose), "Wet Reality Pose", "1.101.0", "Wet Reality")]
+[assembly: MelonInfo(typeof(WetReality.Pose), "Wet Reality Pose", "1.105.0", "Wet Reality")]
 [assembly: MelonGame("FuturLab", "PowerWash Simulator 2")]
 
 namespace WetReality;
@@ -469,6 +469,8 @@ public sealed class Pose : MelonMod
     private MelonPreferences_Entry<bool> aimFromOffHand = null!;
     private MelonPreferences_Entry<bool> grabPointer = null!;
     private MelonPreferences_Entry<bool> grabPointerBuzz = null!;
+    private MelonPreferences_Entry<bool> grabPointerWhileSpraying = null!;
+    private MelonPreferences_Entry<bool> nozzleAnchorFromThirdPerson = null!;
     private MelonPreferences_Entry<float> grabPointerHz = null!;
 
     // Die dritte Instanz neben washLaser und menuLaser. Diese Klasse kennt
@@ -523,6 +525,17 @@ public sealed class Pose : MelonMod
     private MelonPreferences_Entry<string> handFlipWinding = null!;
     private MelonPreferences_Entry<string> handFixNormals = null!;
     private MelonPreferences_Entry<string> handCull = null!;
+    private MelonPreferences_Entry<bool> orangeHands = null!;
+    private MelonPreferences_Entry<string> handTintColor = null!;
+    private MelonPreferences_Entry<bool> handsAfterPose = null!;
+
+    // Gesetzt in DriveRay, wo die Haende angelegt werden; eingeloest am Ende
+    // des Pose-Blocks. Zu Beginn von DriveRay geloescht, damit ein frueher
+    // Ausstieg dort keinen Wunsch aus dem Vorframe stehen laesst.
+    private bool placeHandsAfterPose;
+    private Vector3 handPlacedLastFrame;
+    private bool handPlacedLastFrameValid;
+    private float nextHandLagReport;
     private MelonPreferences_Entry<bool> handShadows = null!;
     private bool loggedRenderLayers;
 
@@ -1445,6 +1458,17 @@ public sealed class Pose : MelonMod
                 + "8 TrySetTurboNozzleWashDirection. 0 changes nothing and only counts.");
         aimSkipKey = settings.CreateEntry("WashAimSkipKey", "KeypadMinus",
             description: "Cycles the suppressed aim method. Keypad -");
+
+        // DER STRAHL VOR DER MUENDUNG BEIM START - 1.103.0. Bit 65536 nimmt
+        // dem Duesenanker nur den SEITLICHEN Versatz; die Vorwaertskomponente
+        // hatte PositionToFOV genauso eingebacken. Gemessen am 24.09.2026:
+        // Anker beim Start (0.11, -0.5, 0.21), also 17 cm vor der Muendung,
+        // bis ein Schultergriff den Klon neu baute.
+        nozzleAnchorFromThirdPerson = settings.CreateEntry("NozzleAnchorFromThirdPerson", true,
+            description: "Takes the nozzle anchor offset from the third-person "
+                + "washer, which the game never displaces. Fixes the jet starting "
+                + "in front of the muzzle after game start. Needs WashAimSkip bit "
+                + "65536; off falls back to clearing only the sideways offset.");
 
         // Comfort turning, design document sections 20 and 21. Smooth by
         // default because that is what was asked for; snap is a config switch
@@ -2429,6 +2453,14 @@ public sealed class Pose : MelonMod
             description: "Short pulse on the grab hand when a target is acquired "
                 + "or lost. Works without looking.");
 
+        // WER SPRUEHT, INTERAGIERT NICHT - Nutzerwunsch vom 24.09.2026. Die
+        // freie Hand schwenkt beim Reinigen mit und streift Leitern, Schalter
+        // und Pinnwaende; jeder Treffer war ein Puls und eine gruene Linie.
+        grabPointerWhileSpraying = settings.CreateEntry("GrabPointerWhileSpraying", false,
+            description: "Show the grab pointer and its pulse while the washer is "
+                + "spraying. Off by default: the free hand sweeps over objects "
+                + "while cleaning. Grabbing itself keeps working either way.");
+
         // GESUCHT WIRD AUF TAKT, GEZEICHNET PRO FRAME. Ueber alle Kandidaten mal
         // alle Collider mal ClosestPoint pro Frame waere der Verschnitt, den
         // Abschnitt 87 gemessen hat; 15 Hz sind fuer einen Zeiger nicht zu
@@ -2913,6 +2945,27 @@ public sealed class Pose : MelonMod
                 + "or none. auto reverses the cull direction for a hand whose rig is "
                 + "mirrored (its root bone reads a negative scale) and leaves the other "
                 + "one alone. Written to an own material instance.");
+
+        // DIE HANDSCHUHFARBE DES SPIELS - Nutzerwunsch vom 24.09.2026, als
+        // Haekchen im Konfigurator. Der Farbwert ist aus einem Bildschirmfoto
+        // des flachen Spiels gemittelt: (255, 153, 37) auf der beleuchteten
+        // Handflaeche, als Grundfarbe etwas darunter angesetzt.
+        orangeHands = settings.CreateEntry("OrangeHands", true,
+            description: "Colour the VR hands like the game's own orange gloves. "
+                + "The colour is HandTintColor.");
+
+        handTintColor = settings.CreateEntry("HandTintColor", "#F5912A",
+            description: "Glove colour for OrangeHands, as #RRGGBB. It multiplies "
+                + "the hand texture, so a darker result means: pick a lighter value.");
+
+        // DIE HAND HINKT BEIM LAUFEN - Nutzerbericht vom 24.09.2026, 1.105.0.
+        // DriveRay setzte die Haende VOR dem Pose-Block, also mit der Weltpose
+        // des VORIGEN Frames. Im Stand sind das Millimeter, beim Laufen die
+        // ganze Wegstrecke eines Frames, und immer in Laufrichtung.
+        handsAfterPose = settings.CreateEntry("HandsAfterPose", true,
+            description: "Place the VR hands right after the washer pose is "
+                + "written, in the same frame. Off restores the old placement one "
+                + "frame behind, which lags while walking.");
 
         // GEMESSEN: rootBone R_Wrist liest lossyScale (-1, -1, -1) - das R-Rig
         // ist eine Punktspiegelung. Unity kompensiert daraufhin die WICKLUNG
@@ -3631,6 +3684,8 @@ public sealed class Pose : MelonMod
         offHandForwardSource = "";
         publishedWasherHandRotation = Quaternion.identity;
         washerHandWorldPublished = false;
+        handPlacedLastFrameValid = false;
+        placeHandsAfterPose = false;
         pointerPoseReady = false;
         handAssets.Reset();
         vrHands.Reset();
@@ -4691,6 +4746,16 @@ public sealed class Pose : MelonMod
                     assembly.position = wroteAnchorPosition;
                     anchorPositionWritten = false;
                 }
+            }
+
+            // DIE HAENDE IM SELBEN FRAME WIE DIE PISTOLE - 1.105.0. Hinter der
+            // 6DOF-Kette, nicht in ihr: gelesen werden nur die eben
+            // veroeffentlichten Werte, geschrieben wird nur die eigene Hand.
+            if (placeHandsAfterPose)
+            {
+                placeHandsAfterPose = false;
+                ReportHandLag(handWorld);
+                PlaceVrHands();
             }
 
             // Logged HERE as well, and this was a real blind spot: the
@@ -6746,9 +6811,117 @@ public sealed class Pose : MelonMod
     // and it has a setter, so it is written rather than patched. If the game
     // turns out to own it, the escalation is a postfix on get_WashRay - kept as
     // plan B because Ray leaving interop by value is the risky shape.
+    // DER UNVERSCHOBENE ZWILLING - 1.103.0.
+    //
+    // PositionToFOV verschiebt den Duesenanker der ERSTEN Person, abhaengig
+    // davon, wo die Pistole beim Start relativ zum Kopf steht. Die dritte
+    // Person traegt dieselbe Kette ohne PositionToFOV und liest in allen
+    // Dumps den verfassten Wert (0, 0, 0.04). Von dort wird die ganze
+    // Position genommen, nicht nur x und y: die Vorwaertskomponente war
+    // der Rest, den Bit 65536 stehen liess.
+    //
+    // Gesucht wird nur, wenn der Anker ein neues Objekt ist (Duesen- oder
+    // Pistolenwechsel) oder der Zwilling verschwunden ist, und dann hoechstens
+    // alle 0,5 s. Pro Frame ist es ein Vektorvergleich.
+    private IntPtr anchorTwinOf;
+    private Transform? anchorTwin;
+    private float nextAnchorTwinSearch;
+
+    private Vector3 AuthoredAnchorPosition(Transform anchor, Vector3 current)
+    {
+        var lateralOnly = new Vector3(0f, 0f, current.z);
+
+        if (!nozzleAnchorFromThirdPerson.Value || assembly is null || assembly == null)
+            return lateralOnly;
+
+        var fresh = anchor.Pointer != anchorTwinOf;
+
+        if (fresh || ((anchorTwin is null || anchorTwin == null)
+            && Time.unscaledTime >= nextAnchorTwinSearch))
+        {
+            anchorTwinOf = anchor.Pointer;
+            nextAnchorTwinSearch = Time.unscaledTime + 0.5f;
+            anchorTwin = ThirdPersonTwin(anchor, out var path);
+
+            var twinFound = anchorTwin is not null && anchorTwin != null;
+
+            if (fresh || twinFound)
+                LoggerInstance.Msg($"nozzle anchor: {path}   first person {Vector(current)}"
+                    + (twinFound
+                        ? $"   third person {Vector(anchorTwin!.localPosition)}"
+                            + $"   forward error {(current.z - anchorTwin.localPosition.z) * 100f:0.#} cm"
+                        : "   third person NOT FOUND - sideways clamp only"));
+        }
+
+        return anchorTwin is null || anchorTwin == null
+            ? lateralOnly
+            : anchorTwin.localPosition;
+    }
+
+    // Der relative Pfad kommt aus der LEBENDEN Kette, nicht aus einer
+    // Konstante: Lokator- und Klonnamen wechseln mit Verlaengerung und Duese.
+    private Transform? ThirdPersonTwin(Transform anchor, out string path)
+    {
+        path = anchor.name;
+
+        for (var node = anchor.parent; node is not null && node != null; node = node.parent)
+        {
+            if (node.Pointer == assembly!.Pointer)
+            {
+                var twinAssembly = GunRender.ThirdPersonAssembly(assembly);
+                return twinAssembly is null || twinAssembly == null
+                    ? null
+                    : twinAssembly.Find(path);
+            }
+
+            path = node.name + "/" + path;
+        }
+
+        path = "(not under the driven assembly) " + anchor.name;
+        return null;
+    }
+
+    // Die beiden Aufrufe, die frueher am Ende der Handeinrichtung in DriveRay
+    // standen, unveraendert.
+    private void PlaceVrHands()
+    {
+        if (washerHandWorldPublished)
+            vrHands.DriveWasherHand(publishedWasherHandWorld,
+                publishedWasherHandRotation,
+                new Vector3(washerHandPosX.Value, washerHandPosY.Value,
+                    washerHandPosZ.Value),
+                new Vector3(washerHandRotX.Value, washerHandRotY.Value,
+                    washerHandRotZ.Value));
+
+        if (offHandWorldPublished)
+            vrHands.DriveOffHand(publishedOffHandWorld, publishedOffHandRotation,
+                new Vector3(offHandPosX.Value, offHandPosY.Value, offHandPosZ.Value),
+                new Vector3(offHandRotX.Value, offHandRotY.Value, offHandRotZ.Value));
+    }
+
+    // DIE MESSUNG ZUR KORREKTUR: wie weit die Hand mit der alten Reihenfolge
+    // neben dem Griff gestanden haette - genau der Weg seit dem Vorframe.
+    // Laufen sollte Zentimeter zeigen, Stehen Millimeter. Nur im DevMode.
+    private void ReportHandLag(Vector3 handWorld)
+    {
+        if (handPlacedLastFrameValid && Dev(verboseDiagnostics)
+            && Time.unscaledTime >= nextHandLagReport)
+        {
+            nextHandLagReport = Time.unscaledTime + 1f;
+            var step = (handWorld - handPlacedLastFrame).magnitude;
+            LoggerInstance.Msg($"vr hands: placed after pose   old order would lag "
+                + $"{(step * 100f).ToString("0.0", Invariant)} cm   "
+                + $"at {(step / Mathf.Max(Time.unscaledDeltaTime, 0.0001f)).ToString("0.00", Invariant)} m/s");
+        }
+
+        handPlacedLastFrame = handWorld;
+        handPlacedLastFrameValid = true;
+    }
+
     private void DriveRay()
     {
         GameInput.RayActive = overrideRay.Value;
+        placeHandsAfterPose = false;
 
         // No early return when the override is off. The nozzle still has to be
         // located and the probe still has to run - measuring is the entire point
@@ -6865,6 +7038,10 @@ public sealed class Pose : MelonMod
                 // Kanaele nicht herausgibt.
                 vrHands.ApplyCull(LoggerInstance, handCull.Value);
 
+                // NACH der Cull-Richtung: beide schreiben auf dieselbe eigene
+                // Materialinstanz.
+                vrHands.ApplyTint(LoggerInstance, orangeHands.Value, handTintColor.Value);
+
                 vrHands.ApplyShadows(LoggerInstance, handShadows.Value);
                 vrHands.ReportSkin(LoggerInstance);
             }
@@ -6878,18 +7055,17 @@ public sealed class Pose : MelonMod
             // publishedOffHandWorld und die Rotation entstehen im Pose-Block mit
             // demselben toWorld wie die Pistolenhand; hier wird nur gesetzt.
             // SYMMETRISCH ZUR OFF-HAND: Weltpose vom Controller, Trimm darauf.
-            if (wantHands && washerHandWorldPublished)
-                vrHands.DriveWasherHand(publishedWasherHandWorld,
-                    publishedWasherHandRotation,
-                    new Vector3(washerHandPosX.Value, washerHandPosY.Value,
-                        washerHandPosZ.Value),
-                    new Vector3(washerHandRotX.Value, washerHandRotY.Value,
-                        washerHandRotZ.Value));
-
-            if (wantHands && offHandWorldPublished)
-                vrHands.DriveOffHand(publishedOffHandWorld, publishedOffHandRotation,
-                    new Vector3(offHandPosX.Value, offHandPosY.Value, offHandPosZ.Value),
-                    new Vector3(offHandRotX.Value, offHandRotY.Value, offHandRotZ.Value));
+            //
+            // HIER NUR NOCH MIT HandsAfterPose AUS. DriveRay laeuft in
+            // OnLateUpdate VOR dem Pose-Block; was hier steht, ist die Pose des
+            // vorigen Frames, und die Pistole ist zu diesem Zeitpunkt noch gar
+            // nicht gesetzt. Sonst merkt sich diese Stelle nur den Wunsch, und
+            // PlaceVrHands loest ihn direkt nach dem Schreiben der Pistole ein -
+            // weiterhin NACH DriveHandPoses, wie oben verlangt.
+            if (handsAfterPose.Value)
+                placeHandsAfterPose = wantHands;
+            else if (wantHands)
+                PlaceVrHands();
 
             // Bit 16384. The one candidate the millimetre-level exoneration of
             // the transform leaves standing: a vertex shader keyed to the field
@@ -6978,9 +7154,10 @@ public sealed class Pose : MelonMod
                 if (nozzleAnchor is not null && nozzleAnchor != null)
                 {
                     var lp = nozzleAnchor.localPosition;
+                    var authored = AuthoredAnchorPosition(nozzleAnchor, lp);
 
-                    if (lp.x != 0f || lp.y != 0f)
-                        nozzleAnchor.localPosition = new Vector3(0f, 0f, lp.z);
+                    if (lp != authored)
+                        nozzleAnchor.localPosition = authored;
                 }
             }
 
@@ -8820,7 +8997,15 @@ public sealed class Pose : MelonMod
     // m_toggleFire zurueckgesetzt - in VR gehoert der Dauerstrahl dem Mod.
     // Ist der Verdacht falsch, steht das Feld nie auf true, und die
     // Sicherung tut nichts.
-    private string gameSpraySignature = "";
+    //
+    // JEDES FRAME, BEI JEDEM SPIELER - darum ohne Muell (1.102.0). Die
+    // Signatur war eine Zeichenkette aus sieben Werten, neu gebaut in jedem
+    // Frame, und TryCast legt jedes Mal ein neues Huellobjekt an. Jetzt sind
+    // es sieben Bits in einem int, und die Huelle wird gehalten, solange
+    // playerInput dasselbe native Objekt ist.
+    private int gameSpraySignature = -1;
+    private Il2CppFuturLab.PW2.PwsPlayerInput? gameSprayPws;
+    private IntPtr gameSprayPwsOf;
     private bool gameSprayWatchDead;
     private long gameToggleCleared;
     private long gameFireCleared;
@@ -8832,7 +9017,13 @@ public sealed class Pose : MelonMod
 
         try
         {
-            var pws = playerInput.TryCast<Il2CppFuturLab.PW2.PwsPlayerInput>();
+            if (gameSprayPws is null || gameSprayPwsOf != playerInput.Pointer)
+            {
+                gameSprayPws = playerInput.TryCast<Il2CppFuturLab.PW2.PwsPlayerInput>();
+                gameSprayPwsOf = playerInput.Pointer;
+            }
+
+            var pws = gameSprayPws;
 
             if (pws is null)
             {
@@ -8858,9 +9049,11 @@ public sealed class Pose : MelonMod
             var blockOverride = playerInput.m_blockFireOverride;
             var modWants = GameInput.FireHeld || GameInput.FireLatched;
 
-            var signature = $"{toggle}|{pressed}|{still}|{overridden}|{gameFire}|{fireEnabled}|{blockOverride}";
+            var signature = (toggle ? 1 : 0) | (pressed ? 2 : 0) | (still ? 4 : 0)
+                | (overridden ? 8 : 0) | (gameFire ? 16 : 0) | (fireEnabled ? 32 : 0)
+                | (blockOverride ? 64 : 0);
 
-            if (!string.Equals(signature, gameSpraySignature, StringComparison.Ordinal))
+            if (signature != gameSpraySignature)
             {
                 gameSpraySignature = signature;
                 LoggerInstance.Msg($"game spray: fire (game's own) {gameFire}   fireEnabled {fireEnabled}"
@@ -10172,6 +10365,20 @@ public sealed class Pose : MelonMod
             }
 
             grabHadTarget = false;
+            return;
+        }
+
+        // BEIM SPRUEHEN AUS, aber ohne grabHadTarget zu vergessen: nach dem
+        // Loslassen pulst es nur, wenn sich das Ziel gegenueber VOR dem
+        // Spruehen geaendert hat - nicht bei jedem Loslassen erneut.
+        if (!grabPointerWhileSpraying.Value && (GameInput.FireHeld || GameInput.FireLatched))
+        {
+            if (grabWroteLine)
+            {
+                grabWroteLine = false;
+                grabLaser.Hide();
+            }
+
             return;
         }
 

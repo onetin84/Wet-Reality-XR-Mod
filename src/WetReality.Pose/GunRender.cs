@@ -671,7 +671,7 @@ internal sealed class GunRender
     // the same discipline the assembler resolution now follows: the path is
     // taken verbatim from the measured hierarchy, so there is nothing to pick
     // wrongly.
-    private static Transform? ThirdPersonAssembly(Transform drivenAssembly)
+    internal static Transform? ThirdPersonAssembly(Transform drivenAssembly)
     {
         var root = drivenAssembly.root;
 
