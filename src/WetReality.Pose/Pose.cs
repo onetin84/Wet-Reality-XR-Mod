@@ -5,7 +5,7 @@ using UnityEngine.InputSystem;
 using UnityEngine.SubsystemsImplementation;
 using UnityEngine.XR;
 
-[assembly: MelonInfo(typeof(WetReality.Pose), "Wet Reality Pose", "1.105.0", "Wet Reality")]
+[assembly: MelonInfo(typeof(WetReality.Pose), "Wet Reality Pose", "1.107.0", "Wet Reality")]
 [assembly: MelonGame("FuturLab", "PowerWash Simulator 2")]
 
 namespace WetReality;
@@ -528,6 +528,25 @@ public sealed class Pose : MelonMod
     private MelonPreferences_Entry<bool> orangeHands = null!;
     private MelonPreferences_Entry<string> handTintColor = null!;
     private MelonPreferences_Entry<bool> handsAfterPose = null!;
+    private MelonPreferences_Entry<bool> pointersAfterPose = null!;
+
+    // Gesetzt an der alten Stelle der Zeiger in LateUpdateFrame, eingeloest
+    // im OnLateUpdate-Rahmen danach. Die beiden Ursprungswerte sind der Stand
+    // an der alten Stelle, nur fuer die DevMode-Zeile.
+    private bool pointersPending;
+    private Vector3 pointerOffHandBefore;
+    private Vector3 pointerOriginBefore;
+    private bool pointerOffHandBeforeValid;
+    private bool pointerOriginBeforeValid;
+    private float nextPointerLagReport;
+
+    // Dasselbe fuer den Teleport-Bogen, 1.107.0. Nur das ZIELEN wandert,
+    // der Sprung bleibt an seiner Stelle - siehe DriveTeleport.
+    private MelonPreferences_Entry<bool> teleportAfterPose = null!;
+    private bool teleportAimPending;
+    private Vector3 teleportOriginBefore;
+    private bool teleportOriginBeforeValid;
+    private float nextTeleportLagReport;
 
     // Gesetzt in DriveRay, wo die Haende angelegt werden; eingeloest am Ende
     // des Pose-Blocks. Zu Beginn von DriveRay geloescht, damit ein frueher
@@ -2967,6 +2986,23 @@ public sealed class Pose : MelonMod
                 + "written, in the same frame. Off restores the old placement one "
                 + "frame behind, which lags while walking.");
 
+        // DERSELBE FEHLER AM ZEIGESTRAHL - Nutzerwunsch vom 24.09.2026, 1.106.0.
+        // Greif- und Menuezeiger lasen publishedOffHandWorld und
+        // publishedPointerOrigin VOR dem Pose-Block, also aus dem Vorframe.
+        pointersAfterPose = settings.CreateEntry("PointersAfterPose", true,
+            description: "Draw the grab pointer and the menu pointer after the "
+                + "washer pose is written, from the hand pose of the same frame. "
+                + "Off restores the old order one frame behind, which lags while "
+                + "walking.");
+
+        // UND DER TELEPORT-BOGEN, Nutzerwunsch vom 24.09.2026, 1.107.0. Er zog
+        // aus publishedOffHandWorld wie der Greifzeiger, also aus dem Vorframe.
+        teleportAfterPose = settings.CreateEntry("TeleportAfterPose", true,
+            description: "Aim and draw the teleport arc after the washer pose is "
+                + "written, from the hand pose of the same frame. The jump itself "
+                + "stays where it was. Off restores the old order one frame "
+                + "behind, which lags while walking.");
+
         // GEMESSEN: rootBone R_Wrist liest lossyScale (-1, -1, -1) - das R-Rig
         // ist eine Punktspiegelung. Unity kompensiert daraufhin die WICKLUNG
         // selbst, die NORMALEN aber nicht: die inverse Transponierte ist -1,
@@ -4176,10 +4212,77 @@ public sealed class Pose : MelonMod
         ForceRebind(why, doReadingHand, doOffHand);
     }
 
+    // DER RAHMEN - 1.106.0. LateUpdateFrame hat ein Dutzend Ausstiege, und der
+    // Pose-Block ist nur einer davon. Die Zeiger laufen darum HINTER dem ganzen
+    // Frame statt an einer bestimmten Zeile darin: im Weltraummodus ist das
+    // direkt nach dem Schreiben der Pistole, auf jedem anderen Weg dieselbe
+    // Reihenfolge wie vorher, nur spaeter. Ein Ausstieg VOR der alten Stelle
+    // setzt kein pointersPending - dort liefen sie auch vorher nicht.
+    //
+    // Kein finally: wirft der Frame, laufen die Zeiger nicht hinterher. Eine
+    // zweite Warnung aus demselben kaputten Zustand hilft niemandem.
+    public override void OnLateUpdate()
+    {
+        pointersPending = false;
+        teleportAimPending = false;
+        LateUpdateFrame();
+
+        // VOR den Zeigern, wie vorher im Frame: der Greifzeiger zieht sich
+        // zurueck, wenn der Teleport zielt - nicht umgekehrt. Mit
+        // PointersAfterPose aus liefen die Zeiger schon im Frame; das kostet
+        // hoechstens einen Frame am Greifzeiger und nur in dieser Mischung.
+        if (teleportAimPending)
+        {
+            teleportAimPending = false;
+            ReportTeleportLag();
+            DriveTeleportAim();
+        }
+
+        if (!pointersPending)
+            return;
+
+        pointersPending = false;
+        ReportPointerLag();
+        DrivePointers();
+    }
+
+    // In dieser Reihenfolge, wie sie vorher im Frame stand: der rechte Stick
+    // braucht Auswahl und Trefferpunkt des Menuezeigers aus DIESEM Frame.
+    private void DrivePointers()
+    {
+        DriveGrabPointer();
+        DriveMenuPointer();
+        DriveMenuRightStick();
+    }
+
+    // DIE MESSUNG ZUR KORREKTUR, wie bei den Haenden: wie weit die beiden
+    // Strahlurspruenge an der alten Stelle neben denen dieses Frames lagen.
+    // Laufen sollte Zentimeter zeigen, Stehen Millimeter. Nur im DevMode.
+    private void ReportPointerLag()
+    {
+        if (!Dev(verboseDiagnostics) || Time.unscaledTime < nextPointerLagReport)
+            return;
+
+        var offHand = pointerOffHandBeforeValid && offHandWorldPublished;
+        var origin = pointerOriginBeforeValid && pointerPoseReady;
+
+        if (!offHand && !origin)
+            return;
+
+        nextPointerLagReport = Time.unscaledTime + 1f;
+        LoggerInstance.Msg("pointers: drawn after pose   old order would lag"
+            + (offHand
+                ? $"   free hand {((publishedOffHandWorld - pointerOffHandBefore).magnitude * 100f).ToString("0.0", Invariant)} cm"
+                : "   free hand -")
+            + (origin
+                ? $"   washer hand {((publishedPointerOrigin - pointerOriginBefore).magnitude * 100f).ToString("0.0", Invariant)} cm"
+                : "   washer hand -"));
+    }
+
     // Unity order is Update, then animation and Animation Rigging, then
     // LateUpdate. Both known writers of these transforms live in Update, and the
     // rigging constraints run before LateUpdate too, so this is the last word.
-    public override void OnLateUpdate()
+    private void LateUpdateFrame()
     {
         // BEFORE the active gate and before Resolve, both on purpose. The
         // plate's entire job is the window in which no player exists yet, and it
@@ -4372,13 +4475,25 @@ public sealed class Pose : MelonMod
         // Stand dieses Frames, und die Fussposition die nach der Bewegung.
         ReportJump();
 
-        DriveGrabPointer();
-        DriveMenuPointer();
         // AFTER DriveMenuPointer, and for the same reason DriveMenuPointer sits
         // after DriveRay: it acts on the selection and the hit point of THIS
         // frame. Reading them before the pointer has written them would be the
         // staleness bug of section 90 all over again, one caller later.
-        DriveMenuRightStick();
+        //
+        // ALLE DREI mit PointersAfterPose HINTER den Frame - siehe
+        // OnLateUpdate. Hier liegt die Handpose noch auf dem Vorframe.
+        if (pointersAfterPose.Value)
+        {
+            pointersPending = true;
+            pointerOffHandBefore = publishedOffHandWorld;
+            pointerOffHandBeforeValid = offHandWorldPublished;
+            pointerOriginBefore = publishedPointerOrigin;
+            pointerOriginBeforeValid = pointerPoseReady;
+        }
+        else
+        {
+            DrivePointers();
+        }
         // EnsureStereo when automatic, Reapply otherwise. Both are idempotent,
         // so this runs per frame; EnsureStereo also re-asserts the content scale
         // whenever the configured value changes.
@@ -12966,8 +13081,58 @@ public sealed class Pose : MelonMod
         LoggerInstance.Msg($"teleport: aim dropped ({why})");
     }
 
+    // Das Zielen hinter dem Frame, mit demselben Fang wie in DriveTeleport.
+    private void DriveTeleportAim()
+    {
+        try
+        {
+            if (teleportOwner != 0)
+                AimTeleport();
+        }
+        catch (Exception exception)
+        {
+            FailTeleport(exception);
+        }
+    }
+
+    // DIE MESSUNG ZUR KORREKTUR: wie weit der Bogenursprung an der alten
+    // Stelle neben dem dieses Frames lag. Nur im DevMode, einmal pro Sekunde.
+    private void ReportTeleportLag()
+    {
+        if (!teleportOriginBeforeValid || !Dev(verboseDiagnostics)
+            || Time.unscaledTime < nextTeleportLagReport)
+        {
+            return;
+        }
+
+        if (!TeleportRay(teleportOwner == 1, out var origin, out _))
+            return;
+
+        nextTeleportLagReport = Time.unscaledTime + 1f;
+        LoggerInstance.Msg("teleport: aimed after pose   old order would lag "
+            + $"{((origin - teleportOriginBefore).magnitude * 100f).ToString("0.0", Invariant)} cm   "
+            + (teleportOwner == 1 ? "washer hand" : "free hand"));
+    }
+
+    private void FailTeleport(Exception exception)
+    {
+        teleportOwner = 0;
+        teleportCommitRequested = false;
+        teleportAim.Hide();
+        teleportLaser.Hide();
+        teleportStatus = "teleport: failed";
+        LoggerInstance.Warning($"  teleport threw {exception.GetType().Name}: "
+            + exception.Message);
+    }
+
     // Laeuft NACH DriveHead und NACH DriveMovement: der Strahl der freien Hand
     // ist erst hier der dieses Frames. Siehe den Kommentar an der Aufrufstelle.
+    //
+    // 1.107.0: mit TeleportAfterPose zielt es hier NICHT mehr, sondern merkt
+    // das Zielen fuer OnLateUpdate vor - auch hier lag die Handpose noch auf
+    // dem Vorframe. Der SPRUNG bleibt hier: Pose-Block und ReportJump
+    // erwarten die Fussposition nach ihm, und ein Sprung hinter dem Pose-Block
+    // liesse Pistole und Haende einen Frame am alten Ort stehen.
     private void DriveTeleport()
     {
         // ================================================================
@@ -13022,6 +13187,14 @@ public sealed class Pose : MelonMod
         {
             if (teleportOwner != 0)
             {
+                if (teleportAfterPose.Value)
+                {
+                    teleportAimPending = true;
+                    teleportOriginBeforeValid = TeleportRay(teleportOwner == 1,
+                        out teleportOriginBefore, out _);
+                    return;
+                }
+
                 AimTeleport();
                 return;
             }
@@ -13033,13 +13206,7 @@ public sealed class Pose : MelonMod
         }
         catch (Exception exception)
         {
-            teleportOwner = 0;
-            teleportCommitRequested = false;
-            teleportAim.Hide();
-            teleportLaser.Hide();
-            teleportStatus = "teleport: failed";
-            LoggerInstance.Warning($"  teleport threw {exception.GetType().Name}: "
-                + exception.Message);
+            FailTeleport(exception);
         }
     }
 
