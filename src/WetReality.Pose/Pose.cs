@@ -5,7 +5,7 @@ using UnityEngine.InputSystem;
 using UnityEngine.SubsystemsImplementation;
 using UnityEngine.XR;
 
-[assembly: MelonInfo(typeof(WetReality.Pose), "Wet Reality Pose", "1.107.0", "Wet Reality")]
+[assembly: MelonInfo(typeof(WetReality.Pose), "Wet Reality Pose", "1.114.0", "Wet Reality")]
 [assembly: MelonGame("FuturLab", "PowerWash Simulator 2")]
 
 namespace WetReality;
@@ -437,6 +437,7 @@ public sealed class Pose : MelonMod
     private MelonPreferences_Entry<float> gestureEchoFactor = null!;
     private MelonPreferences_Entry<bool> menuMissReport = null!;
     private MelonPreferences_Entry<bool> aimMissReport = null!;
+    private MelonPreferences_Entry<bool> abseilProbe = null!;
     private MelonPreferences_Entry<bool> aimChainReport = null!;
 
     // Diese Sitzung: die Kopfdrehung dieses Frames, festgehalten von DriveHead.
@@ -2577,6 +2578,17 @@ public sealed class Pose : MelonMod
             description: "When a press of X finds no object under the washer, log the "
                 + "five nearest interactables with the gate that rejected each one. For "
                 + "finding out why an object cannot be aimed at. One block per press.");
+
+        // DIE SCHAUKEL AN DER WERBETAFEL, Abschnitt 200. Oben am Ausleger
+        // liessen elf X-Druecke die Schaukel nicht umsetzen, und alle elf
+        // fielen in den Blickziel-Pfad. Warum, stand nirgends: AimMissReport
+        // nennt nur die drei Kandidaten mit dem naechsten PIVOT, und ob der
+        // Aufhaengepunkt darunter ist, ist nicht gesagt. Reine Messung, unter
+        // DevMode wie jede Diagnose.
+        abseilProbe = settings.CreateEntry("AbseilProbe", true,
+            description: "On every press of X, log the game's own look target and every "
+                + "abseiling attach point and the nearest abseiling targets, with the aim gate "
+                + "and the game's CanInteract answer per verb. Only with DevMode.");
 
         // OB DER KOPF DOPPELT GEZAEHLT WIRD, und das ist keine rhetorische
         // Frage: Pose.cs schreibt die ROHE Controller-Rotation als LOKALE
@@ -9478,6 +9490,10 @@ public sealed class Pose : MelonMod
                 // ladder was held.
                 var before = InteractionText();
 
+                // VOR DER WEICHE, damit der Block den Stand im Moment des
+                // Drucks zeigt und nicht den, den der Zugriff gerade herstellt.
+                ReportAbseilProbe();
+
                 if (carrying)
                 {
                     // Der Grund kommt ZURUECK, statt dass hier unbedingt eine
@@ -9558,10 +9574,29 @@ public sealed class Pose : MelonMod
                 {
                     LoggerInstance.Msg("task list: closed via the context button (Y)");
                 }
+                else if (JobCompletePending(out var jobState))
+                {
+                    // "JOB ABGESCHLOSSEN! ZUM ABSCHLIESSEN ESC DRUECKEN" - der
+                    // Hinweis nennt ESC, und ESC ist ToggleGameMenu. Gemeldet
+                    // 2026-09-24: Y schaltete hier nur die Aufgabenliste um,
+                    // die bei 100 % ohnehin leer ist; die Menuetaste war der
+                    // einzige Weg weiter.
+                    ToggleGameMenu();
+                    LoggerInstance.Msg($"task list: job complete ({jobState}), Y sent ESC instead");
+                }
+                else if (HudInfoVisible(out var infoState))
+                {
+                    // INFO-MELDUNGEN, die ESC ausblendet - §199. Das Spiel hat
+                    // in der Welt keine eigene Wegklick-Eingabe: ESC ist dort
+                    // nur GameMenu_Toggle, also blendet der Pause-Handler die
+                    // Meldung aus. Y ruft darum denselben Handler.
+                    ToggleGameMenu();
+                    LoggerInstance.Msg($"task list: info message on screen ({infoState}), Y sent ESC instead");
+                }
                 else
                 {
                     playerInput.InvokeToggleTaskList();
-                    LoggerInstance.Msg("task list toggled");
+                    LoggerInstance.Msg($"task list toggled   job {jobState}   info {infoState}");
                 }
 
             }
@@ -10593,6 +10628,28 @@ public sealed class Pose : MelonMod
         }
     }
 
+    // Ein AbseilingTarget, an dessen Controller gerade kein Seil haengt.
+    // Liest der Controller nicht, gilt die Seite als belegt - eine
+    // Lesepanne soll nichts unerreichbar machen, was vorher ging.
+    private static bool IsEmptyAbseilSide(Il2CppFuturLab.PW2.PlayerInteractableBase item)
+    {
+        try
+        {
+            var target = item.TryCast<Il2CppFuturLab.PW2.AbseilingTarget>();
+
+            if (target is null || target == null)
+                return false;
+
+            var controller = target.AbseilingController;
+
+            return controller is not null && controller != null && !controller.IsRopeAttached;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
     private Il2CppFuturLab.PW2.PlayerInteractableBase? FindAimTarget(
         out float perp, out float ahead, out Il2CppFuturLab.PW2.ItemInteraction kind,
         out string reason, out Vector3 point)
@@ -10669,6 +10726,16 @@ public sealed class Pose : MelonMod
             var item = interactables[index];
 
             if (item is null || item == null)
+                continue;
+
+            // DIE LEERE SEITE DER SCHAUKEL IST KEIN ZIEL - Abschnitt 202.
+            // Beide AbseilingTarget antworten CanInteract True fuer jedes
+            // Verb, auch das ohne Seil; ein PickUp dort wirft im Spiel
+            // (AbseilingController.RemoveRope, NullReference, gemessen).
+            // Hier und nicht in TryAimPickup, weil Zeiger, Puls und Druck
+            // alle diese Auswahl fragen. Beim Tragen gilt der Filter nicht:
+            // dann ist die leere Seite der Ablageort.
+            if (!carrying && IsEmptyAbseilSide(item))
                 continue;
 
             var gate = AimGate(item, origin, forward, out var itemPerp,
@@ -11089,6 +11156,469 @@ public sealed class Pose : MelonMod
         }
     }
 
+    // DIE SCHAUKEL AN DER WERBETAFEL, im Moment des X-Drucks und in EINEM
+    // Block - Abschnitt 200.
+    //
+    // Oben am Ausleger setzt X die Schaukel im Flachspiel auf die andere
+    // Seite; in VR taten elf Druecke nichts, und alle fielen in den
+    // Blickziel-Pfad mit festem PickUp. Drei Hypothesen, jede hat hier ihre
+    // Spalte, damit ein Lauf genuegt:
+    //
+    //   gate        der Handstrahl verfehlt den Punkt - dieselbe AimGate wie
+    //               die Entscheidung, kein zweiter Rechenweg
+    //   can         CanInteract sagt nein, pro Verb gefragt: PickUp, Use,
+    //               Remove. Mit ahead, wie TryAimPickup fragt, und fuer das
+    //               Primaerverb zusaetzlich mit der Kameraentfernung - der
+    //               Manager fuehrt ein eigenes m_maxAbseilingAttachDistance
+    //   game        das Blickziel des Spiels und sein Verb: steht dort der
+    //               Aufhaengepunkt, lag es am festen PickUp des Rueckfalls
+    //
+    // Der Aufhaengepunkt wird ueber m_attachPoint verortet und nicht ueber
+    // transform.position - bei animierten Objekten luegt die (Abschnitt 101).
+    // Beide stehen daneben.
+    //
+    // AUCH INAKTIVE Aufhaengepunkte, mit Kennzeichen: "keiner aktiv" ist ein
+    // anderer Befund als "keiner da", und beide sind moeglich.
+    private void ReportAbseilProbe()
+    {
+        if (!Dev(abseilProbe))
+            return;
+
+        try
+        {
+            var manager = interaction;
+
+            if (manager is null || manager == null)
+            {
+                LoggerInstance.Msg("abseil probe: kein PlayerInteractionManager");
+                return;
+            }
+
+            var selector = manager.InteractionSelector
+                ?.TryCast<Il2CppFuturLab.PW2.PlayerCameraInteractionSelector>();
+            var character = selector?.m_playerCharacter;
+            var known = character is not null && character != null;
+            var hasRay = raySpawn is not null && raySpawn != null;
+            var origin = Vector3.zero;
+            var forward = Vector3.forward;
+
+            if (hasRay)
+                AimRay(out origin, out forward);
+
+            var gaze = Camera.main;
+            var hasGaze = gaze is not null && gaze != null;
+            var gazePos = hasGaze ? gaze!.transform.position : Vector3.zero;
+            var gazeFwd = hasGaze ? gaze!.transform.forward : Vector3.forward;
+
+            var target = manager.m_targetItem;
+            var hasTarget = target is not null && target != null;
+            var state = manager.InteractionState;
+
+            LoggerInstance.Msg($"abseil probe: game target "
+                + $"{(hasTarget ? $"\"{target!.name}\" [{target.GetIl2CppType()?.Name ?? "?"}] verb {target.PrimaryInteraction}" : "none")}"
+                + $"   state {(state is null ? "no state" : state.Name)}"
+                + $"   maxAttach {manager.m_maxAbseilingAttachDistance:0.##} m"
+                + $"   reach {(selector is null || selector == null ? -1f : selector.m_pickupDistance):0.#} m"
+                + $"   character {(known ? "ok" : "none")}"
+                + $"   ray {(hasRay ? $"{Vector(origin)} fwd {Vector(forward)}" : "kein raySpawn")}"
+                + $"   gaze {(hasGaze ? $"{Vector(gazePos)} fwd {Vector(gazeFwd)}" : "none")}");
+
+            var controllers = Resources.FindObjectsOfTypeAll(
+                Il2CppInterop.Runtime.Il2CppType
+                    .Of<Il2CppFuturLab.PW2.AbseilingController>());
+
+            for (var index = 0; index < controllers.Length; index++)
+            {
+                var controller = controllers[index]
+                    ?.TryCast<Il2CppFuturLab.PW2.AbseilingController>();
+
+                if (controller is null || controller == null
+                    || !controller.gameObject.activeInHierarchy)
+                    continue;
+
+                var movers = "none";
+
+                try
+                {
+                    var found = controller.GetComponentsInChildren<Il2CppFuturLab.PW2.MoveAbseilingPoint>(true);
+
+                    if (found is not null && found.Length != 0)
+                    {
+                        var parts = new List<string>();
+
+                        for (var m = 0; m < found.Length && parts.Count < 3; m++)
+                        {
+                            var mover = found[m];
+
+                            if (mover is null || mover == null)
+                                continue;
+
+                            parts.Add($"{mover.name} active {mover.isActiveAndEnabled}"
+                                + $" min {mover.IsAtMin} max {mover.IsAtMax}");
+                        }
+
+                        movers = string.Join("; ", parts);
+                    }
+                }
+                catch (Exception moverException)
+                {
+                    movers = $"warf {moverException.GetType().Name}";
+                }
+
+                LoggerInstance.Msg($"  controller {PathOf(controller.transform)}"
+                    + $"   ropeAttached {controller.IsRopeAttached}"
+                    + $"   climbed {controller.IsBeingClimbed}"
+                    + $"   seatAtMax {controller.IsSeatAtMaxHeight}"
+                    + $"   exitTop {controller.AllowExitFromTop}"
+                    + $"   seat {Vector(controller.GetSeatPosition())}"
+                    + $"   attach {Vector(controller.GetAttachPointPosition())}"
+                    + $"   movers [{movers}]");
+
+                if (hasRay)
+                    ReportAbseilColliders(controller, origin, forward);
+            }
+
+            // ALLE KANDIDATEN, eine Zeile je Stueck. AimMissReport nennt nur
+            // drei, sortiert nach dem Pivot - und der luegt (Abschnitt 101).
+            // Lauf 200 hatte neun, von denen sechs nie zu sehen waren.
+            if (hasRay)
+            {
+                ScanInteractables();
+
+                for (var index = 0; index < interactables.Count; index++)
+                {
+                    var item = interactables[index];
+
+                    if (item is null || item == null)
+                        continue;
+
+                    var gate = AimGate(item, origin, forward, out var perp,
+                        out var ahead, out var grab, out var how);
+                    var to = grab - origin;
+                    var ang = to.sqrMagnitude > 0.000001f
+                        ? Vector3.Angle(forward, to).ToString("0.#", Invariant)
+                        : "-";
+
+                    LoggerInstance.Msg($"  cand {PathOf(item.transform)}"
+                        + $"   [{item.GetIl2CppType()?.Name ?? "?"}]   kind {item.PrimaryInteraction}"
+                        + $"   grab {Vector(grab)} ({how})   ahead {ahead:0.##}   perp {perp:0.##}"
+                        + $"   rayAng {ang}   gate {(gate.Length == 0 ? "PASSIERT" : gate)}");
+                }
+            }
+
+            var points = Resources.FindObjectsOfTypeAll(
+                Il2CppInterop.Runtime.Il2CppType
+                    .Of<Il2CppFuturLab.PW2.AbseilingAttachPoint>());
+            var listed = 0;
+
+            for (var index = 0; index < points.Length; index++)
+            {
+                var point = points[index]
+                    ?.TryCast<Il2CppFuturLab.PW2.AbseilingAttachPoint>();
+
+                if (point is null || point == null)
+                    continue;
+
+                // Assets ohne Szene sind keine Kandidaten, nur Rauschen.
+                if (!point.gameObject.scene.IsValid())
+                    continue;
+
+                listed++;
+                ReportAbseilCandidate("attach", point, point.m_attachPoint,
+                    character, known, hasRay, origin, forward, hasGaze, gazePos, gazeFwd,
+                    hasTarget && target!.Pointer == point.Pointer);
+            }
+
+            if (listed == 0)
+                LoggerInstance.Msg("  attach: keiner in der Szene");
+
+            // ZIELE NUR DIE NAECHSTEN DREI, und nur aktive: an einer Tafel
+            // stehen viele Ablageorte, und der Block soll lesbar bleiben.
+            var targets = Resources.FindObjectsOfTypeAll(
+                Il2CppInterop.Runtime.Il2CppType
+                    .Of<Il2CppFuturLab.PW2.AbseilingTarget>());
+            var reference = hasRay ? origin : gazePos;
+            var order = new List<Il2CppFuturLab.PW2.AbseilingTarget>();
+            var dists = new List<float>();
+
+            for (var index = 0; index < targets.Length; index++)
+            {
+                var item = targets[index]?.TryCast<Il2CppFuturLab.PW2.AbseilingTarget>();
+
+                if (item is null || item == null || !item.gameObject.activeInHierarchy)
+                    continue;
+
+                var dist = (item.transform.position - reference).magnitude;
+                var at = order.Count;
+
+                while (at > 0 && dists[at - 1] > dist)
+                    at--;
+
+                order.Insert(at, item);
+                dists.Insert(at, dist);
+
+                if (order.Count > 3)
+                {
+                    order.RemoveAt(3);
+                    dists.RemoveAt(3);
+                }
+            }
+
+            for (var rank = 0; rank < order.Count; rank++)
+            {
+                ReportAbseilCandidate("target", order[rank], null,
+                    character, known, hasRay, origin, forward, hasGaze, gazePos, gazeFwd,
+                    hasTarget && target!.Pointer == order[rank].Pointer);
+            }
+        }
+        catch (Exception exception)
+        {
+            LoggerInstance.Warning($"  abseil probe threw "
+                + $"{exception.GetType().Name}: {exception.Message}");
+        }
+    }
+
+    // WELCHER COLLIDER DER PFOSTEN IST, auf den der Spieler zeigt.
+    //
+    // Lauf 200, zweiter Versuch: der Spieler stand vor dem Kragarm und
+    // zeigte auf ihn (Bildschirmfoto), der Kegel fand trotzdem nichts. Also
+    // gehoert der Arm entweder zu keinem Kandidaten, oder sein Collider sitzt
+    // woanders als das Bild. Diese Zeilen nennen jeden Collider unter der
+    // Schaukel, nach dem Winkel zum Handstrahl sortiert, mit Besitzer.
+    //
+    // Dazu das Layout: ToggleActiveLayout und IsLedgeModeActive sind der
+    // Kandidat fuer "Arm auf die andere Seite" - gelesen, nie gerufen.
+    private void ReportAbseilColliders(Il2CppFuturLab.PW2.AbseilingController controller,
+        Vector3 origin, Vector3 forward)
+    {
+        try
+        {
+            var layout = "none";
+
+            try
+            {
+                var handler = controller.References?.LayoutHandler;
+
+                if (handler is not null && handler != null)
+                {
+                    layout = $"ledge {handler.IsLedgeModeActive}"
+                        + $"   trackDist {handler.GetTrackDistance():0.##} m"
+                        + $"   ceilingL {TransformAt(handler.m_leftArmCeiling)}"
+                        + $"   ledgeL {TransformAt(handler.m_leftArmLedge)}"
+                        + $"   vertL {TransformAt(handler.m_ledgeVerticalArmLeft)}";
+                }
+            }
+            catch (Exception layoutException)
+            {
+                layout = $"warf {layoutException.GetType().Name}";
+            }
+
+            LoggerInstance.Msg($"    layout {layout}");
+
+            var found = controller.GetComponentsInChildren<Collider>(true);
+
+            if (found is null || found.Length == 0)
+            {
+                LoggerInstance.Msg("    colliders: keine");
+                return;
+            }
+
+            // Insertion-Sort ueber Indizes, dieselbe Begruendung wie in
+            // ReportAimMiss: nichts Aufrufbares ueber die Interop-Grenze.
+            var order = new List<int>();
+            var angles = new List<float>();
+            var points = new List<Vector3>();
+            var range = aimInteractionRange.Value;
+
+            for (var index = 0; index < found.Length; index++)
+            {
+                var collider = found[index];
+
+                if (collider is null || collider == null)
+                    continue;
+
+                Vector3 point;
+
+                try
+                {
+                    // ZWEI SCHRITTE wie in AimGate: Seed auf dem Strahl, dann
+                    // an der verschobenen Projektion nachfassen.
+                    var pivotAhead = Mathf.Clamp(
+                        Vector3.Dot(collider.transform.position - origin, forward), 0f, range);
+                    point = collider.ClosestPoint(origin + (forward * pivotAhead));
+                    var step = Mathf.Clamp(Vector3.Dot(point - origin, forward), 0f, range);
+                    point = collider.ClosestPoint(origin + (forward * step));
+                }
+                catch
+                {
+                    continue;
+                }
+
+                var to = point - origin;
+                var angle = to.sqrMagnitude > 0.000001f ? Vector3.Angle(forward, to) : 0f;
+                var at = order.Count;
+
+                while (at > 0 && angles[at - 1] > angle)
+                    at--;
+
+                order.Insert(at, index);
+                angles.Insert(at, angle);
+                points.Insert(at, point);
+
+                if (order.Count > 8)
+                {
+                    order.RemoveAt(8);
+                    angles.RemoveAt(8);
+                    points.RemoveAt(8);
+                }
+            }
+
+            LoggerInstance.Msg($"    colliders {found.Length}, die {order.Count} mit dem kleinsten Winkel zum Handstrahl:");
+
+            for (var rank = 0; rank < order.Count; rank++)
+            {
+                var collider = found[order[rank]];
+                var point = points[rank];
+                var ahead = Vector3.Dot(point - origin, forward);
+                var perp = (point - (origin + (forward * ahead))).magnitude;
+                var owner = "keiner";
+
+                try
+                {
+                    var interactable = collider
+                        .GetComponentInParent<Il2CppFuturLab.PW2.PlayerInteractableBase>(true);
+
+                    if (interactable is not null && interactable != null)
+                        owner = $"\"{interactable.name}\" [{interactable.GetIl2CppType()?.Name ?? "?"}] kind {interactable.PrimaryInteraction}";
+                }
+                catch (Exception ownerException)
+                {
+                    owner = $"warf {ownerException.GetType().Name}";
+                }
+
+                LoggerInstance.Msg($"      {PathOf(collider.transform)}"
+                    + $"   [{ColliderTypeName(collider)}]"
+                    + $"   enabled {collider.enabled}   active {collider.gameObject.activeInHierarchy}"
+                    + $"   trigger {collider.isTrigger}   layer {collider.gameObject.layer}"
+                    + $"   point {Vector(point)}   ahead {ahead:0.##}   perp {perp:0.##}"
+                    + $"   ang {angles[rank].ToString("0.#", Invariant)}   owner {owner}");
+            }
+        }
+        catch (Exception exception)
+        {
+            LoggerInstance.Warning($"  abseil colliders threw "
+                + $"{exception.GetType().Name}: {exception.Message}");
+        }
+    }
+
+    private string TransformAt(Transform? node) =>
+        node is null || node == null
+            ? "-"
+            : $"{Vector(node.position)} {(node.gameObject.activeInHierarchy ? "on" : "off")}";
+
+    private void ReportAbseilCandidate(string label,
+        Il2CppFuturLab.PW2.PlayerInteractableBase item, Transform? anchor,
+        Il2CppFuturLab.PW2.PlayerCharacter? character, bool known,
+        bool hasRay, Vector3 origin, Vector3 forward,
+        bool hasGaze, Vector3 gazePos, Vector3 gazeFwd, bool isGameTarget)
+    {
+        try
+        {
+            var hasAnchor = anchor is not null && anchor != null;
+            var gate = "kein raySpawn";
+            var perp = 0f;
+            var ahead = 0f;
+            var how = "-";
+            var grab = item.transform.position;
+
+            if (hasRay)
+            {
+                gate = AimGate(item, origin, forward, out perp, out ahead,
+                    out grab, out how);
+
+                if (gate.Length == 0)
+                    gate = "PASSIERT";
+            }
+
+            var where = hasAnchor ? anchor!.position : grab;
+            var camDist = hasGaze ? (where - gazePos).magnitude : -1f;
+            var toWhere = where - gazePos;
+            var gazeAng = hasGaze && toWhere.sqrMagnitude > 0.000001f
+                ? Vector3.Angle(gazeFwd, toWhere).ToString("0.#", Invariant)
+                : "-";
+            var toRay = where - origin;
+            var rayAng = hasRay && toRay.sqrMagnitude > 0.000001f
+                ? Vector3.Angle(forward, toRay).ToString("0.#", Invariant)
+                : "-";
+
+            var kind = item.PrimaryInteraction;
+            var can = "kein PlayerCharacter";
+
+            if (known)
+            {
+                // JEDES VERB EINZELN, jeder Aufruf im eigenen try: ein Wurf
+                // kostet eine Spalte und nicht den Block.
+                string Ask(Il2CppFuturLab.PW2.ItemInteraction verb, float distance)
+                {
+                    try
+                    {
+                        return item.CanInteract(character!, verb, distance) ? "True" : "false";
+                    }
+                    catch (Exception askException)
+                    {
+                        return $"warf {askException.GetType().Name}";
+                    }
+                }
+
+                can = $"PickUp {Ask(Il2CppFuturLab.PW2.ItemInteraction.PickUp, ahead)}"
+                    + $"  Use {Ask(Il2CppFuturLab.PW2.ItemInteraction.Use, ahead)}"
+                    + $"  Remove {Ask(Il2CppFuturLab.PW2.ItemInteraction.Remove, ahead)}"
+                    + $"  {kind}@cam {(camDist < 0f ? "-" : Ask(kind, camDist))}";
+            }
+
+            var colliders = "?";
+
+            try
+            {
+                var found = item.transform.GetComponentsInChildren<Collider>(true);
+                var enabled = 0;
+
+                if (found is not null)
+                {
+                    for (var c = 0; c < found.Length; c++)
+                    {
+                        if (found[c] is not null && found[c] != null && found[c].enabled)
+                            enabled++;
+                    }
+                }
+
+                colliders = $"{enabled}/{found?.Length ?? 0}";
+            }
+            catch (Exception colliderException)
+            {
+                colliders = $"warf {colliderException.GetType().Name}";
+            }
+
+            LoggerInstance.Msg($"  {label} {PathOf(item.transform)}"
+                + $"   ptr 0x{item.Pointer.ToString("X")}"
+                + $"   active {item.gameObject.activeInHierarchy}/{item.isActiveAndEnabled}"
+                + $"   layer {item.gameObject.layer}"
+                + $"   gameTarget {(isGameTarget ? "JA" : "nein")}");
+            LoggerInstance.Msg($"      pos {Vector(item.transform.position)}"
+                + $"   anchor {(hasAnchor ? Vector(anchor!.position) : "-")}"
+                + $"   grab {Vector(grab)} ({how})"
+                + $"   ahead {ahead:0.##} m   perp {perp:0.##} m   gate {gate}"
+                + $"   rayAng {rayAng}   camDist {camDist:0.##} m   gazeAng {gazeAng}"
+                + $"   collider {colliders}");
+            LoggerInstance.Msg($"      kind {kind}   canInteract {can}");
+        }
+        catch (Exception exception)
+        {
+            LoggerInstance.Warning($"  abseil candidate threw "
+                + $"{exception.GetType().Name}: {exception.Message}");
+        }
+    }
+
     // DAS ZIEL IM MOMENT DES X-DRUCKS, in einem Zug mit dem Verb.
     //
     // SetTargetAndInteractStateImmediate ist nativ PUBLIC, anders als
@@ -11153,6 +11683,22 @@ public sealed class Pose : MelonMod
             {
                 ReportAimMiss(reason);
                 return false;
+            }
+
+            // DIE SCHAUKEL MELDET KEIN VERB, und das Flachspiel zeigt trotzdem
+            // "E Pick Up" - Abschnitt 201. Ein AbseilingTarget liest
+            // PrimaryInteraction None (gemessen, Lauf 200), der Flachspieler
+            // schaut auf die Laufflaeche der Tafel und nimmt mit E die
+            // Schaukel ab. Das Verb ist also das, das die Anzeige nennt.
+            //
+            // NUR fuer diesen Typ: ein anderes None-Objekt bleibt beim
+            // Blickziel-Pfad, bis es gemessen ist.
+            if (kind == Il2CppFuturLab.PW2.ItemInteraction.None
+                && target.TryCast<Il2CppFuturLab.PW2.AbseilingTarget>() is not null)
+            {
+                kind = Il2CppFuturLab.PW2.ItemInteraction.PickUp;
+                LoggerInstance.Msg($"interact: abseil target \"{target.name}\" meldet None,"
+                    + " sende PickUp wie die Flach-Anzeige");
             }
 
             if (kind == Il2CppFuturLab.PW2.ItemInteraction.None)
@@ -14155,6 +14701,9 @@ public sealed class Pose : MelonMod
     //
     // SEIT ABSCHNITT 175 AUF Y, nicht mehr auf B. Der Rueckgabewert sagt, ob
     // eine Stufe gegriffen hat; ohne Treffer schaltet Y die Aufgabenliste um.
+    private string backPressSignature = "";
+    private bool backPressUsedContext;
+
     private bool PressBackButton()
     {
         var before = InteractionText();
@@ -14164,14 +14713,36 @@ public sealed class Pose : MelonMod
         var step = "nothing to close";
         var closed = true;
 
+        // DER LOBBY-FALL AUS ABSCHNITT 103, jetzt auch fuer Y (§198). In der
+        // Basis findet die Suche "Schliessen" auf ContextButton_Clickable, sein
+        // Submit bleibt folgenlos - gemessen 2026-09-24 22:47: zwei Y-Druecke,
+        // beide "context button", allowsMovement False -> False. Dieselbe Regel
+        // wie bei der Menuetaste: war der letzte Druck ein folgenloser
+        // Kontextknopf, schaltet dieser das Menue um. Nur im Menuezweig
+        // erreichbar, also schliesst ToggleGameMenu hier und oeffnet nichts.
+        var signature = MenuSignature();
+        var skipContext = backPressUsedContext
+            && string.Equals(signature, backPressSignature, StringComparison.Ordinal);
+        backPressUsedContext = false;
+
         if (TryUiCancel())
             step = "ui cancel";
+        else if (skipContext)
+        {
+            ToggleGameMenu();
+            step = "toggle (context had no effect)";
+        }
         else if (TrySubmitCloseButton())
+        {
             step = "context button";
+            backPressUsedContext = true;
+        }
         else if (TrySubmitPopupCloseButton())
             step = "popup close button";
         else
             closed = false;
+
+        backPressSignature = MenuSignature();
 
         LoggerInstance.Msg($"back (Y): {step}"
             + $"   selected {selected}"
@@ -18665,6 +19236,112 @@ public sealed class Pose : MelonMod
         catch (Exception exception)
         {
             LoggerInstance.Warning($"  tab step threw {exception.GetType().Name}: {exception.Message}");
+        }
+    }
+
+    // Steht das Spiel auf "Job abgeschlossen, ESC druecken"? Die Groesse ist
+    // GameplayStateBase.IsJobCompleted (nativ public virtual, PlayingState
+    // liefert m_jobCompleted), gelesen auf DEMSELBEN Zustand wie
+    // AllowsMovementText. Der Text nennt den Laufzeittyp und den Wert, damit
+    // ein falsches Nein im Log von einem fehlenden Zustand zu trennen ist.
+    private bool JobCompletePending(out string text)
+    {
+        try
+        {
+            var state = Il2CppFuturLab.PW2.PwsScreenManager.Instance?
+                .MainViewport?.CurrentState;
+
+            if (state is null || state == null)
+            {
+                text = "no state";
+                return false;
+            }
+
+            var gameplay = state.TryCast<Il2CppFuturLab.PW2.GameplayStateBase>();
+
+            if (gameplay is null)
+            {
+                text = $"{((Il2CppSystem.Object)state).GetType().Name} is no gameplay state";
+                return false;
+            }
+
+            var completed = gameplay.IsJobCompleted;
+            text = $"{((Il2CppSystem.Object)state).GetType().Name} IsJobCompleted {completed}";
+            return completed;
+        }
+        catch (Exception exception)
+        {
+            text = $"threw {exception.GetType().Name}";
+            return false;
+        }
+    }
+
+    // Steht eine Info-Meldung auf dem HUD? Tor ist die HUD-Nachrichtenbox
+    // (HUDMessageBoxWidget): aktiv UND ihre CanvasGroup sichtbar - das Widget
+    // blendet sich per Alpha aus und bleibt dabei aktiv, activeInHierarchy
+    // allein waere also ein Dauer-Ja.
+    //
+    // DER TEXT MISST MEHR, ALS DAS TOR PRUEFT: Tutorial- und Toast-Widget
+    // stehen mit drin, ohne zu entscheiden. Gemeldet war eine Info zur
+    // Moebeleinrichtung, deren Widget kein Log benannt hat; greift das Tor
+    // nicht, sagt diese Zeile beim naechsten Lauf, welches es war.
+    private bool HudInfoVisible(out string text)
+    {
+        var parts = new List<string>();
+        var visible = false;
+
+        try
+        {
+            var boxes = Resources.FindObjectsOfTypeAll(Il2CppInterop.Runtime.Il2CppType
+                .Of<Il2CppFuturLab.PW2.UI.Widgets.Messages.HUDMessageBoxWidget>());
+
+            for (var index = 0; index < boxes.Length; index++)
+            {
+                var box = boxes[index]?.TryCast<Il2CppFuturLab.PW2.UI.Widgets.Messages.HUDMessageBoxWidget>();
+
+                if (box is null || box == null || !box.gameObject.activeInHierarchy)
+                    continue;
+
+                var group = box.m_canvasGroup;
+                var alpha = group is null || group == null ? -1f : group.alpha;
+
+                parts.Add($"messageBox {box.name} alpha {alpha:0.##}");
+
+                if (alpha > 0.01f)
+                    visible = true;
+            }
+
+            DescribeWidgets<Il2CppFuturLab.PW2.UI.Widgets.HUD.TutorialWidget>("tutorial", parts);
+            DescribeWidgets<Il2CppFuturLab.PW2.UI.ToastMessages.ToastMessagesWidget>("toast", parts);
+        }
+        catch (Exception exception)
+        {
+            parts.Add($"threw {exception.GetType().Name}");
+        }
+
+        text = parts.Count == 0 ? "no active widget" : string.Join(", ", parts);
+        return visible;
+    }
+
+    // Nur zur Messung: aktive Instanzen und das Alpha der naechsten CanvasGroup
+    // darueber.
+    private static void DescribeWidgets<T>(string label, List<string> parts)
+        where T : Component
+    {
+        var found = Resources.FindObjectsOfTypeAll(Il2CppInterop.Runtime.Il2CppType.Of<T>());
+
+        for (var index = 0; index < found.Length; index++)
+        {
+            var widget = found[index]?.TryCast<T>();
+
+            if (widget is null || widget == null || !widget.gameObject.activeInHierarchy)
+                continue;
+
+            var group = widget.GetComponentInParent(
+                Il2CppInterop.Runtime.Il2CppType.Of<CanvasGroup>())?.TryCast<CanvasGroup>();
+            var alpha = group is null || group == null ? -1f : group.alpha;
+
+            parts.Add($"{label} {widget.name} alpha {alpha:0.##}");
         }
     }
 

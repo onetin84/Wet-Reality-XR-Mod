@@ -105,8 +105,10 @@ STEUERUNG UND EINSTELLUNGEN
   Doppelklick belegt.
 
   Y ist in Popups der Ersatz für Esc - Journal, Levelauswertung,
-  Zeitungsartikel. X öffnet ein Popup, Y direkt darüber schließt es. Gibt
-  es nichts zu schließen, öffnet und schließt Y wie gewohnt die Aufgabenliste.
+  Zeitungsartikel, Info-Meldungen, das Menü in der Basis. X öffnet ein
+  Popup, Y direkt darüber schließt es. Meldet das Spiel "Job abgeschlossen!
+  ESC drücken", erledigt Y auch das. Gibt es nichts zu schließen, öffnet und
+  schließt Y wie gewohnt die Aufgabenliste.
 
   Der Knopf unten startet das Spiel über Steam, das Fenster kann also daneben
   offen bleiben. Er ist grau, solange keine Installation gefunden wurde.

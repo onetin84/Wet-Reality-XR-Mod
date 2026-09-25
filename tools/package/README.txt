@@ -91,8 +91,10 @@ CONTROLS AND SETTINGS
   double-click.
 
   Y stands in for Esc inside popups - journal, level summary, newspaper
-  articles. X opens a popup, Y right above it closes it. With nothing to
-  close, Y opens and closes the task list as before.
+  articles, info messages, the menu in your base. X opens a popup, Y right
+  above it closes it. When the game says "Job complete! Press Esc", Y does
+  that too. With nothing to close, Y opens and closes the task list as
+  before.
 
   The configuration tool also sets the colour of the pointer beams and the
   size of the teleport target.
