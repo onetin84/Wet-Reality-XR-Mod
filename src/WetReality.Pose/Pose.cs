@@ -5,7 +5,7 @@ using UnityEngine.InputSystem;
 using UnityEngine.SubsystemsImplementation;
 using UnityEngine.XR;
 
-[assembly: MelonInfo(typeof(WetReality.Pose), "Wet Reality Pose", "1.114.0", "Wet Reality")]
+[assembly: MelonInfo(typeof(WetReality.Pose), "Wet Reality Pose", "1.118.0", "Wet Reality")]
 [assembly: MelonGame("FuturLab", "PowerWash Simulator 2")]
 
 namespace WetReality;
@@ -438,6 +438,12 @@ public sealed class Pose : MelonMod
     private MelonPreferences_Entry<bool> menuMissReport = null!;
     private MelonPreferences_Entry<bool> aimMissReport = null!;
     private MelonPreferences_Entry<bool> abseilProbe = null!;
+    private MelonPreferences_Entry<bool> equipmentProbeKeys = null!;
+    private readonly EquipmentProbe equipmentProbe = new();
+    private MelonPreferences_Entry<bool> washerWheelEnabled = null!;
+    private readonly WasherWheel washerWheel = new();
+    private bool r3HeldFromWheel;
+    private bool r3LoggedDown;
     private MelonPreferences_Entry<bool> aimChainReport = null!;
 
     // Diese Sitzung: die Kopfdrehung dieses Frames, festgehalten von DriveHead.
@@ -2590,6 +2596,21 @@ public sealed class Pose : MelonMod
                 + "abseiling attach point and the nearest abseiling targets, with the aim gate "
                 + "and the game's CanInteract answer per verb. Only with DevMode.");
 
+        // DIE AUSRUESTUNGSMESSUNG, Abschnitt 204: gekaufte Washer nicht
+        // anwaehlbar. Tasten und Fragen stehen in EquipmentProbe.cs.
+        equipmentProbeKeys = settings.CreateEntry("EquipmentProbe", true,
+            description: "Measurement keys for washer tiers, the game's radial wheel, the "
+                + "adaptable nozzle width and test money (Insert, Delete, End, Page Up/Down, "
+                + "Shift+F7). Each press logs the equipment before and after. Only with DevMode.");
+
+        // DIE WAEHLSCHEIBE DES SPIELS, Abschnitt 205. Aus heisst: R3 halten
+        // wechselt wie bis 1.115.0 nur die Marke.
+        washerWheelEnabled = settings.CreateEntry("WasherWheel", true,
+            description: "Holding R3 opens the game's own washer wheel instead of cycling "
+                + "the brand. The right stick points at a brand, the grips step through its "
+                + "tiers (left back, right forward), and A, the right trigger or R3 takes the "
+                + "selection. Set to false for the old brand cycle on the hold.");
+
         // OB DER KOPF DOPPELT GEZAEHLT WIRD, und das ist keine rhetorische
         // Frage: Pose.cs schreibt die ROHE Controller-Rotation als LOKALE
         // Rotation auf die Assembly, waehrend DriveHead dem Elternknoten die
@@ -3601,6 +3622,9 @@ public sealed class Pose : MelonMod
             NozzleKeys();
             RecenterKey();
 
+            if (Dev(equipmentProbeKeys))
+                equipmentProbe.Update(LoggerInstance, playerInput, menuMode, MenuRightStick());
+
             // EVERYTHING ELSE on the keypad is a tuning tool, and the whole set
             // writes to the config and saves. Section 90 recorded the incident
             // this prevents: "a too-early released Alt rotates the pistol by 5
@@ -4374,6 +4398,9 @@ public sealed class Pose : MelonMod
         // sees the same answer in the same frame; MenuModeActive also logs its
         // transitions, and three callers would log three times.
         menuMode = uiNavigation.Value && MenuModeActive();
+        // Direkt dahinter: DriveButtons, die Menuetabs und die Navigation
+        // fragen im selben Frame, ob die Scheibe die Eingabe hat.
+        washerWheel.Detect(LoggerInstance, menuMode);
 
         // Abschnitt 176. Hier, weil erst ab dieser Zeile feststeht, ob ein
         // Menue offen ist, und weil die Klammer ueber LateUpdate das Rendern
@@ -4414,6 +4441,8 @@ public sealed class Pose : MelonMod
         // NACH DriveButtons: erst dort steht fest, was der Mod mit dem Griff
         // gemacht hat. Abschnitt 192.
         WatchGameSpray();
+        LogStickClickEdge();
+        DriveWasherWheel();
         DriveNozzleScheme();
         ReportHeldItem();
         // AFTER ReportHeldItem, because that method owns the search for the
@@ -9348,7 +9377,9 @@ public sealed class Pose : MelonMod
                 // samt ihrer Kette aus 150 und 173. Schliesst sie nichts,
                 // bleibt es beim Umschalten der Aufgabenliste: die Taste, die
                 // die Liste oeffnet, muss sie weiter schliessen koennen.
-                if (taskButton.Tap && !PressBackButton())
+                // In der Waehlscheibe hat Y keine Aufgabe: die Aufgabenliste
+                // wuerde sich darueberlegen. Abschnitt 205.
+                if (taskButton.Tap && !washerWheel.Open && !PressBackButton())
                     playerInput.InvokeToggleTaskList();
 
                 // Derselbe Merker wie bei B: Y schliesst beim Druecken, und
@@ -9866,6 +9897,60 @@ public sealed class Pose : MelonMod
     // is NOT automatically a direction. LogConfiguration prints the category id
     // and the nozzle name on either side of every call, so one run says whether
     // +1 advances the category, does nothing, or addresses player one.
+    // Abschnitt 205, die Logik steht in WasherWheel.cs. Hier nur, was die
+    // Scheibe von Pose braucht: die Tasten der Waschhand, die Griffe und den
+    // Stick - und das Aufraeumen des R3-Knopfs beim Schliessen.
+    // JEDE R3-FLANKE INS LOG, Abschnitt 206. In 1.116.0 stand im ganzen Job
+    // keine R3-Zeile - weder Tap noch Halten noch ein Fehler. Ob der Druck
+    // nicht ankam oder ein Tor ihn nahm, sagt nur diese Zeile. Zwei Zeilen
+    // pro Druck, auch ohne DevMode: der Fall ist gemeldet und selten.
+    private void LogStickClickEdge()
+    {
+        var down = ButtonEdge.IsDown(rightStickClick);
+
+        if (down == r3LoggedDown)
+            return;
+
+        r3LoggedDown = down;
+        LoggerInstance.Msg($"R3 {(down ? "down" : "up")}"
+            + $"   action {(rightStickClick is null ? "NULL" : "bound")}"
+            + $"   playerInput {(playerInput is null ? "NULL" : "ok")}"
+            + $"   menuMode {menuMode}   wheel {(washerWheel.Open ? "open" : "closed")}"
+            + $"   heldFromWheel {r3HeldFromWheel}   WasherWheel {washerWheelEnabled.Value}");
+    }
+
+    private void DriveWasherWheel()
+    {
+        if (playerInput is null || !washerWheel.Open)
+            return;
+
+        try
+        {
+            var closedWithStickClick = washerWheel.Drive(LoggerInstance, playerInput,
+                MenuRightStick(),
+                ButtonEdge.IsDown(rightPrimary),
+                ButtonEdge.IsDown(triggerAction),
+                ButtonEdge.IsDown(rightStickClick),
+                ButtonEdge.ReadAxis(leftSqueeze) > 0.6f,
+                ButtonEdge.ReadAxis(rightSqueeze) > 0.6f,
+                DescribeConfiguration,
+                why => Buzz(WasherHandRight, why));
+
+            // groupButton stand beim Oeffnen noch auf "gedrueckt, Halten
+            // gefeuert" und wurde im Menue nie gepollt. Ohne Reset waere der
+            // naechste R3-Druck verschluckt.
+            if (closedWithStickClick || !washerWheel.Open)
+                groupButton.Reset();
+
+            if (closedWithStickClick)
+                r3HeldFromWheel = true;
+        }
+        catch (Exception exception)
+        {
+            LoggerInstance.Warning($"  washer wheel threw {exception.GetType().Name}: {exception.Message}");
+        }
+    }
+
     private void DriveNozzleScheme()
     {
         if (playerInput is null || menuMode)
@@ -9888,7 +9973,14 @@ public sealed class Pose : MelonMod
             // trigger: a nozzle category arriving on release reads as a
             // deliberate press, whereas a delayed jump or interact reads as a
             // swallowed input - which is why those two still have no threshold.
-            groupButton.Poll(ButtonEdge.IsDown(rightStickClick), 0.4f);
+            // DER REST DES R3-DRUCKS, der die Scheibe geschlossen hat, gehoert
+            // der Scheibe - sonst oeffnete sie nach 0,4 s gleich wieder.
+            var stickClickDown = ButtonEdge.IsDown(rightStickClick);
+
+            if (!stickClickDown)
+                r3HeldFromWheel = false;
+
+            groupButton.Poll(stickClickDown && !r3HeldFromWheel, 0.4f);
             extensionButton.Poll(ButtonEdge.IsDown(leftStickClick), 0f);
 
             if (groupButton.Tap)
@@ -9911,7 +10003,11 @@ public sealed class Pose : MelonMod
             //
             // Left standing, the old wording sent a later reader looking for a
             // different lever that does not exist.
-            if (groupButton.Hold)
+            if (groupButton.Hold && washerWheelEnabled.Value)
+            {
+                washerWheel.RequestOpen(LoggerInstance, playerInput, DescribeConfiguration());
+            }
+            else if (groupButton.Hold)
             {
                 var before = DescribeConfiguration();
                 playerInput.InvokeSwitchGun(1);
@@ -17269,7 +17365,8 @@ public sealed class Pose : MelonMod
 
     private void DriveMenuRightStick()
     {
-        if (!menuMode)
+        // Der Stick zielt in der Waehlscheibe. Abschnitt 205.
+        if (!menuMode || washerWheel.Open)
         {
             EndScroll();
             EndAdjust();
@@ -17779,6 +17876,10 @@ public sealed class Pose : MelonMod
         // press to the first frame with buttons instead - and A is jump, so
         // jumping into a menu would confirm whatever happened to be selected.
         menuAcceptButton.Poll(ButtonEdge.IsDown(rightPrimary), 0f);
+
+        // Die Waehlscheibe liest A und den Trigger selbst. Abschnitt 205.
+        if (washerWheel.Open)
+            return;
 
         ScanMenuButtons();
 
@@ -18917,7 +19018,8 @@ public sealed class Pose : MelonMod
     // and ordering it top-to-bottom would make "next" jump unpredictably.
     private void DriveMenuTabs()
     {
-        if (!menuMode)
+        // Die Griffe sind in der Waehlscheibe die Stufe. Abschnitt 205.
+        if (!menuMode || washerWheel.Open)
             return;
 
         try

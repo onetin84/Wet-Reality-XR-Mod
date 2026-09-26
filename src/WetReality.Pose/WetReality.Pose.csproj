@@ -31,9 +31,9 @@
          the game would drag in the Il2Cpp interop types and fail.
 
          Two places hold the number, so they are bumped together. -->
-    <Version>1.114.0</Version>
-    <AssemblyVersion>1.114.0</AssemblyVersion>
-    <FileVersion>1.114.0</FileVersion>
+    <Version>1.118.0</Version>
+    <AssemblyVersion>1.118.0</AssemblyVersion>
+    <FileVersion>1.118.0</FileVersion>
   </PropertyGroup>
   <ItemGroup>
     <!-- The splash plate, compiled INTO the assembly.
@@ -104,6 +104,9 @@
     <Reference Include="UnityEngine.TerrainModule" HintPath="$(GamePath)/MelonLoader/Il2CppAssemblies/UnityEngine.TerrainModule.dll" Private="false" />
     <Reference Include="Il2CppOccaSoftware.Buto.Runtime" HintPath="$(GamePath)/MelonLoader/Il2CppAssemblies/Il2CppOccaSoftware.Buto.Runtime.dll" Private="false" />
     <Reference Include="Il2CppFuturLab.PW2.Core" HintPath="$(GamePath)/MelonLoader/Il2CppAssemblies/Il2CppFuturLab.PW2.Core.dll" Private="false" />
+    <!-- PlayerSaveData, fuer den Kontostand der Ausruestungsmessung aus
+         Abschnitt 204. Gelesen wird nur PrimaryCurrency.Value - ein int. -->
+    <Reference Include="Il2CppFuturLab.PW2.SaveData" HintPath="$(GamePath)/MelonLoader/Il2CppAssemblies/Il2CppFuturLab.PW2.SaveData.dll" Private="false" />
     <!-- SettingUIElement and its four subtypes - SettingButton, SettingDropdown,
          SettingSlider, SettingToggle - which are what the settings screen is
          built from. It derives from UIStateMonoBehaviour, so the existing menu
