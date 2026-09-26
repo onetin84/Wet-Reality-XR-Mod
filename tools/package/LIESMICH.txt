@@ -110,6 +110,18 @@ STEUERUNG UND EINSTELLUNGEN
   ESC drücken", erledigt Y auch das. Gibt es nichts zu schließen, öffnet und
   schließt Y wie gewohnt die Aufgabenliste.
 
+  AUSRUESTUNGSSCHEIBEN: R3 halten öffnet die Wählscheiben des Spiels vor dir -
+  Gerät, Düse und Verlängerung. Dort ist jede gekaufte Washer-Stufe
+  anwählbar. Mit dem Strahl auf ein Segment oder eine Stufe zeigen und den
+  Trigger ziehen wählt aus, ein Griff wechselt zur vorigen oder nächsten
+  Scheibe, R3 übernimmt die Wahl und schließt. Ohne Strahl geht es über die
+  Sticks: rechter Stick wählt, linker Stick links oder rechts blättert die
+  Stufe, A übernimmt. WasherWheel = false in der Konfiguration bringt den
+  alten Markenwechsel auf R3 halten zurück.
+
+  ADAPTABLE-DUESE (neu, noch ungetestet): beim Sprühen mit ihr macht der
+  Stick der Pistolenhand nach oben den Strahl breiter, nach unten schmaler.
+
   Der Knopf unten startet das Spiel über Steam, das Fenster kann also daneben
   offen bleiben. Er ist grau, solange keine Installation gefunden wurde.
 

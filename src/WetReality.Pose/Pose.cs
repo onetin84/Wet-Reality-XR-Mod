@@ -5,7 +5,7 @@ using UnityEngine.InputSystem;
 using UnityEngine.SubsystemsImplementation;
 using UnityEngine.XR;
 
-[assembly: MelonInfo(typeof(WetReality.Pose), "Wet Reality Pose", "1.118.0", "Wet Reality")]
+[assembly: MelonInfo(typeof(WetReality.Pose), "Wet Reality Pose", "1.121.1", "Wet Reality")]
 [assembly: MelonGame("FuturLab", "PowerWash Simulator 2")]
 
 namespace WetReality;
@@ -808,6 +808,16 @@ public sealed class Pose : MelonMod
     // Einschwingvorgang des Daumens und nicht auf der Absicht.
     private float nozzleIntentSince;
     private float nextNozzleBlockReport;
+
+    // DIE BREITE DER ADAPTABLE - Abschnitt 208. widthOwnsStick haelt den Stick
+    // fuer die Breite, bis beide Achsen wieder in der Totzone stehen.
+    private MelonPreferences_Entry<bool> adaptableWidthStick = null!;
+    private MelonPreferences_Entry<float> adaptableWidthRepeat = null!;
+    private bool widthOwnsStick;
+    private int widthDirection;
+    private float widthNextStep;
+    private bool widthHandlerMissLogged;
+    private Il2CppFuturLab.PW2.PlayerCharacter? widthCharacter;
     private InputAction? offHandTrigger;
     private InputAction? offHandPosition;
 
@@ -1595,6 +1605,23 @@ public sealed class Pose : MelonMod
                 + "hand points. Available to EVERY player, comfort options or not - "
                 + "for deliberately placing yourself. Free locomotion on the off hand "
                 + "is untouched.");
+
+        // ================================================== ABSCHNITT 208
+        //
+        // DIE BREITE DER ADAPTABLE IST MODAL. Solange gesprueht wird und die
+        // ausgeruestete Duese IsAdaptable meldet, gehoert Y der Washer-Hand
+        // der Breite: oben breiter, unten schmaler. Ohne Spruehen ist Y+
+        // wieder der Teleport und Y- der Duesenwechsel.
+        adaptableWidthStick = settings.CreateEntry("AdaptableWidthStick", true,
+            description: "While spraying with the Adaptable nozzle, Y on the washer "
+                + "hand stick changes the jet width: up wider, down narrower. "
+                + "Not spraying, the stick is the teleport and the nozzle step as "
+                + "before. The nozzle is recognised by the game's IsAdaptable flag, "
+                + "not by its name.");
+        adaptableWidthRepeat = settings.CreateEntry("AdaptableWidthRepeat", 0.15f,
+            description: "Seconds between width steps while the stick is held. The "
+                + "game has 12 steps, so 0.15 sweeps the whole range in under two "
+                + "seconds.");
 
         // ============================================== DIE KOMFORTOPTIONEN
         //
@@ -2606,10 +2633,11 @@ public sealed class Pose : MelonMod
         // DIE WAEHLSCHEIBE DES SPIELS, Abschnitt 205. Aus heisst: R3 halten
         // wechselt wie bis 1.115.0 nur die Marke.
         washerWheelEnabled = settings.CreateEntry("WasherWheel", true,
-            description: "Holding R3 opens the game's own washer wheel instead of cycling "
-                + "the brand. The right stick points at a brand, the grips step through its "
-                + "tiers (left back, right forward), and A, the right trigger or R3 takes the "
-                + "selection. Set to false for the old brand cycle on the hold.");
+            description: "Holding R3 opens the game's own equipment wheels instead of cycling "
+                + "the brand. Point the beam and pull the trigger to pick a segment or a tier, "
+                + "the grips switch between washer, nozzle and extension wheel, and R3 takes "
+                + "the selection. Without the beam: right stick picks, left stick left/right "
+                + "steps the tier, A takes. Set to false for the old brand cycle on the hold.");
 
         // OB DER KOPF DOPPELT GEZAEHLT WIRD, und das ist keine rhetorische
         // Frage: Pose.cs schreibt die ROHE Controller-Rotation als LOKALE
@@ -7657,6 +7685,8 @@ public sealed class Pose : MelonMod
             // Eine stehengebliebene Uhr wuerde beim Verlassen des Menues
             // sofort als "lange genug gehalten" lesen.
             nozzleIntentSince = 0f;
+            widthOwnsStick = false;
+            widthDirection = 0;
             return;
         }
 
@@ -7711,16 +7741,45 @@ public sealed class Pose : MelonMod
             var nozzleOwnsUp = nozzleStick.Value && nozzleStickUp.Value;
             var teleportOwnsUp = teleportJump.Value && !nozzleOwnsUp;
 
+            // ================================================ ABSCHNITT 208
+            //
+            // DIE BREITE NIMMT DEN STICK, solange gesprueht wird und die Duese
+            // IsAdaptable meldet - und sie HAELT ihn, bis beide Achsen wieder
+            // in der Totzone stehen. Ohne das Halten schaltete ein Loslassen
+            // des Abzugs bei noch oben gehaltenem Stick mitten im Zug auf
+            // Teleport-Zielen um. Zielt der Teleport schon, als der Abzug
+            // kommt, behaelt ER den Stick: teleportOwner 1 ist diese Hand.
+            //
+            // Die Entscheidung faellt VOR dem Teleport, weil der schon ab der
+            // Dreh-Totzone zu zielen beginnt, die Breite aber erst ab
+            // NozzleStickThreshold steppt.
+            var centred = absY < turnDeadzone.Value && absX < turnDeadzone.Value;
+
+            if (widthOwnsStick && centred)
+            {
+                widthOwnsStick = false;
+                widthDirection = 0;
+            }
+
+            if (!widthOwnsStick && !centred && teleportOwner != 1 && WidthModeActive())
+                widthOwnsStick = true;
+
             // Nur die TORE, kein Zielen: das sitzt in DriveTeleport, weil die
-            // Handpose dieses Frames erst nach DriveHead steht.
+            // Handpose dieses Frames erst nach DriveHead steht. Haelt die
+            // Breite den Stick, sieht der Teleport y = 0 - keine Absicht, und
+            // seine Bewaffnung bleibt ueber die Mitte stimmig.
             var teleportBusy = teleportOwnsUp
-                && DriveTeleportStick(x, y, true);
+                && DriveTeleportStick(x, widthOwnsStick ? 0f : y, true);
+
+            if (widthOwnsStick)
+                DriveWidthStick(x, y);
 
             // absY >= Schwelle UND die Richtung gehoert der Duese UND der
             // Teleport zielt nicht gerade. Der letzte Punkt verhindert, dass
             // ein Zielvorgang beim Loslassen noch die Duese mitnimmt.
             var wantsNozzle = nozzleStick.Value
                 && !teleportBusy
+                && !widthOwnsStick
                 && (y < 0f || nozzleOwnsUp)
                 && absY >= nozzleStickThreshold.Value
                 && absY > absX * nozzleStickDominance.Value;
@@ -7735,6 +7794,7 @@ public sealed class Pose : MelonMod
                 // Sekunde - ist das Tor zu streng, steht der Beweis im
                 // naechsten Log und nicht in einer Vermutung.
                 if (nozzleStick.Value
+                    && !widthOwnsStick
                     && (y < 0f || nozzleOwnsUp)
                     && absY >= nozzleStickThreshold.Value
                     && Time.unscaledTime >= nextNozzleBlockReport)
@@ -7821,6 +7881,14 @@ public sealed class Pose : MelonMod
                     || (teleportOwnsUp && y > 0f
                         && absY >= turnDeadzone.Value
                         && absY > absX));
+
+            // Dieselbe Sperre fuer die Breite: wer den Strahl breiter zieht,
+            // soll dabei nicht wegschnappen. Seitlich schieben dreht weiter.
+            if (widthOwnsStick && absY >= turnDeadzone.Value && absY > absX)
+            {
+                turnStatus = "turn: the nozzle width has the stick";
+                return;
+            }
 
             if (teleportHasStick)
             {
@@ -9921,18 +9989,43 @@ public sealed class Pose : MelonMod
 
     private void DriveWasherWheel()
     {
-        if (playerInput is null || !washerWheel.Open)
+        if (playerInput is null)
             return;
+
+        washerWheel.Verbose = devMode.Value;
+
+        if (!washerWheel.Open)
+        {
+            try
+            {
+                washerWheel.DrivePending(LoggerInstance, playerInput);
+            }
+            catch (Exception exception)
+            {
+                LoggerInstance.Warning($"  washer wheel switch threw {exception.GetType().Name}: {exception.Message}");
+            }
+
+            return;
+        }
 
         try
         {
+            // Belegung seit 1.121.0 - Abschnitt 210: die Griffe wechseln die
+            // Scheibe, der Washer-Trigger waehlt unter dem Zeiger, der linke
+            // Stick ist die Stufe fuer das Stickspiel. Der freie Trigger hat
+            // keine Aufgabe; ReadOffHandTrigger schluckt ihn weiter, solange
+            // die Scheibe offen ist.
             var closedWithStickClick = washerWheel.Drive(LoggerInstance, playerInput,
                 MenuRightStick(),
+                MenuLeftStick().x,
                 ButtonEdge.IsDown(rightPrimary),
-                ButtonEdge.IsDown(triggerAction),
                 ButtonEdge.IsDown(rightStickClick),
                 ButtonEdge.ReadAxis(leftSqueeze) > 0.6f,
                 ButtonEdge.ReadAxis(rightSqueeze) > 0.6f,
+                ButtonEdge.IsDown(triggerAction),
+                new WheelPointer(Time.frameCount - wheelRayFrame <= 2,
+                    wheelRayOrigin, wheelRayForward,
+                    pointerWroteValid ? (pointerWrote - wheelRayOrigin).magnitude : -1f),
                 DescribeConfiguration,
                 why => Buzz(WasherHandRight, why));
 
@@ -10038,6 +10131,132 @@ public sealed class Pose : MelonMod
     // build as defective. Neither is touched. NozzleData and NozzleTypeData are
     // plain class references, NozzleGroup is an int and ShortName a string, so
     // every read here is a safe shape.
+    // ====================================================================
+    // DIE BREITE DER ADAPTABLE - Abschnitt 208.
+    //
+    // Gemessen in 1.118.0: WasherInputHandler.OnChangeNozzleWidth(+1/-1) aendert
+    // die Breite sichtbar, auf Bild auf/ab der Ausruestungsmessung.
+    // WasherConfiguration.DynamicScale las dabei durchgehend 0 - das ist nicht
+    // die lebende Breite. Geloggt wird darum EquipmentManager.DynamicScale.
+    //
+    // Erkannt wird die Duese an NozzleData.CleaningSettings.IsAdaptable, einem
+    // bool des Spiels, nicht am Namen.
+    private bool WidthModeActive()
+    {
+        if (!adaptableWidthStick.Value || menuMode)
+            return false;
+
+        if (!GameInput.FireHeld && !GameInput.FireLatched)
+            return false;
+
+        try
+        {
+            var manager = equipment;
+
+            if (manager is null || manager == null)
+                return false;
+
+            var nozzle = manager.ConfigurationManager?.CurrentConfiguration?.Nozzle;
+
+            if (nozzle is null || nozzle == null)
+                return false;
+
+            var cleaning = nozzle.CleaningSettings;
+            return cleaning is not null && cleaning.IsAdaptable;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    // Gehalten: der erste Schritt nach NozzleStickSettle, dann einer je
+    // AdaptableWidthRepeat. Dieselben Tore wie der Duesenwechsel - Schwelle und
+    // Dominanz - damit eine Diagonale die Breite nicht verstellt.
+    private void DriveWidthStick(float x, float y)
+    {
+        var absX = Mathf.Abs(x);
+        var absY = Mathf.Abs(y);
+        var wants = absY >= nozzleStickThreshold.Value
+            && absY > absX * nozzleStickDominance.Value;
+        var direction = !wants ? 0 : y > 0f ? 1 : -1;
+
+        if (direction != widthDirection)
+        {
+            widthDirection = direction;
+            widthNextStep = Time.unscaledTime + nozzleStickSettle.Value;
+        }
+
+        if (direction == 0 || Time.unscaledTime < widthNextStep)
+            return;
+
+        widthNextStep = Time.unscaledTime + Mathf.Max(0.03f, adaptableWidthRepeat.Value);
+
+        try
+        {
+            var handler = FindWidthHandler();
+
+            if (handler is null)
+                return;
+
+            var before = equipment is null || equipment == null ? -1f : equipment.DynamicScale;
+            handler.OnChangeNozzleWidth(direction);
+            LoggerInstance.Msg($"nozzle width: {(direction > 0 ? "wider" : "narrower")} "
+                + $"(washer hand stick Y while spraying)  y {y:0.00}  x {x:0.00}  "
+                + $"dynamic scale before {before:0.###}");
+        }
+        catch (Exception exception)
+        {
+            LoggerInstance.Warning($"nozzle width: threw {exception.GetType().Name}: {exception.Message}");
+        }
+    }
+
+    // WasherInputHandler ist kein MonoBehaviour; er haengt am PlayerCharacter.
+    // Genommen wird er nur, wenn sein EquipmentManager DERSELBE ist, den die
+    // Mod treibt - im Koop koennte FindObjectOfType sonst eine fremde Figur
+    // liefern und deren Strahl verstellen.
+    private Il2CppFuturLab.PW2.WasherInputHandler? FindWidthHandler()
+    {
+        if (widthCharacter is null || widthCharacter == null)
+            widthCharacter = UnityEngine.Object.FindObjectOfType<Il2CppFuturLab.PW2.PlayerCharacter>();
+
+        if (widthCharacter is null || widthCharacter == null)
+        {
+            widthCharacter = null;
+            NoteWidthMiss("no PlayerCharacter");
+            return null;
+        }
+
+        var handler = widthCharacter.m_washerInputHandler;
+
+        if (handler is null)
+        {
+            NoteWidthMiss("PlayerCharacter has no WasherInputHandler");
+            return null;
+        }
+
+        var manager = handler.m_equipmentManager;
+
+        if (equipment is null || equipment == null || manager is null || manager == null
+            || manager.Pointer != equipment.Pointer)
+        {
+            widthCharacter = null;
+            NoteWidthMiss("handler drives a different EquipmentManager");
+            return null;
+        }
+
+        return handler;
+    }
+
+    private void NoteWidthMiss(string why)
+    {
+        if (widthHandlerMissLogged)
+            return;
+
+        widthHandlerMissLogged = true;
+        LoggerInstance.Warning($"nozzle width: {why} - width not changed");
+    }
+
     private string DescribeConfiguration()
     {
         try
@@ -16628,6 +16847,13 @@ public sealed class Pose : MelonMod
     private readonly WashLaser menuLaser = new();
     private Vector3 pointerWrote;
     private bool pointerWroteValid;
+
+    // Der Strahl des Menuezeigers fuer die Waehlscheibe - Abschnitt 209.
+    // DriveWasherWheel laeuft vor DriveMenuPointer, liest also den Strahl des
+    // vorigen Frames; ein Frame Versatz beim Hervorheben ist unsichtbar.
+    private Vector3 wheelRayOrigin;
+    private Vector3 wheelRayForward;
+    private int wheelRayFrame = -10;
     private float nextPointerLog;
     private string pointerVerdict = "";
     private Vector3 pointerLastPick;
@@ -17259,6 +17485,10 @@ public sealed class Pose : MelonMod
             : MuzzlePoint(raySpawn!);
         var forward = fromHand ? publishedPointerForward : raySpawn!.forward;
 
+        wheelRayOrigin = origin;
+        wheelRayForward = forward;
+        wheelRayFrame = Time.frameCount;
+
         // Against the CURSOR's own canvas plane, not the UI root's. The cursor
         // lives in this canvas and the module derives its position from it, so
         // this is the surface the cursor may legitimately be placed on. Whether
@@ -17407,6 +17637,23 @@ public sealed class Pose : MelonMod
         try
         {
             var raw = turnAction.ReadValueAsObject();
+            return raw is null ? Vector2.zero : raw.Unbox<Vector2>();
+        }
+        catch
+        {
+            return Vector2.zero;
+        }
+    }
+
+    // Der Gehstick, fuer die Stufe in der Waehlscheibe. Abschnitt 210.
+    private Vector2 MenuLeftStick()
+    {
+        if (moveAction is null)
+            return Vector2.zero;
+
+        try
+        {
+            var raw = moveAction.ReadValueAsObject();
             return raw is null ? Vector2.zero : raw.Unbox<Vector2>();
         }
         catch
@@ -19018,7 +19265,7 @@ public sealed class Pose : MelonMod
     // and ordering it top-to-bottom would make "next" jump unpredictably.
     private void DriveMenuTabs()
     {
-        // Die Griffe sind in der Waehlscheibe die Stufe. Abschnitt 205.
+        // Die Griffe wechseln in der Waehlscheibe die Scheibe. Abschnitt 210.
         if (!menuMode || washerWheel.Open)
             return;
 
@@ -19498,6 +19745,13 @@ public sealed class Pose : MelonMod
 
             if (value > 0.6f)
             {
+                // BEI OFFENER SCHEIBE wechselt dieser Trigger die Scheibe, und
+                // der Druck ist damit verbraucht - bis zum Loslassen, auch
+                // ueber das Schliessen hinaus. Ohne das drehte er die Duese
+                // oder rief die Seife zurueck, waehrend die Scheibe wechselt.
+                if (refillArmed && (washerWheel.Open || washerWheel.Switching))
+                    refillArmed = false;
+
                 if (refillArmed)
                 {
                     refillArmed = false;

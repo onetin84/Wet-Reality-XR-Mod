@@ -96,6 +96,17 @@ CONTROLS AND SETTINGS
   that too. With nothing to close, Y opens and closes the task list as
   before.
 
+  EQUIPMENT WHEELS: hold R3 and the wheels of the game open in front of you -
+  washer, nozzle and extension. Every washer tier you bought can be picked
+  there. Point the beam at a segment or a tier and pull the trigger to pick
+  it, squeeze a grip to switch to the previous or next wheel, press R3 to take
+  your choice and close. Without the beam it works on the sticks: right stick
+  picks, left stick left or right steps the tier, A takes. WasherWheel = false
+  in the configuration brings back the old brand cycle on R3 hold.
+
+  ADAPTABLE NOZZLE (new, not yet tested): while spraying with it, washer-hand
+  stick up makes the jet wider, down narrower.
+
   The configuration tool also sets the colour of the pointer beams and the
   size of the teleport target.
 
